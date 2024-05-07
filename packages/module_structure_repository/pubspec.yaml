@@ -1,0 +1,17 @@
+name: module_structure_repository
+description: Domain Layer for Waveform Viewer
+version: 0.0.1
+
+publish_to: none
+
+environment:
+  sdk: ^3.0.0
+
+# Add regular dependencies here.
+dependencies:
+  module_structure_api:
+    path: ../module_structure_api
+
+dev_dependencies:
+  lints: ^3.0.0
+  test: ^1.24.0

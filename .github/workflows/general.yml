@@ -1,0 +1,61 @@
+name: General
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Top-level default, no permissions
+permissions: {}
+
+jobs:
+  run-checks:
+    name: Run Checks
+    permissions: {}
+    timeout-minutes: 60
+    runs-on: ${{ github.repository_owner == 'intel' && 'intel-ubuntu-latest' || 'ubuntu-latest' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Lint Markdown files
+        uses: DavidAnson/markdownlint-cli2-action@v11
+        with:
+          globs: '**/*.md'
+
+      - name: Check Markdown links
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: yes # output is too noisy, see https://github.com/gaurav-nelson/github-action-markdown-link-check/issues/121
+          config-file: .github/configs/mlc_config.json
+
+      - name: Setup Flutter SDK
+        uses: flutter-actions/setup-flutter@v2
+        with:
+          channel: stable
+          version: 3.19.5
+
+      - name: Install project dependencies
+        run: tool/gh_actions/install_dependencies.sh
+
+      - name: Verify project formatting
+        run: tool/gh_actions/verify_formatting.sh
+
+      - name: Analyze project source
+        run: tool/gh_actions/analyze_source.sh
+
+      - name: Check project documentation
+        run: tool/gh_actions/generate_documentation.sh
+
+      - name: Run project tests
+        run: tool/gh_actions/run_tests.sh
+      
+      # https://github.com/devcontainers/ci/blob/main/docs/github-action.md
+      - name: Build dev container and run tests in it
+        uses: devcontainers/ci@v0.3
+        with:
+          runCmd: tool/gh_actions/run_tests.sh
+
