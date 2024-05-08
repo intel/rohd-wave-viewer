@@ -14,6 +14,9 @@ set -euo pipefail
 # Install Flutter
 tool/gh_codespaces/install_flutter.sh
 
+# Put Flutter on the path
+export PATH="$PATH:/usr/local/flutter/bin"
+
 # Install Pub dependencies.
 tool/gh_actions/install_dependencies.sh
 

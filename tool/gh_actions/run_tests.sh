@@ -11,6 +11,4 @@
 
 set -euo pipefail
 
-cd confapp
-
-flutter test --platform chrome
+flutter test
