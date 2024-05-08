@@ -12,7 +12,7 @@
 set -euo pipefail
 
 # Install Flutter
-tool/gh_codespaces/install_flutter.sh
+source tool/gh_codespaces/install_flutter.sh
 
 # Install Pub dependencies.
 tool/gh_actions/install_dependencies.sh
