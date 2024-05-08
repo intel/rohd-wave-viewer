@@ -12,7 +12,10 @@
 set -euo pipefail
 
 # Install Flutter
-source tool/gh_codespaces/install_flutter.sh
+tool/gh_codespaces/install_flutter.sh
+
+# make Flutter on the path
+source ~/.bashrc 
 
 # Install Pub dependencies.
 tool/gh_actions/install_dependencies.sh

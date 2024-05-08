@@ -18,6 +18,5 @@ wget -O /tmp/flutter_linux.tar.xz https://storage.googleapis.com/flutter_infra_r
 cd /usr/local
 sudo tar -xf /tmp/flutter_linux.tar.xz
 echo 'export PATH="$PATH:/usr/local/flutter/bin"' >> ~/.bashrc
-source ~/.bashrc
 
 rm /tmp/flutter_linux.tar.xz
