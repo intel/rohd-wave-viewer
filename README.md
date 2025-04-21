@@ -1,22 +1,12 @@
 # ROHD Wave Viewer
 
-ROHD Wave Viewer is a waveform viewer tool that built using [Flutter](https://flutter.dev/) framework. ROHD Wave Viewer can be used as browser based, desktop native, and mobile application waveform viewer.
+ROHD Wave Viewer is a waveform viewer tool that built using [Flutter](https://flutter.dev/) framework as part of the [ROHD](https://intel.github.io/rohd-website) ecosystem. It can be used in a browser, integrated as a Flutter widget, used as part of a debug stack which integrates it (e.g. ROHD DevTool Extension, eventually), or run as a native desktop application.  It can display waves passed via an API or read from a standard waveform file (e.g. VCD).
 
-The motivation behind this project comes from the discussion in <https://github.com/intel/rohd/discussions/418> where it aims to strengthen the verification capabilities in ROHD.
+**Status:** This project is very much a work in progress and is not ready for production usage yet. Contributions are welcome!
 
-With ROHD Wave Viewer, users can now use it as a individual tool or use it as a external widget that can be integrated within flutter application.
-
-## Features
-
-Features of ROHD Wave Viewer:
-
-- Waveform Viewer
-- Waveform value checking
-
-### Get involved
+## Get involved
 
 - [Join the Discord chat](https://discord.gg/jubxF84yGw)
-- [Attend the ROHD Forum meetings](https://intel.github.io/rohd-website/forum/rohd-forum/)
 - [GitHub Issues](https://github.com/intel/rohd-wave-viewer/issues)
 
 ## Contributing
@@ -25,5 +15,5 @@ ROHD Wave Viewer is under active development. If you're interested in contributi
 
 ----------------
 
-Copyright (C) 2024 Intel Corporation  
+Copyright (C) 2024-2025 Intel Corporation  
 SPDX-License-Identifier: BSD-3-Clause
