@@ -17,3 +17,4 @@ ROHD Wave Viewer is under active development. If you're interested in contributi
 
 Copyright (C) 2024-2026 Intel Corporation  
 SPDX-License-Identifier: BSD-3-Clause
+
