@@ -22,8 +22,8 @@ class WaveformPanel extends StatelessWidget {
 
     return Theme(
       data: Theme.of(context).copyWith(
-        scrollbarTheme: ScrollbarThemeData(
-          thumbColor: WidgetStateProperty.all(Colors.white),
+        scrollbarTheme: const ScrollbarThemeData(
+          thumbColor: WidgetStatePropertyAll(Colors.white),
         ),
       ),
       child: Scrollbar(
