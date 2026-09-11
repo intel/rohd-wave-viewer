@@ -7,7 +7,7 @@
 // 2024 April
 // Author: Yao Jing Quek <yao.jing.quek@intel.com>
 
-import 'package:devtools_app_shared/ui.dart';
+import 'package:devtools_app_shared/ui.dart' as devtools;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -27,7 +27,7 @@ class WaveFormViewerPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final bodyHeight = MediaQuery.of(context).size.height - 80;
 
-    return Split(
+    return devtools.Split(
       axis: Axis.horizontal,
       initialFractions: const [0.14, 0.13, 0.13, 0.6],
       minSizes: const [200, 150, 50, 600],
@@ -62,7 +62,7 @@ class ModuleSignalPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bodyHeight = MediaQuery.of(context).size.height / 2 - 80;
-    return Split(
+    return devtools.Split(
       axis: Axis.vertical,
       initialFractions: const [0.5, 0.5],
       children: [
