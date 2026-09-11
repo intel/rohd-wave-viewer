@@ -5,6 +5,9 @@
       },
       {
         "pattern":"^https://stackoverflow.com"
+      },
+      {
+        "pattern":"^https://bloclibrary.dev/$"
       }
     ]
   }
