@@ -4,6 +4,9 @@
 // wellen_reader_simple_test.dart
 // Simplified tests for WellenReader using test fixtures
 //
+// 2026 January
+// Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
+
 // This test suite validates the Wellen reader's ability to parse multiple
 // waveform dump formats:
 //
@@ -33,9 +36,9 @@
 // Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
 
 import 'dart:io';
-import 'package:test/test.dart';
 import 'package:dart_wellen/dart_wellen.dart';
 import 'package:path/path.dart' as path;
+import 'package:test/test.dart';
 
 /// Path to test fixture files
 String get fixturesPath {
@@ -170,8 +173,10 @@ void main() {
         orElse: () => throw StateError('data8 signal not found in GHW fixture'),
       );
 
-      final waveformData =
-          await reader.getWaveformData([clkSignalId, dataSignalId]);
+      final waveformData = await reader.getWaveformData([
+        clkSignalId,
+        dataSignalId,
+      ]);
       expect(waveformData.length, equals(2));
       expect(waveformData.any((w) => w.signalId == dataSignalId), isTrue);
     });

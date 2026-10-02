@@ -1,88 +1,142 @@
-Short description: VS Code extension source and build output
+# 🌊 ROHD Wave Viewer
 
-This folder is the **TypeScript source** and development workspace for the VS Code extension used by rohd-wave-viewer.
+An interactive waveform viewer for **VCD**, **FST**, and **GHW** files, running
+directly inside VS Code.  Part of the [ROHD](https://intel.github.io/rohd-website)
+hardware design ecosystem.
 
-- `vscode-extension/` contains the TypeScript sources and development config (launch.json).
-- `vscode-extension/out/` is the compiled JavaScript output produced by `npm run compile`.
+[![Watch the ROHD Wave Viewer demo](filter_bank_waves.png)](waveform-demo.mp4)
 
-Development workflow summary:
+*Click the image to watch the viewer load a filter bank waveform and explore its signals.*
 
-1. From the repo root, compile the extension JavaScript:
+<!--
+Publishing checklist for https://github.com/intel/rohd-wave-viewer:
+1. After the GitHub repository exists, upload vscode-extension/waveform-demo.mp4 as a
+   video/mp4 GitHub user attachment associated with intel/rohd-wave-viewer.
+2. Replace the linked poster and caption above with the returned
+   https://github.com/user-attachments/assets/... URL on its own line so GitHub
+   renders the inline video player.
+3. Verify playback from the rendered README, then delete the committed MP4 if
+   the local fallback is no longer wanted.
+-->
 
-   npm --prefix vscode-extension run compile
+## Features
 
-2. The build/packaging step copies packaging/template assets from `vscode-ext-package/extension/` and the compiled `vscode-extension/out/` to the target extension directory (see `make extension` target in the Makefile).
+- **Open waveform files** — double-click any `.vcd`, `.fst`, or `.ghw` file
+  and it renders in a custom editor tab.
+- **Pan & Zoom** — keyboard arrows, scroll wheel, Ctrl+drag region zoom, and
+  press **F** to fit the entire waveform to the viewport.
+- **Time marker** — click any waveform row to place a time cursor; jump to
+  previous/next transitions across focused signals with ←/→.
+- **Signal filtering** — filter the current module by name, hierarchy path, or
+  case-insensitive prefix or `*`/`?` wildcard; use Tab for path completion.
+- **Module tree** — hierarchical module browser; click to expand/collapse and
+  filter signals by module.
+- **Signal monitor list** — double-click or use the context menu to add
+  signals; multi-select, drag to reorder, and remove with Delete or Backspace.
+  Save or load the ordered monitor list as JSON.
+- **Structured signals** — expand arrays and structures or define monitored
+  bit ranges when hierarchy metadata is available.
+- **Reload from disk** — re-read the waveform file without closing the tab
+  (useful during simulation reruns).
+- **Internal signal visibility** — toggle display of internal implementation
+  signals.
+- **Light / Dark theme** — toggle the viewer theme manually.
+- **PNG export** — save the selected-signal, value, and waveform panes through
+  the native VS Code save dialog.
+- **Source navigation** — navigate selected signals to ROHD or generated
+  SystemVerilog when the companion ROHD extension and source metadata are
+  available.
+- **Cross-probe** — send selected signals between registered wave and
+  schematic viewers through the companion ROHD extension.
 
-Notes:
+## Keyboard Shortcuts
 
-- Keep TypeScript source in this folder. Do not commit compiled artifacts unless explicitly desired by your workflow.
+| Key | Action |
+| --- | --- |
+| ← / → | Pan left / right |
+| ↑ / ↓ | Scroll signals up / down |
+| Shift+↑ / Shift+↓ | Zoom in / out |
+| Shift+Scroll | Zoom at cursor |
+| Scroll | Pan horizontally |
+| F | Fit waveform to viewport |
+| Ctrl+Drag | Zoom to time region |
+| Ctrl/Cmd+Click | Toggle signal selection |
+| Shift+Click | Select a signal range |
+| Ctrl/Cmd+A | Select all signals in the focused signal pane |
+| Tab | Complete the module-signal filter |
+| Esc | Clear the module-signal filter |
+| Delete / Backspace | Remove focused signals from monitor |
 
-ROHD Wave Viewer VS Code Extension
+## Toolbar
 
-This folder contains a minimal VS Code extension that hosts the Flutter web build (from `build/web`) inside a Webview.
+| Button | Action |
+| --- | --- |
+| 🔄 Reload | Re-read waveform from disk |
+| 💾 Save list | Save monitored signal names to JSON |
+| 📂 Load list | Restore monitored signals from JSON |
+| Export PNG | Save the viewer panes as an image |
+| 👁 Internals | Toggle visibility of internal signals |
+| ☀️/🌙 Theme | Toggle light / dark theme |
 
-Quick start:
+## Commands
 
-1. Build the Flutter web app:
+| Command | Title |
+| --- | --- |
+| `rohd-wave-viewer.open` | ROHD Wave Viewer: Open |
+
+## Installation
+
+### From VSIX
 
 ```bash
-flutter build web
+make install-local
 ```
 
-1. Copy the build into the extension media folder:
+This builds `build/rohd-wave-viewer-<version>.vsix`, installs it with the VS
+Code CLI, and replaces an older installed version. Reload the VS Code window
+after installation.
+
+### Development Build
+
+Run extension builds from the repository root:
+
+```bash
+make extension
+```
+
+This compiles the TypeScript host, builds the patched Flutter web application,
+and stages the complete extension under
+`build/extension/rohd-wave-viewer-<version>/`. The same command also produces
+`build/rohd-wave-viewer-<version>-slim.zip`.
+
+## Building the Extension Package
+
+```bash
+make vsix
+```
+
+Do not run `vsce package` directly in `vscode-extension/`. The source
+directory intentionally does not contain the generated Flutter web and
+WebAssembly assets. `make vsix` packages the staged output created by the
+supported build pipeline.
+
+To compile only the TypeScript host while editing it:
 
 ```bash
 cd vscode-extension
-./scripts/copy_web_build.sh
-```
-
-1. Install dependencies and compile the extension:
-
-```bash
 npm install
 npm run compile
 ```
 
-1. Run the extension in the Extension Development Host using the provided launch configuration.
+That command does not create a runnable or publishable extension package.
 
-Embedding API
--------------
+## Requirements
 
-The extension ships a small JavaScript shim `embed-shim.js` that exposes a simple API on `window.rohdEmbed`.
+Extension builds require the repository's pinned Flutter, Rust, WebAssembly,
+native build, and Node.js toolchains. See the
+[build and environment guide](../doc/BUILD.md).
 
-- `rohdEmbed.postMessage(msg)` sends a message to the host (VS Code extension or parent frame).
-- `rohdEmbed.onMessage(cb)` registers a callback for messages from the host. Returns an unsubscribe function.
-- `rohdEmbed.ready` is a promise that resolves when the embedded app calls `window.__rohdEmbedReady(info)` (call this from your Flutter JS interop when the app is initialized).
+---
 
-To signal readiness from Flutter, use a JS interop call such as:
-
-```js
-if (window.__rohdEmbedReady) window.__rohdEmbedReady({ initialized: true });
-```
-
-Then the host extension can send messages to the app and receive responses.
-
-.vcd Custom Editor
-------------------
-
-This extension registers a custom editor for waveform files (e.g., `*.vcd`, `*.ghw`, `*.fst`). When you open a supported file, the extension:
-
-- Creates a Webview and loads the embedded Flutter web build.
-- Posts a webview-accessible URI to the webview via `postMessage({ type: 'vcdUri', uri, originalUri })`.
-- Listens for `requestSave` messages from the webview to write back changes to the file.
-
-The embedded app should listen for `vcdUri` messages and fetch the provided URI. Example (embedded JS):
-
-```js
-window.addEventListener('message', (ev) => {
-  const msg = ev.data;
-  if (msg && msg.type === 'vcdUri') {
-    fetch(msg.uri).then(r => r.text()).then(text => {
-      // Load VCD text in the viewer
-      console.log('VCD content for', msg.originalUri, text.slice(0,200));
-      // Forward to your app's message handler if needed
-      if (window.__rohdMessageCallback) window.__rohdMessageCallback({ type: 'vcdContents', text, uri: msg.originalUri });
-    });
-  }
-});
-```
+Copyright (C) 2024-2026 Intel Corporation
+SPDX-License-Identifier: BSD-3-Clause

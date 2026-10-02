@@ -1,9 +1,17 @@
 {
-  "name": "rohd-wave-viewer-vscode",
+  "name": "rohd-wave-viewer",
   "displayName": "ROHD Wave Viewer",
-  "description": "Embeds the ROHD wave viewer Flutter web build into a VS Code Webview.",
-  "version": "0.0.1",
-  "publisher": "local",
+  "description": "Interactive waveform viewer for VCD, FST, and GHW files — pan, zoom, search signals, place markers, and cross-probe to source in VS Code.",
+  "version": "0.1.0",
+  "publisher": "rohd",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/intel/rohd-wave-viewer.git"
+  },
+  "icon": "icon.png",
+  "extensionKind": [
+    "workspace"
+  ],
   "engines": {
     "vscode": "^1.60.0"
   },
@@ -13,13 +21,109 @@
       {
         "command": "rohd-wave-viewer.open",
         "title": "ROHD Wave Viewer: Open"
+      },
+      {
+        "command": "rohd-wave-viewer.arrowLeft",
+        "title": "ROHD Wave Viewer: Arrow Left"
+      },
+      {
+        "command": "rohd-wave-viewer.arrowRight",
+        "title": "ROHD Wave Viewer: Arrow Right"
+      },
+      {
+        "command": "rohd-wave-viewer.arrowUp",
+        "title": "ROHD Wave Viewer: Arrow Up"
+      },
+      {
+        "command": "rohd-wave-viewer.arrowDown",
+        "title": "ROHD Wave Viewer: Arrow Down"
+      },
+      {
+        "command": "rohd-wave-viewer.shiftArrowUp",
+        "title": "ROHD Wave Viewer: Shift+Arrow Up"
+      },
+      {
+        "command": "rohd-wave-viewer.shiftArrowDown",
+        "title": "ROHD Wave Viewer: Shift+Arrow Down"
+      },
+      {
+        "command": "rohd-wave-viewer.delete",
+        "title": "ROHD Wave Viewer: Delete"
       }
-    ]
-    ,
+    ],
+    "keybindings": [
+      {
+        "command": "rohd-wave-viewer.arrowLeft",
+        "key": "left",
+        "when": "activeCustomEditorId == 'rohdWaveViewer.vcd' && activeWebviewPanelId == 'rohdWaveViewer.vcd'"
+      },
+      {
+        "command": "rohd-wave-viewer.arrowRight",
+        "key": "right",
+        "when": "activeCustomEditorId == 'rohdWaveViewer.vcd' && activeWebviewPanelId == 'rohdWaveViewer.vcd'"
+      },
+      {
+        "command": "rohd-wave-viewer.arrowUp",
+        "key": "up",
+        "when": "activeCustomEditorId == 'rohdWaveViewer.vcd' && activeWebviewPanelId == 'rohdWaveViewer.vcd'"
+      },
+      {
+        "command": "rohd-wave-viewer.arrowDown",
+        "key": "down",
+        "when": "activeCustomEditorId == 'rohdWaveViewer.vcd' && activeWebviewPanelId == 'rohdWaveViewer.vcd'"
+      },
+      {
+        "command": "rohd-wave-viewer.shiftArrowUp",
+        "key": "shift+up",
+        "when": "activeCustomEditorId == 'rohdWaveViewer.vcd' && activeWebviewPanelId == 'rohdWaveViewer.vcd'"
+      },
+      {
+        "command": "rohd-wave-viewer.shiftArrowDown",
+        "key": "shift+down",
+        "when": "activeCustomEditorId == 'rohdWaveViewer.vcd' && activeWebviewPanelId == 'rohdWaveViewer.vcd'"
+      },
+      {
+        "command": "rohd-wave-viewer.delete",
+        "key": "delete",
+        "when": "activeCustomEditorId == 'rohdWaveViewer.vcd' && activeWebviewPanelId == 'rohdWaveViewer.vcd'"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "rohd-wave-viewer.arrowLeft",
+          "when": "false"
+        },
+        {
+          "command": "rohd-wave-viewer.arrowRight",
+          "when": "false"
+        },
+        {
+          "command": "rohd-wave-viewer.arrowUp",
+          "when": "false"
+        },
+        {
+          "command": "rohd-wave-viewer.arrowDown",
+          "when": "false"
+        },
+        {
+          "command": "rohd-wave-viewer.shiftArrowUp",
+          "when": "false"
+        },
+        {
+          "command": "rohd-wave-viewer.shiftArrowDown",
+          "when": "false"
+        },
+        {
+          "command": "rohd-wave-viewer.delete",
+          "when": "false"
+        }
+      ]
+    },
     "customEditors": [
       {
         "viewType": "rohdWaveViewer.vcd",
-        "displayName": "ROHD Wave Viewer (VCD)",
+        "displayName": "ROHD Wave Viewer (VCD/FST/GHW)",
         "selector": [
           {
             "filenamePattern": "*.vcd"
@@ -36,13 +140,12 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "package": "vsce package"
+    "compile": "tsc -p ./ && node ../scripts/copy_devtools_extension_assets.cjs out/shared",
+    "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
-    "@types/node": "^18.0.0",
+    "@types/node": "^24.0.0",
     "@types/vscode": "^1.79.0",
-    "typescript": "^4.9.0"
+    "typescript": "^5.8.0"
   }
 }

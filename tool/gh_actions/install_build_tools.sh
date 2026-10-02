@@ -36,6 +36,8 @@ case "$OS" in
       $SUDO_CMD apt-get install -y \
         build-essential cmake ninja-build pkg-config \
         clang llvm libclang-dev \
+        python3 \
+        nodejs npm \
         libgtk-3-dev libglib2.0-dev libgirepository1.0-dev \
         libpango1.0-dev libatk1.0-dev libcairo2-dev libgdk-pixbuf2.0-dev \
         libx11-dev libxext-dev libxkbcommon-dev libxfixes-dev \
@@ -45,6 +47,8 @@ case "$OS" in
       $SUDO_CMD dnf install -y \
         gcc-c++ make cmake ninja-build pkg-config \
         clang llvm llvm-devel \
+        python3 \
+        nodejs npm \
         gtk3-devel glib2-devel gobject-introspection-devel \
         pango-devel atk-devel cairo-devel gdk-pixbuf2-devel \
         libX11-devel libXext-devel libxkbcommon-devel libxfixes-devel \
@@ -54,6 +58,8 @@ case "$OS" in
       $SUDO_CMD yum install -y \
         gcc-c++ make cmake ninja-build pkg-config \
         clang llvm llvm-devel \
+        python3 \
+        nodejs npm \
         gtk3-devel glib2-devel gobject-introspection-devel \
         pango-devel atk-devel cairo-devel gdk-pixbuf2-devel \
         libX11-devel libXext-devel libxkbcommon-devel libxfixes-devel \
@@ -63,6 +69,8 @@ case "$OS" in
       $SUDO_CMD pacman -Sy --noconfirm \
         base-devel cmake ninja pkg-config \
         clang llvm \
+        python \
+        nodejs npm \
         gtk3 glib2 gobject-introspection \
         pango atk cairo gdk-pixbuf \
         libx11 libxext libxkbcommon libxfixes \
@@ -72,12 +80,14 @@ case "$OS" in
       $SUDO_CMD zypper -n install \
         gcc-c++ make cmake ninja pkg-config \
         clang llvm llvm-devel \
+        python3 \
+        nodejs npm \
         gtk3-devel glib2-devel gobject-introspection-devel \
         pango-devel atk-devel cairo-devel gdk-pixbuf-devel \
         libX11-devel libXext-devel libxkbcommon-devel libxfixes-devel \
         wayland-devel
     else
-      log "Unknown package manager. Please install gcc, make, cmake, ninja, pkg-config, clang, llvm, gtk3, glib2 manually."
+      log "Unknown package manager. Please install gcc, make, cmake, ninja, pkg-config, clang, llvm, nodejs, npm, gtk3, glib2 manually."
       exit 1
     fi
     ;;
@@ -86,7 +96,7 @@ case "$OS" in
       log "Installing via Homebrew..."
       # Note: macOS includes native graphics frameworks (Quartz), so GTK is optional.
       # Install LLVM for codegen and other tools for consistency
-      brew install gcc cmake ninja pkg-config llvm gobject-introspection make
+      brew install gcc cmake ninja pkg-config llvm gobject-introspection make python3 node
       log "Note: you may want to add GNU make to PATH if needed (brew install make)."
     else
       log "Homebrew not found. Please install Command Line Tools (xcode-select --install) or Homebrew."

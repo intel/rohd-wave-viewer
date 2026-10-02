@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# fix_bootstrap.py
+# Patches generated Flutter bootstrap code for web deployment.
+#
+# 2026 January
+# Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
+
 import re
 import os
 import sys

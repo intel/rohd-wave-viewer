@@ -1,21 +1,25 @@
-// Copyright (C) 2024 Intel Corporation
+// Copyright (C) 2024-2026 Intel Corporation
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // rohd_module_panel.dart
 // The ROHD module panel.
 //
 // 2024 April
-// Author: Yao Jing Quek <yao.jing.quek@intel.com>
+// Author(s): Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
+//            Yao Jing Quek <yao.jing.quek@intel.com>
 
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_fancy_tree_view/flutter_fancy_tree_view.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:rohd_wave_viewer/src/const/const.dart';
 import 'package:rohd_wave_viewer/src/modules/rohd_module/bloc/rohd_module_bloc.dart';
-import 'package:module_structure_api/module_structure_api.dart';
 import 'package:rohd_wave_viewer/src/modules/signal/bloc/signal_bloc.dart';
 
+/// Displays the currently selected module name as a compact text label.
+///
+/// Replaces the former ModuleTree widget. Module Signals now gets the
+/// full remaining panel space.
 class RohdModulePanel extends StatefulWidget {
+  /// Creates the ROHD module panel.
   const RohdModulePanel({super.key});
 
   @override
@@ -24,203 +28,87 @@ class RohdModulePanel extends StatefulWidget {
 
 class _RohdModulePanelState extends State<RohdModulePanel> {
   bool _initAttempted = false;
-  int _retryCount = 0;
+  bool _signalsInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    // Try to initialize the bloc if waveform is loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _tryInitializeBloc();
     });
   }
 
   void _tryInitializeBloc() {
-    if (_initAttempted) return;
+    if (_initAttempted) {
+      return;
+    }
 
     final bloc = context.read<RohdModuleBloc>();
-    // Only initialize if we're still in Loading state (not yet initialized)
     if (bloc.state is Loading) {
-      debugPrint('[RohdModulePanel] Attempting to initialize bloc');
+      debugPrint('[RohdModulePanel] Initializing RohdModuleBloc');
       _initAttempted = true;
-      bloc.add(RohdModuleInit());
+      bloc.add(const RohdModuleInit());
     }
   }
 
-  void _retryInitializeBloc() {
-    _retryCount++;
-    debugPrint(
-        '[RohdModulePanel] Retrying bloc initialization (attempt $_retryCount)');
-    final bloc = context.read<RohdModuleBloc>();
-    bloc.add(RohdModuleInit());
-  }
-
+  // NOTE: SignalUpdateEvent is fired from the always-mounted listener
+  // in home.dart — do NOT duplicate it here.
   @override
-  Widget build(BuildContext context) {
-    return BlocListener<RohdModuleBloc, RohdModuleState>(
-      listener: (context, state) {
-        // If initialization failed, schedule a retry
-        if (state is Error && _retryCount < 3) {
-          debugPrint('[RohdModulePanel] Init failed, scheduling retry');
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (mounted) {
-              _retryInitializeBloc();
-            }
-          });
-        }
-      },
-      child: BlocBuilder<RohdModuleBloc, RohdModuleState>(
+  Widget build(BuildContext context) =>
+      BlocBuilder<RohdModuleBloc, RohdModuleState>(
         builder: (context, state) {
           if (state is Loading) {
-            // Try initializing if not attempted yet
             if (!_initAttempted) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 _tryInitializeBloc();
               });
             }
-            return const Text('');
+            return const SizedBox.shrink();
           } else if (state is Rendered) {
-            return ModuleTree(moduleStructure: state.moduleStructure);
-          } else if (state is Error) {
+            if (!_signalsInitialized &&
+                state.moduleStructure.modules.isNotEmpty) {
+              _signalsInitialized = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                final firstRoot = state.moduleStructure.modules.first;
+                context.read<SignalBloc>().add(SignalUpdateEvent(firstRoot));
+              });
+            }
+            return const _SelectedModuleLabel(moduleName: null);
+          } else if (state is RohdModuleError) {
             return const Text(bugReport);
           } else if (state is ModuleSelected) {
-            // Trigger the SignalBloc
-            context
-                .read<SignalBloc>()
-                .add(SignalUpdateEvent(state.singleModule));
-            return ModuleTree(moduleStructure: state.moduleStructure);
+            return _SelectedModuleLabel(moduleName: state.singleModule.name);
+          } else if (state is WaveformUpdated) {
+            return _SelectedModuleLabel(moduleName: state.selectedModule?.name);
           } else {
-            return Container(); // Add a default return for safety
+            return const SizedBox.shrink();
           }
         },
-      ),
-    );
-  }
-}
-
-class ModuleTree extends StatefulWidget {
-  final ModuleStructure moduleStructure;
-
-  const ModuleTree({super.key, required this.moduleStructure});
-
-  @override
-  State<ModuleTree> createState() => _ModuleTreeState();
-}
-
-class _ModuleTreeState extends State<ModuleTree> {
-  late TreeController<Module> treeController;
-
-  @override
-  void initState() {
-    super.initState();
-    treeController = TreeController<Module>(
-      roots: widget.moduleStructure.modules,
-      childrenProvider: (Module module) => module.subModules,
-    );
-  }
-
-  @override
-  void didUpdateWidget(ModuleTree oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Only rebuild the controller if the module structure changed
-    if (widget.moduleStructure != oldWidget.moduleStructure) {
-      treeController = TreeController<Module>(
-        roots: widget.moduleStructure.modules,
-        childrenProvider: (Module module) => module.subModules,
       );
-    }
-  }
+}
 
-  @override
-  void dispose() {
-    treeController.dispose();
-    super.dispose();
-  }
+/// Compact text label showing the currently selected module name.
+class _SelectedModuleLabel extends StatelessWidget {
+  final String? _moduleName;
+
+  const _SelectedModuleLabel({required String? moduleName})
+      : _moduleName = moduleName;
 
   @override
   Widget build(BuildContext context) {
-    final bodyHeight = MediaQuery.of(context).size.height / 2 - 80;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white70 : Colors.black87;
 
-    // TreeView have unbounded height
-    return RepaintBoundary(
-      child: SizedBox(
-        height: bodyHeight,
-        child: TreeView<Module>(
-          treeController: treeController,
-          nodeBuilder: (BuildContext context, TreeEntry<Module> entry) {
-            return _ModuleTreeNode(
-              entry: entry,
-              moduleStructure: widget.moduleStructure,
-              treeController: treeController,
-            );
-          },
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Text(
+        _moduleName ?? 'Select a module',
+        style: TextStyle(
+          color: textColor,
+          fontSize: 13,
+          fontStyle: _moduleName == null ? FontStyle.italic : FontStyle.normal,
         ),
-      ),
-    );
-  }
-}
-
-class _ModuleTreeNode extends StatefulWidget {
-  final TreeEntry<Module> entry;
-  final ModuleStructure moduleStructure;
-  final TreeController<Module> treeController;
-
-  const _ModuleTreeNode({
-    required this.entry,
-    required this.moduleStructure,
-    required this.treeController,
-  });
-
-  @override
-  State<_ModuleTreeNode> createState() => _ModuleTreeNodeState();
-}
-
-class _ModuleTreeNodeState extends State<_ModuleTreeNode> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: MouseRegion(
-        onEnter: (_) {
-          if (!_isHovered) {
-            setState(() => _isHovered = true);
-          }
-        },
-        onExit: (_) {
-          if (_isHovered) {
-            setState(() => _isHovered = false);
-          }
-        },
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () {
-            context.read<RohdModuleBloc>().add(
-                  RohdModuleSelect(widget.moduleStructure, widget.entry.node),
-                );
-          },
-          child: Container(
-            color: _isHovered
-                ? Colors.grey.withAlpha((0.1 * 255).toInt())
-                : Colors.transparent,
-            child: TreeIndentation(
-              entry: widget.entry,
-              child: Row(
-                children: [
-                  ExpandIcon(
-                    key: GlobalObjectKey(widget.entry.node),
-                    isExpanded: widget.entry.isExpanded,
-                    onPressed: (_) => widget.treeController
-                        .toggleExpansion(widget.entry.node),
-                  ),
-                  Flexible(
-                    child: Text(widget.entry.node.name),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

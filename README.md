@@ -1,196 +1,354 @@
 # ROHD Wave Viewer
 
-ROHD Wave Viewer is a waveform viewer tool built using the [Flutter](https://flutter.dev/) framework as part of the [ROHD](https://intel.github.io/rohd-website) ecosystem. It can be used in a browser, integrated as a Flutter widget, used as part of a debug stack, or run as a native desktop application. It can display waves passed via an API or read from a standard waveform file (e.g. VCD, FST).
+[![Tests](https://github.com/intel/rohd-wave-viewer/actions/workflows/general.yml/badge.svg?event=push)](https://github.com/intel/rohd-wave-viewer/actions/workflows/general.yml)
+[![API Docs](https://img.shields.io/badge/API%20Docs-generated-success)](https://intel.github.io/rohd-wave-viewer/api/)
+[![Chat](https://img.shields.io/discord/1001179329411166267?label=Chat)](https://discord.gg/jubxF84yGw)
+[![License](https://img.shields.io/badge/License-BSD--3-blue)](LICENSE)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![Coverage](https://raw.githubusercontent.com/intel/rohd-wave-viewer/refs/heads/badges/coverage/main.svg)](https://github.com/intel/rohd-wave-viewer/blob/main/.github/workflows/coverage.yml)
 
-**Status:** This project is under active development. Contributions and bug reports are welcome.
+ROHD Wave Viewer is an interactive viewer for **VCD**, **FST**, and **GHW**
+waveform files. It is designed for everyday waveform inspection in Visual
+Studio Code or a web browser, with additional integration for ROHD designs and
+other ROHD viewer extensions.
 
-## Usage
+Use it to find signals in a design hierarchy, build and save a working signal
+list, inspect values and transitions, measure time intervals, and move between
+waveforms, schematics, and source code.
 
-Quick instructions to run the ROHD Wave Viewer and common controls.
+**[Open the hosted ROHD Wave Viewer](https://intel.github.io/rohd-wave-viewer/)**
 
-### Provide a waveform file
+[![Watch the ROHD Wave Viewer demo](doc/media/waves.png)](doc/media/Waveform.mp4)
 
-Primary (recommended): pass the VCD/FST file as the first positional command-line argument when launching the application. This is the simplest way to open a specific file and is used by the native binary and by `flutter run` (use `--` to forward args to the app).
+*Click the image to watch the ROHD Wave Viewer demo.*
 
-Example (native binary):
+## Embed the Viewer in a Flutter Application
+
+Add the package to the host application:
+
+```yaml
+dependencies:
+  rohd_wave_viewer: ^0.1.0
+```
+
+Then import the viewer and waveform data contracts and provide a
+`SignalWaveformApi`:
+
+```dart
+import 'package:rohd_wave_viewer/rohd_wave_viewer.dart';
+import 'package:rohd_waveform/rohd_waveform.dart';
+
+runApp(
+  EmbeddedWaveViewer(
+    waveformApi: mySignalWaveformApi,
+    title: 'My Waveform Viewer',
+    isExtensionMode: true,
+  ),
+);
+```
+
+`isExtensionMode` hides standalone-only controls. The host supplies a
+`SignalWaveformApi` implementation appropriate for its data source. The
+complete runnable [embedding example](example/main.dart) uses
+`MockSignalWaveformApi` from the explicitly test-only `testing.dart` entry
+point and therefore needs no waveform file, native bridge, or WebAssembly
+setup.
+
+The main `rohd_wave_viewer.dart` entry point exposes only
+`EmbeddedWaveViewer`, `WaveViewerThemeMode`, and `WaveViewerHelpButton`.
+Waveform data contracts come from `package:rohd_waveform`, hierarchy contracts
+come from `package:rohd_hierarchy`, and cross-probing and source-navigation
+contracts come from `package:rohd_devtools_widgets`.
+
+The viewer's repositories, BLoCs, Cubits, painters, application shell, and
+mutable caches are implementation details under `lib/src` and are not
+supported package APIs.
+
+## Choose How to Open the Viewer
+
+### Visual Studio Code
+
+The VS Code extension is the recommended option when waveform analysis is part
+of an editing or debugging workflow.
+
+After installing the extension:
+
+1. Open a `.vcd`, `.fst`, or `.ghw` file from the Explorer.
+2. If VS Code asks which editor to use, select **ROHD Wave Viewer**.
+3. You can also run **ROHD Wave Viewer: Open** from the Command Palette.
+
+The waveform opens as a custom editor in the current VS Code workspace. This
+mode also enables integration with compatible ROHD extensions, including the
+ROHD Schematic Viewer.
+
+### Web Browser
+
+Use the hosted application without installing an extension:
+
+**[Open ROHD Wave Viewer](https://intel.github.io/rohd-wave-viewer/)**
+
+Select a VCD, FST, or GHW file from your computer. The hosted viewer processes
+the file locally in your browser; it does not upload the waveform to an
+application server.
+
+### Linux Desktop Application
+
+A native Linux build can open a waveform passed on the command line:
 
 ```bash
-./build/linux/x64/release/bundle/rohd_wave_viewer /path/to/your/file.vcd
+rohd_wave_viewer /path/to/design.fst
 ```
 
-Example (flutter run):
+Linux package and executable names depend on the distribution. If you are
+building the desktop application from source, see
+[Developer Guide](doc/DEVELOPER.md).
 
-```bash
-flutter run -d linux -- /path/to/your/file.vcd
-```
+## Quick Start
 
-Secondary (convenient for repeated dev runs): set the `ROHD_WAVE_VCD` environment variable. This is useful when using `flutter run` repeatedly from the same shell so you don't need to pass `--` each time.
+1. **Open a waveform file.**
+2. **Select a module** in the hierarchy pane.
+3. **Find signals** by browsing or typing in the signal filter.
+4. **Double-click a signal** to add it to the monitored list.
+5. **Click in the waveform** to place the primary time marker.
+6. **Select one or more monitored signals** to navigate their transitions,
+   change their format, reorder them, or send them to another ROHD viewer.
 
-Example (Linux/macOS):
+The main view is arranged as coordinated panes:
 
-```bash
-export ROHD_WAVE_VCD=/path/to/your/file.vcd
-flutter run -d linux
-```
+- **Hierarchy and module signals** select the part of the design to inspect.
+- **Selected Signals** contains the ordered working set of monitored signals.
+- **Values** shows each monitored value at the primary marker.
+- **Waveforms** displays signal activity over time.
 
-On Windows (PowerShell):
+The dividers between panes can be resized. The hierarchy and toolbar can also
+be pinned or hidden to provide more waveform space.
 
-```powershell
-$env:ROHD_WAVE_VCD = 'C:\path\to\your\file.vcd'
-flutter run -d windows
-```
+## Find and Add Signals
 
-Precedence: if both a positional argument and `ROHD_WAVE_VCD` are provided, the positional argument takes precedence.
+Select a module to display its ports and internal signals. Use the signal filter
+to search by signal name or hierarchy path. Wildcards such as `*` and `?` can
+be used to match related signals, and `Tab` completes a matching path or name.
 
-### Running the app
+Signals can be selected individually or in groups:
 
-- Run via Flutter (useful for development):
+- **Click** selects one signal.
+- **Ctrl/Cmd + Click** toggles a signal in the current selection.
+- **Shift + Click** selects a range.
+- **Ctrl/Cmd + A** selects all signals in the focused signal pane.
+- **Double-click** adds a signal to the monitored list.
+- The right-click menu can add or remove all selected signals.
 
-```bash
-flutter run -d linux  # or -d windows, -d macos, or -d web-server
-```
+Use the sort button to switch between ascending and descending signal names.
+Internal signals can be shown or hidden from the toolbar.
 
-- Build and run a native desktop binary (release):
+## Work with Buses and Structured Signals
 
-```bash
-flutter build linux   # or macos/windows depending on your platform
-./build/linux/x64/release/bundle/rohd_wave_viewer  # example path
-```
+Multi-bit signals can be expanded into individual bits or selected ranges.
+Named bit fields can be defined when a bus contains several logical values.
 
-### Controls
+When ROHD hierarchy metadata is available, the viewer preserves structured
+signal information rather than treating every value as an unrelated flat
+signal. Structures, fields, arrays, bits, and slices can be expanded and added
+to the monitored list independently.
 
-- **Place / move marker (cursor):** Click a waveform row (without holding Control) to place the marker at that time. The marker is stored as a waveform time (picoseconds) and will stay anchored to waveform transitions across zoom/pan operations.
-- **Pan (mouse):** Hold the Control key and drag with the left mouse button to pan horizontally and vertically. Regular drag without Control will not pan (so you don't accidentally move markers).
-- **Zoom (mouse wheel):** Hold Control and scroll the mouse wheel to zoom. Zoom is focal: the pixel under the cursor remains fixed while zooming.
-- **Pan with keyboard:** Use the arrow keys to scroll vertically/horizontally. `Up`/`Down` scroll by one signal-row (see `signalRowHeight`), `Left`/`Right` scroll horizontally.
-- **Fit View:** Press `F` to reset zoom to 1.0 and jump to the start (time 0).
+This makes it possible to inspect a complete ROHD `LogicStructure` while also
+monitoring only the fields or bit ranges relevant to the current problem.
 
-## Development & Testing
+## Organize the Monitored Signal List
 
-The ROHD Wave Viewer can be run and tested in three different configurations:
+The monitored list is a working view of the signals under investigation:
 
-### 1. VS Code Extension Mode
+- Drag a row to reorder it.
+- Select several rows and drag them as a group.
+- Add the same source signal more than once when different formats or
+  placements are useful.
+- Remove focused rows with `Delete` or `Backspace`.
+- Undo and redo monitor-list edits with the toolbar or standard
+  `Ctrl/Cmd + Z` and redo shortcuts.
 
-Run as a VS Code extension for viewing VCD/FST files:
+Signal display formats include:
 
-**Using VS Code Debug Panel (F5):**
+- waveform
+- binary
+- hexadecimal
+- octal
+- unsigned decimal
+- signed decimal
+- ASCII
 
-- `Extension (workspace)` - Test extension from workspace
-- `Extension (workspace) + Debug` - With Node.js debugger (port 9329)
+The chosen format is used consistently in the selected-signal, value, and
+waveform panes.
 
-**Installing the Extension:**
+## Navigate and Measure Waveforms
 
-For local testing, remote container testing, or distributing as a VSIX package:
+Click the waveform area to place the primary marker. Values at that time appear
+in the Values pane.
 
-```bash
-# Local development (fast iteration with symlinks)
-make install-local
+Common navigation operations are:
 
-# Remote container testing
-make install-remote
+| Action | Control |
+| --- | --- |
+| Pan through time | Scroll wheel or `Left` / `Right` |
+| Scroll monitored signals | `Up` / `Down` |
+| Zoom at the pointer | `Shift + Scroll` |
+| Zoom in or out | `Shift + Up` / `Shift + Down` |
+| Zoom into a time region | `Ctrl + Drag` from left to right |
+| Zoom out with a region gesture | `Ctrl + Drag` from right to left |
+| Fit the complete waveform | `F` |
+| Jump to an adjacent transition | Focus a monitored signal, then press `Left` / `Right` |
 
-# Create VSIX package for distribution
-make vsix
+Focused signals can be searched together for:
 
-# Install from VSIX
-make install-vsix
-```
+- the next or previous value change
+- a rising edge
+- a falling edge
+- a matching value
 
-See **[docs/INSTALL_EXTENSION.md](docs/INSTALL_EXTENSION.md)** for complete installation instructions and troubleshooting.
+The nearest matching transition across the focused set becomes the new marker
+position.
 
-**Using VS Code Tasks (Ctrl+Shift+B):**
+An optional measurement marker shows the time difference from the primary
+marker and the corresponding frequency. This is useful for checking periods,
+latencies, pulse widths, and spacing between transactions.
 
-- `Build Extension` - Compile TypeScript extension code
+## Save, Reload, and Share a View
 
-**Key Development Steps:**
+Use the toolbar to:
 
-1. Make changes to extension code in `vscode-extension/`
-2. Press F5 to launch Extension Development Host
-3. Open a `.vcd` or `.fst` file to trigger the wave viewer
-4. Check Debug Console for extension logs
+- **Reload** the current waveform after regenerating it.
+- **Save a signal list** as JSON.
+- **Load a signal list** into another waveform session.
+- **Export the visible viewer panes as PNG.**
 
-**Using Terminal:**
+Saved viewer state can retain monitored rows, value formats, signal filters,
+markers, pane layout, and the waveform viewport. This allows an investigation
+to be resumed without rebuilding the view manually.
 
-```bash
-cd vscode-extension
-npm run compile
-# Then press F5 in VS Code to test
-```
+## Send Signals Between ROHD Viewers in VS Code
 
-### 2. Web Mode
+When another compatible ROHD viewer is open in the same VS Code session, the
+right-click menu includes **Send Signal** or **Send Signals**.
 
-Run the Flutter wave viewer as a standalone web application:
+For example, with both ROHD Wave Viewer and ROHD Schematic Viewer open:
 
-**Using VS Code Debug Panel (F5):**
+1. Select one or more signals in the module-signal or monitored-signal pane.
+2. Right-click the selection.
+3. Choose **Send Signal** or **Send Signals**.
+4. The receiving viewer locates and selects the corresponding hierarchy paths.
 
-- `Web (Simple Browser)` - Run on port 9299 in VS Code
-- `Web (Chrome)` - Open in Chrome browser
+This works in both directions:
 
-**Using VS Code Tasks:**
+- Send waveform signals to the Schematic Viewer to locate the associated nets.
+- Send schematic nets to the Wave Viewer to add their recorded waveforms.
 
-- `Flutter Web (port 9299)` - Run web server with main_web.dart
+If a schematic internal net does not have its own recorded waveform, the
+Schematic Viewer may also send a directly connected module output port or
+parent-module input port so that a useful driving waveform can still be added.
 
-**Using Terminal:**
+The Send item is shown only when another registered viewer is available. If it
+does not appear:
 
-```bash
-flutter run -d web-server --web-port=9299 --web-hostname=localhost lib/main_web.dart
-```
+1. Confirm that both viewer extensions are installed and enabled.
+2. Open both the waveform and schematic custom editors.
+3. Reload the VS Code window if either extension was installed or updated while
+   the window was already open.
+4. Reopen both editors after the reload.
 
-Access at: **<http://localhost:9299>**
+Signal sending between viewer extensions does not require a live ROHD debug
+session. Live snapshots and streaming waveform updates are separate integration
+features and may require a connected ROHD debugging service.
 
-### 3. Linux Native Mode
+## Navigate to Source
 
-Run the Flutter wave viewer as a native Linux desktop application:
+When source-location information is supplied by the ROHD extension or an
+embedding DevTools host, a signal's right-click menu can navigate to:
 
-**Using VS Code Debug Panel (F5):**
+- **ROHD source**
+- **SystemVerilog source**
+- **SystemC source**
 
-- `Linux Native` - Standard debug mode using main.dart
-- `Linux Native (profile)` - Profile mode
+Only languages with confirmed source information are displayed. For example,
+if a design has ROHD and generated SystemVerilog mappings but no SystemC
+mapping, the menu shows only the ROHD and SystemVerilog actions.
 
-**Using VS Code Tasks:**
+## Live ROHD Debugging
 
-- `Flutter Linux` - Run native application
+When embedded in a compatible ROHD DevTools workflow, the viewer can receive
+hierarchy and waveform information directly rather than opening a completed
+waveform file. Depending on the host, integrated features can include:
 
-**Using Terminal:**
+- incremental waveform updates during simulation
+- marker-time design snapshots
+- live-tracking or video mode
+- source navigation using recorded stack frames
 
-```bash
-# With VCD file argument
-flutter run -d linux -- /path/to/file.vcd
+These controls appear only when the host reports that the corresponding
+service is available.
 
-# Using environment variable
-export ROHD_WAVE_VCD=/path/to/file.vcd
-flutter run -d linux
+## Keyboard and Mouse Reference
 
-# Build release binary
-flutter build linux
-./build/linux/x64/release/bundle/rohd_wave_viewer /path/to/file.vcd
-```
+| Task | Shortcut |
+| --- | --- |
+| Select one signal | Click |
+| Extend or toggle selection | `Ctrl/Cmd + Click` |
+| Select a range | `Shift + Click` |
+| Select all signals in the focused pane | `Ctrl/Cmd + A` |
+| Add signal to monitored list | Double-click |
+| Reorder monitored signals | Drag selected row or rows |
+| Remove focused monitored signals | `Delete` / `Backspace` |
+| Undo monitor-list edit | `Ctrl/Cmd + Z` |
+| Redo monitor-list edit | `Ctrl/Cmd + Y` or `Ctrl/Cmd + Shift + Z` |
+| Complete signal search | `Tab` |
+| Clear signal search | `Esc` |
+| Fit waveform | `F` |
+| Place primary marker | Click waveform |
+| Jump between transitions | Focus signal, then `Left` / `Right` |
 
-### Testing
+The in-application Help button contains the current toolbar and shortcut
+reference. See [signal filtering](doc/SIGNAL_FILTERING.md) for additional
+examples.
 
-Run unit and widget tests:
+## Troubleshooting
 
-```bash
-# Run all tests
-flutter test
+### A waveform does not open
 
-# Run specific test file
-flutter test test/path/to/test_file.dart
+- Confirm that the file extension is `.vcd`, `.fst`, or `.ghw`.
+- Verify that waveform generation completed and the file is not empty.
+- If the file was replaced while open, use **Reload**.
 
-# Run tests with coverage
-flutter test --coverage
-```
+### A signal is missing
 
-## Get involved
+- Select the correct module in the hierarchy.
+- Clear the signal filter with `Esc`.
+- Enable internal signals from the toolbar.
+- For a bus or structure, expand its fields, bits, or ranges.
+- Some internal nets are optimized away or are not recorded by the waveform
+  producer.
+
+### Send is not in the right-click menu
+
+**Send Signal(s)** is intentionally hidden until another compatible ROHD viewer
+registers in the current VS Code session. Open the other viewer, or reload the
+VS Code window after installing or updating its extension.
+
+### Source navigation is not in the right-click menu
+
+Source actions appear only for languages whose mappings are available for the
+selected module. Open the design through the ROHD extension or a compatible
+DevTools workflow that supplies source information.
+
+## Development and Contributions
+
+This README is the user guide. Instructions for building the application,
+running Flutter configurations, packaging the VS Code extension, selecting
+local dependencies, and running tests are in the
+[Developer Guide](doc/DEVELOPER.md).
 
 - [Join the Discord chat](https://discord.gg/jubxF84yGw)
-- [GitHub Issues](https://github.com/intel/rohd-wave-viewer/issues)
+- [Report an issue](https://github.com/intel/rohd-wave-viewer/issues)
+- [Contributing guide](CONTRIBUTING.md)
 
-## Contributing
+---
 
-ROHD Wave Viewer is under active development. If you're interested in contributing, have feedback or question, or found a bug, please see [CONTRIBUTING.md](https://github.com/intel/rohd-wave-viewer/blob/main/CONTRIBUTING.md).
-
-----------------
-
-Copyright (C) 2024-2025 Intel Corporation  
+Copyright (C) 2024-2026 Intel Corporation
 SPDX-License-Identifier: BSD-3-Clause

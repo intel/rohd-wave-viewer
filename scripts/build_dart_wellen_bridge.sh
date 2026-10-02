@@ -1,9 +1,19 @@
 #!/usr/bin/env bash
+
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# build_dart_wellen_bridge.sh
+# Builds the Dart and Flutter interface for the Wellen bridge.
+#
+# 2026 January
+# Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
+
 set -euo pipefail
 # Build Dart/Flutter interface for wellen_bridge (FRB codegen + Dart artifacts)
 # Generates Dart bindings and frb_generated.rs from Rust code.
 # Works for both Linux and web builds. Assumes Rust toolchain and tools (flutter_rust_bridge_codegen, libclang) are pre-installed.
-# Does NOT build Rust itself; use tool/gh_actions installers and rust/wellen_bridge/build.sh for that.
+# Does not build Rust itself; use `make rust-native` or `make wasm` for that.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -50,6 +60,11 @@ ORIG_CFG="$ROOT_DIR/packages/dart_wellen/flutter_rust_bridge.yaml"
 ORIG_DIR="$(dirname "$ORIG_CFG")"
 TMP_CFG="$ORIG_DIR/flutter_rust_bridge.generated.$(date +%s).yaml"
 
+cleanup() {
+    rm -f "$TMP_CFG"
+}
+trap cleanup EXIT
+
 if [ ! -f "$ORIG_CFG" ]; then
     echo "[build-dart-wellen] ERROR: original config not found at $ORIG_CFG" >&2
     exit 1
@@ -75,6 +90,20 @@ else
     printf "\ndart_root: \".\"\n" >> "$TMP_CFG"
 fi
 
+# FRB 2.7 only searches dart_root for pubspec.lock and predates root workspace
+# lockfiles. Pub has already validated and resolved dependencies at the root,
+# so skip its legacy checks and automatic pubspec mutation.
+if grep -q "^deps_check:" "$TMP_CFG"; then
+    sed -i 's|^deps_check:.*$|deps_check: false|' "$TMP_CFG"
+else
+    printf "\ndeps_check: false\n" >> "$TMP_CFG"
+fi
+if grep -q "^local:" "$TMP_CFG"; then
+    sed -i 's|^local:.*$|local: true|' "$TMP_CFG"
+else
+    printf "local: true\n" >> "$TMP_CFG"
+fi
+
 echo "[build-dart-wellen] Using temporary config $TMP_CFG"
 
 # Ensure dart output directory exists
@@ -87,8 +116,5 @@ pushd "$ROOT_DIR/packages/dart_wellen" >/dev/null
 popd >/dev/null
 
 echo "[build-dart-wellen] Done."
-
-# Clean up temporary config
-rm -f "$TMP_CFG"
 
 echo "[build-dart-wellen] Dart interface ready in packages/dart_wellen/"

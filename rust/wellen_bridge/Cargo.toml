@@ -7,15 +7,19 @@ repository = "https://github.com/intel/rohd-wave-viewer"
 license = "BSD-3-Clause"
 homepage = "https://github.com/intel/rohd-wave-viewer"
 
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
 
 [lib]
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
 flutter_rust_bridge = "=2.7.0"
 wellen = { version = "0.20.1", features = ["serde1"] }
+regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2"

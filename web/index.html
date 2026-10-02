@@ -1,22 +1,26 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <base href="/">
+  <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta name="description" content="ROHD Wave Viewer">
 
   <!-- iOS meta tags & icons -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="rohd_wave_viewer">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <meta name="apple-mobile-web-app-title" content="ROHD Wave Viewer">
+  <link rel="apple-touch-icon" href="icons/waveform-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/svg+xml" href="waveform.svg"/>
+  <link rel="alternate icon" type="image/png" href="waveform.png"/>
 
-  <title>rohd_wave_viewer</title>
+  <title>ROHD Wave Viewer</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Google Fonts: Noto Sans for character support -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 
   <!-- Force WebView to keep compositing by having a tiny animated element -->
   <style>
@@ -47,6 +51,12 @@
   <script id="flutter-init">
     // Counter for forcing repaints - used to create visible DOM changes
     window._rohdRepaintCounter = 0;
+    window._rohdLastLayoutHeight = 0;
+
+    function forceSynchronousLayout(element) {
+      // Reading offsetHeight flushes pending layout in embedded webviews.
+      window._rohdLastLayoutHeight = element.offsetHeight;
+    }
 
     // Function to force the WebView compositor to present a frame
     // Called from Dart after zoom operations. Simplified to reduce overhead.
@@ -61,7 +71,7 @@
       canvases.forEach(function(canvas) {
         var z = (window._rohdRepaintCounter % 2 === 0) ? '0.001px' : '0.002px';
         canvas.style.transform = 'translateZ(' + z + ')';
-        void canvas.offsetHeight; // Force sync reflow
+        forceSynchronousLayout(canvas);
       });
 
       // Strategy 2: Toggle a tiny compositor nudge element's opacity
@@ -70,7 +80,7 @@
         if (nudge) {
           nudge.style.willChange = 'opacity';
           nudge.style.opacity = (window._rohdRepaintCounter % 2 === 0) ? '0.01' : '0.02';
-          void nudge.offsetHeight;
+          forceSynchronousLayout(nudge);
         }
       } catch (e) {}
 
@@ -118,7 +128,7 @@
       // Strategy 6: Animation frames to ensure repaint and reset transforms
       requestAnimationFrame(function() {
         canvases.forEach(function(canvas) { canvas.style.transform = ''; });
-        requestAnimationFrame(function() { void document.body.offsetHeight; });
+        requestAnimationFrame(function() { forceSynchronousLayout(document.body); });
       });
     };
 
@@ -239,7 +249,7 @@
                   shift: e.shiftKey,
                   jsShiftDown: !!window.__shiftDown
                 };
-                window.postMessage(payload, '*');
+                window.postMessage(payload, window.location.origin);
 
                 // Force repaint after zoom message is sent
                 setTimeout(function() { if (window.rohdForceRepaint) window.rohdForceRepaint(); simulateMouseMove(); }, 50);

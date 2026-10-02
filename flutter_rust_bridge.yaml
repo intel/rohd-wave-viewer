@@ -1,8 +1,0 @@
-# Flutter Rust Bridge configuration
-rust_input: crate::api
-rust_root: rust/wellen_bridge/
-dart_output: packages/dart_wellen/lib/src/rust/
-
-# Codegen options
-full_dep: true
-default_external_library_loader_web_prefix: pkg/

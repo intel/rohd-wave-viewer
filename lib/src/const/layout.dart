@@ -1,15 +1,29 @@
-// Copyright (C) 2024 Intel Corporation
+// Copyright (C) 2024-2026 Intel Corporation
 // SPDX-License-Identifier: BSD-3-Clause
+//
+// layout.dart
+// Layout-related constants used across the app.
+//
+// 2024 April
+// Author(s): Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
+//            Yao Jing Quek <yao.jing.quek@intel.com>
 
-/// Layout-related constants used across the app.
+/// Left padding used to align timescale, waveforms, and cursor markers.
 const double waveformLeftOffset =
-    12.0; // pixels; tweak this to shift timescale/waveforms/marker
+    12; // pixels; tweak this to shift timescale/waveforms/marker
 
-/// Standard height for a single signal row (waveform row, selection row, value row)
-const double signalRowHeight = 40.0;
+/// Base height for a single signal row (before scaling).
+const double baseSignalRowHeight = 30;
 
-/// Height for the signal tab container (header for a row)
+/// Standard height for a single signal row (waveform row, selection row, value
+/// row).
+///
+/// Legacy alias for [baseSignalRowHeight].  Prefer reading the scaled height
+/// from `WaveformScaleCubit` when available.
+const double signalRowHeight = baseSignalRowHeight;
+
+/// Height for the signal tab container (header for a row).
 // Keep the tab/container height consistent with the waveform row height so
-// selection/value rows align with waveform rows. If a different visual
-// density is desired, change `signalRowHeight` instead.
-const double signalTabContainerHeight = signalRowHeight;
+// selection/value rows align with waveform rows.
+/// Height for the signal tab container.
+const double signalTabContainerHeight = baseSignalRowHeight;

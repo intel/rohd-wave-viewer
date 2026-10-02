@@ -7,14 +7,13 @@
 // 2026 January 12
 // Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
 
-// App
-export 'app.dart';
-export 'mock_module_structure_api.dart';
+// Dartdoc uses this name to select the package's public library.
+// ignore_for_file: unnecessary_library_name
 
-// Home view
-export 'src/modules/home/view/home.dart';
+/// Public API for embedding the ROHD Wave Viewer.
+library rohd_wave_viewer;
 
-// BLoCs
-export 'src/modules/rohd_module/bloc/rohd_module_bloc.dart';
-export 'src/modules/signal/bloc/signal_bloc.dart';
-export 'src/modules/waveform/bloc/waveform_module_bloc.dart' hide Error;
+export 'embedded_wave_viewer.dart' show EmbeddedWaveViewer;
+export 'src/cubit/wave_viewer_theme_cubit.dart' show WaveViewerThemeMode;
+export 'src/modules/shared/widgets/wave_viewer_help_button.dart'
+    show WaveViewerHelpButton;

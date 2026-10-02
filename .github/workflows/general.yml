@@ -15,11 +15,11 @@ jobs:
   run-checks:
     name: Run Checks
     permissions: {}
-    timeout-minutes: 60
+    timeout-minutes: 90
     runs-on: ${{ github.repository_owner == 'intel' && 'intel-ubuntu-latest' || 'ubuntu-latest' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Lint Markdown files
         uses: DavidAnson/markdownlint-cli2-action@v11
@@ -32,11 +32,28 @@ jobs:
           use-quiet-mode: yes # output is too noisy, see https://github.com/gaurav-nelson/github-action-markdown-link-check/issues/121
           config-file: .github/configs/mlc_config.json
 
-      - name: Setup Flutter SDK
-        uses: flutter-actions/setup-flutter@v2
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          channel: stable
-          version: 3.19.5
+          flutter-version: '3.47.2'
+          cache: true
+
+      - name: Verify Flutter and Dart on PATH
+        run: bash scripts/verify_flutter_version.sh
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install native build tools
+        run: tool/gh_actions/install_build_tools.sh
+
+      - name: Install Rust toolchain
+        run: tool/gh_actions/install_rust_1_92.sh
+
+      - name: Install WASM tools
+        run: tool/gh_actions/install_wasm_tools.sh
 
       - name: Install project dependencies
         run: tool/gh_actions/install_dependencies.sh
@@ -47,15 +64,35 @@ jobs:
       - name: Analyze project source
         run: tool/gh_actions/analyze_source.sh
 
+      - name: Verify Dart source headers
+        run: dart run tool/gh_actions/verify_dart_headers.dart
+
+      - name: Verify waveform client migration boundary
+        run: tool/gh_actions/verify_waveform_client_core.sh
+
+      - name: Setup Pana source analysis
+        run: tool/gh_actions/install_pana.sh
+
+      - name: Gate hosted dependencies and Pana score
+        run: make pana
+
       - name: Check project documentation
         run: tool/gh_actions/generate_documentation.sh
 
       - name: Run project tests
-        run: tool/gh_actions/run_tests.sh
-      
+        run: make test
+
+      - name: Build Linux application
+        run: make linux-release
+
+      - name: Build web application
+        run: make web
+
+      - name: Build extension package
+        run: make extension
+
       # https://github.com/devcontainers/ci/blob/main/docs/github-action.md
       - name: Build dev container and run tests in it
         uses: devcontainers/ci@v0.3
         with:
           runCmd: tool/gh_actions/run_tests.sh
-

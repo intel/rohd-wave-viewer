@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
+
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# setup_rust_env.sh
+# Normalizes Rust environment variables and locates rustup.
+#
+# 2026 January
+# Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
+
 set -euo pipefail
 # Script to normalize and export Rust environment variables and locate rustup
 

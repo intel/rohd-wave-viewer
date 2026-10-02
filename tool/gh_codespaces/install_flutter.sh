@@ -14,23 +14,28 @@
 
 set -euo pipefail
 
-wget -O /tmp/flutter_linux.tar.xz https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.19.5-stable.tar.xz
+flutter_version='3.47.2'
+
+flutter_archive="/tmp/flutter_linux_${flutter_version}-stable.tar.xz"
+flutter_url="https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${flutter_version}-stable.tar.xz"
+
+wget -O "$flutter_archive" "$flutter_url"
 
 # If running as root, install to /usr/local (typical for container images). If
 # running as a regular user, extract to $HOME/flutter to avoid needing sudo.
 if [ "$(id -u)" -eq 0 ]; then
 	echo "Installing Flutter to /usr/local/flutter (running as root)"
 	cd /usr/local
-	tar -xf /tmp/flutter_linux.tar.xz
+	tar -xf "$flutter_archive"
 	profile_path="/etc/profile.d/flutter.sh"
-	echo 'export PATH="$PATH:/usr/local/flutter/bin"' > "$profile_path"
+	echo 'export PATH="/usr/local/flutter/bin:$PATH"' > "$profile_path"
 	echo "Wrote PATH to $profile_path"
 else
 	echo "Installing Flutter to $HOME/flutter (no sudo required)"
 	mkdir -p "$HOME/flutter"
-	tar -xf /tmp/flutter_linux.tar.xz -C "$HOME"
+	tar -xf "$flutter_archive" -C "$HOME"
 	# Add to user's bashrc
-	echo 'export PATH="$PATH:$HOME/flutter/bin"' >> ~/.bashrc
+	echo 'export PATH="$HOME/flutter/bin:$PATH"' >> ~/.bashrc
 fi
 
-rm /tmp/flutter_linux.tar.xz
+rm "$flutter_archive"

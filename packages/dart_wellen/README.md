@@ -1,218 +1,129 @@
 # dart_wellen
 
-Dart bindings to the [wellen](https://github.com/ekiwi/wellen) Rust library for reading and writing waveform files.
+`dart_wellen` exposes the Rust
+[Wellen](https://github.com/ekiwi/wellen) waveform parser to Dart through
+Flutter Rust Bridge. It reads VCD, FST, and GHW waveforms and adapts them to
+the shared `rohd_hierarchy` and `rohd_waveform` contracts.
 
-This package provides:
+## Capabilities
 
-- **Reading** VCD, FST, and GHW waveform files
-- **Writing** VCD (and FST in future) waveform files  
-- A **WellenWaveDumper** class compatible with ROHD's simulation pattern
+| Operation | Native | WebAssembly |
+| --- | --- | --- |
+| Read VCD, FST, or GHW from a file path | Yes | No |
+| Read VCD, FST, or GHW from bytes | Yes | Yes |
+| Query hierarchy and selected signal data | Yes | Yes |
+| Write VCD | Yes | No |
+| Write FST or GHW | No | No |
 
-## Features
-
-| Format | Reading | Writing          |
-|--------|---------|------------------|
-| VCD    | ✅      | ✅               |
-| FST    | ✅      | 🚧 (planned)     |
-| GHW    | ✅      | ❌ (read-only)   |
+Writing is deliberately separated from the cross-platform reader because it
+uses `dart:io`.
 
 ## Installation
 
-Add to your `pubspec.yaml`:
+Add the package to a Dart or Flutter package:
 
 ```yaml
 dependencies:
-  dart_wellen:
-    path: packages/dart_wellen
+  dart_wellen: ^0.1.0
 ```
 
-### Rust Toolchain
+Applications also need the matching native or WebAssembly bridge artifact. The
+ROHD Wave Viewer build system prepares those artifacts automatically.
 
-This package uses Rust via `flutter_rust_bridge`. You need:
+## Reading a Waveform
 
-1. [Rust toolchain](https://rustup.rs/)
-2. Run code generation:
-
-   ```bash
-   cd packages/dart_wellen
-   flutter_rust_bridge_codegen generate
-   ```
-
-## Usage
-
-### Reading Waveform Files
+`WellenReader` is a convenience API for native, file-backed workflows:
 
 ```dart
 import 'package:dart_wellen/dart_wellen.dart';
 
-Future<void> main() async {
+Future<void> inspectWaveform(String path) async {
+  await WellenReader.init();
   final reader = WellenReader();
-  
-  // Load a waveform file
-  await reader.loadFile('simulation.vcd');
-  
-  // Get the signal hierarchy
-  final structure = await reader.getStructure();
-  print('Format: ${structure.metadata.format}');
-  print('Timescale: ${structure.metadata.timescale}');
-  
-  // List all signals
-  for (final signalId in structure.allSignalIds) {
-    print('Signal: $signalId');
+
+  try {
+    final metadata = await reader.loadFile(path);
+    final structure = await reader.getStructure();
+    final signals = await reader.getSignalData(
+      ['top.clk', 'top.counter'],
+      startTime: 0,
+      endTime: metadata.endTime,
+    );
+
+    print('${structure.modules.length} top-level modules');
+    for (final waveform in signals) {
+      print('${waveform.signalId}: ${waveform.data.length} changes');
+    }
+  } finally {
+    await reader.close();
   }
-  
-  // Get waveform data for specific signals
-  final data = await reader.getSignalData(['top.clk', 'top.reset']);
-  for (final signal in data) {
-    print('${signal.signalId}: ${signal.data.length} transitions');
-  }
-  
-  // Stream data for large waveforms
-  await for (final chunk in reader.streamSignalData(
-    structure.allSignalIds,
-    chunkSize: 10,
-  )) {
-    print('Loaded ${chunk.length} signals');
-  }
-  
-  await reader.close();
 }
 ```
 
-### Writing Waveform Files
+`WellenSignalWaveformApi` implements the `SignalWaveformApi` contract used by
+ROHD viewers. Use `loadFile` on native platforms or `loadBytes` after the
+generated Wellen WebAssembly module has been initialized in a browser:
 
 ```dart
-import 'package:dart_wellen/dart_wellen.dart';
+final api = WellenSignalWaveformApi();
+await api.loadBytes(bytes, fileName: 'simulation.fst');
 
-Future<void> main() async {
-  final writer = WellenWriter();
-  
-  await writer.open(
-    'output.vcd',
-    format: WaveFormat.vcd,
-    timescale: '1ns',
-  );
-  
-  // Register signals
-  writer.registerSignal(SignalInfo(
-    id: 'top.clk',
-    name: 'clk',
-    fullPath: 'top.clk',
-    signalType: 'wire',
-    bitWidth: 1,
-    scopeId: 0,
-  ));
-  
-  writer.registerSignal(SignalInfo(
-    id: 'top.data',
-    name: 'data',
-    fullPath: 'top.data',
-    signalType: 'wire',
-    bitWidth: 8,
-    scopeId: 0,
-  ));
-  
-  // Write header
-  writer.writeHeader();
-  
-  // Write value changes
-  writer.writeValue(0, 'top.clk', '0');
-  writer.writeValue(0, 'top.data', '00000000');
-  writer.writeValue(5, 'top.clk', '1');
-  writer.writeValue(10, 'top.clk', '0');
-  writer.writeValue(10, 'top.data', '10101010');
-  
-  await writer.close();
-}
+final hierarchy = await api.getModuleStructureOnly();
+final waveforms = await api.getWaveformData(
+  signalIds: ['top.clk'],
+);
 ```
 
-### WellenWaveDumper (ROHD-style API)
+Only one waveform is held by the Rust bridge at a time. Creating multiple Dart
+reader or API objects does not create independent Rust waveform stores.
+
+## Writing VCD
+
+Native code that writes waveforms must import the IO-specific library:
 
 ```dart
-import 'package:dart_wellen/dart_wellen.dart';
-
-Future<void> main() async {
-  final dumper = WellenWaveDumper(
-    'simulation.vcd',
-    format: WaveFormat.vcd,
-    timescale: '1ps',
-  );
-  
-  // Register signals before opening
-  dumper.registerSignal(SignalInfo(
-    id: 'top.clk',
-    name: 'clk',
-    fullPath: 'top.clk',
-    signalType: 'wire',
-    bitWidth: 1,
-    scopeId: 0,
-  ));
-  
-  await dumper.open();
-  
-  // Record value changes (batched by timestamp)
-  dumper.recordChange(0, 'top.clk', '0');
-  dumper.recordChange(5, 'top.clk', '1');
-  dumper.recordChange(10, 'top.clk', '0');
-  dumper.recordChange(15, 'top.clk', '1');
-  
-  await dumper.close();
-}
+import 'package:dart_wellen/dart_wellen_io.dart';
 ```
 
-## Architecture
+- `WellenWriter` writes registered `SignalOccurrence` values directly to a VCD
+  file.
+- `WellenWaveDumper` provides a manual adapter that registers signals and
+  records timestamped value changes.
 
-```text
-packages/dart_wellen/
-├── lib/
-│   ├── dart_wellen.dart          # Main library export
-│   └── src/
-│       ├── models/               # Data models
-│       │   ├── hierarchy.dart
-│       │   ├── metadata.dart
-│       │   ├── signal_data.dart
-│       │   ├── signal_info.dart
-│       │   └── wave_format.dart
-│       ├── rust/
-│       │   └── api.dart          # FFI bindings (generated)
-│       ├── wellen_reader.dart    # Read VCD/FST/GHW
-│       ├── wellen_writer.dart    # Write VCD/FST
-│       └── wellen_wave_dumper.dart # ROHD-compatible API
-└── rust/
-    ├── Cargo.toml
-    └── src/
-        └── api.rs                # Rust API using wellen
-```
+The adapter is not automatically attached to the ROHD simulator. Callers must
+register signals and forward simulation changes themselves. Selecting
+`WaveFormat.fst` currently throws an unsupported-format error.
 
-## Development
+## Repository Development
 
-### Generate FFI Bindings
-
-After modifying `rust/src/api.rs`:
+This package is a member of the ROHD Wave Viewer Pub workspace. From the
+repository root:
 
 ```bash
-flutter_rust_bridge_codegen generate
+# Resolve the workspace.
+flutter pub get
+
+# Generate both Dart and Rust Flutter Rust Bridge bindings.
+make dart
+
+# Build native or WebAssembly bridge artifacts.
+make rust-native
+make wasm
+
+# Run root and workspace-member tests.
+make test
 ```
 
-### Build Rust Library
+The generator configuration is
+`packages/dart_wellen/flutter_rust_bridge.yaml`. Generated Dart bindings are
+written to `packages/dart_wellen/lib/src/rust/`; the generated Rust counterpart
+is `rust/wellen_bridge/src/frb_generated.rs`. Do not invoke the generator with
+ad hoc output paths.
 
-```bash
-cd rust
-cargo build --release
-```
+See [ARCHITECTURE.md](ARCHITECTURE.md) for package boundaries and the
+[repository build guide](../../doc/BUILD.md) for the complete build matrix.
 
-### Run Tests
+---
 
-```bash
-dart test
-```
-
-## License
-
-BSD-3-Clause
-
-## See Also
-
-- [ROHD](https://github.com/intel/rohd) - Rapid Open Hardware Development framework
-- [wellen](https://github.com/ekiwi/wellen) - Rust waveform library
-- [surfer](https://gitlab.com/surfer-project/surfer) - Wave viewer using wellen
+Copyright (C) 2024-2026 Intel Corporation
+SPDX-License-Identifier: BSD-3-Clause

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # Install Rust 1.92 toolchain into per-user ~/.cargo and ~/.rustup
-# Also installs wasm targets and helper CLIs needed for building wellen_bridge.
+# Also installs the WASM target and FRB code generator used by wellen_bridge.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -32,13 +32,42 @@ echo "[install-rust] RUSTUP_HOME=$RUSTUP_HOME"
 RUSTUP_BIN="$CARGO_HOME/bin/rustup"
 if ! command -v "$RUSTUP_BIN" >/dev/null 2>&1; then
   echo "[install-rust] rustup not found; installing to $CARGO_HOME/bin"
-  # Prefer curl, fallback to wget
-  if command -v curl >/dev/null 2>&1; then
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain "$RUST_VERSION"
-  elif command -v wget >/dev/null 2>&1; then
-    wget -qO- https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain "$RUST_VERSION"
-  else
-    echo "[install-rust] ERROR: neither curl nor wget found; please install one." >&2
+
+  # Retry function with exponential backoff
+  retry_download() {
+    local max_attempts=3
+    local attempt=1
+    local delay=2
+
+    while [ $attempt -le $max_attempts ]; do
+      echo "[install-rust] Download attempt $attempt/$max_attempts..."
+
+      if command -v curl >/dev/null 2>&1; then
+        if curl --proto '=https' --tlsv1.2 -sSf --connect-timeout 10 --max-time 60 \
+               https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain "$RUST_VERSION"; then
+          return 0
+        fi
+      elif command -v wget >/dev/null 2>&1; then
+        if wget -qO- --timeout=10 https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain "$RUST_VERSION"; then
+          return 0
+        fi
+      fi
+
+      if [ $attempt -lt $max_attempts ]; then
+        echo "[install-rust] Attempt $attempt failed. Waiting ${delay}s before retry..."
+        sleep $delay
+        delay=$((delay * 2))
+      fi
+      attempt=$((attempt + 1))
+    done
+
+    echo "[install-rust] ERROR: Failed to download Rust installer after $max_attempts attempts." >&2
+    return 1
+  }
+
+  # Execute download with retries
+  if ! retry_download; then
+    echo "[install-rust] ERROR: Neither curl nor wget succeeded, or both unavailable." >&2
     exit 1
   fi
 else
@@ -46,25 +75,20 @@ else
 fi
 
 # Ensure toolchain and components
-"$CARGO_HOME/bin/rustup" toolchain install "$RUST_VERSION" || true
+"$CARGO_HOME/bin/rustup" toolchain install "$RUST_VERSION"
 "$CARGO_HOME/bin/rustup" default "$RUST_VERSION"
-"$CARGO_HOME/bin/rustup" target add wasm32-unknown-unknown --toolchain "$RUST_VERSION" || true
-"$CARGO_HOME/bin/rustup" component add rust-src --toolchain "$RUST_VERSION" || true
-"$CARGO_HOME/bin/rustup" component add rustfmt --toolchain "$RUST_VERSION" || true
+"$CARGO_HOME/bin/rustup" target add wasm32-unknown-unknown --toolchain "$RUST_VERSION"
+"$CARGO_HOME/bin/rustup" component add rust-src --toolchain "$RUST_VERSION"
+"$CARGO_HOME/bin/rustup" component add rustfmt --toolchain "$RUST_VERSION"
 
 # Show versions
-"$CARGO_HOME/bin/rustc" --version || true
-"$CARGO_HOME/bin/cargo" --version || true
-"$CARGO_HOME/bin/rustup" show || true
+"$CARGO_HOME/bin/rustc" --version
+"$CARGO_HOME/bin/cargo" --version
+"$CARGO_HOME/bin/rustup" show
 
-# Install helper CLIs (idempotent)
-if ! command -v wasm-pack >/dev/null 2>&1; then
-  echo "[install-rust] Installing wasm-pack via cargo..."
-  "$CARGO_HOME/bin/cargo" install wasm-pack || true
-fi
-if ! command -v wasm-bindgen >/dev/null 2>&1; then
-  echo "[install-rust] Installing wasm-bindgen-cli via cargo..."
-  "$CARGO_HOME/bin/cargo" install -f wasm-bindgen-cli || true
+if ! command -v flutter_rust_bridge_codegen >/dev/null 2>&1; then
+  echo "[install-rust] Installing flutter_rust_bridge_codegen via cargo..."
+  "$CARGO_HOME/bin/cargo" install flutter_rust_bridge_codegen --version 2.7.0 --locked
 fi
 
 echo "[install-rust] Rust $RUST_VERSION installation complete."

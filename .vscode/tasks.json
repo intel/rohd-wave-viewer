@@ -2,9 +2,120 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Configure ROHD Dependency",
+            "type": "shell",
+            "command": "bash scripts/wave_dev_mode.sh configure-group rohd ${input:rohdSource} && flutter pub get",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "WAVE_PROMPT_SOURCE_VALUE": "1"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": [],
+            "detail": "Select hosted, Git, or local for rohd. Git repository/ref and local root are shared settings."
+        },
+        {
+            "label": "Configure ROHD Package Dependencies",
+            "type": "shell",
+            "command": "bash scripts/wave_dev_mode.sh configure-group rohd-packages ${input:rohdPackageSource} && flutter pub get",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "WAVE_PROMPT_SOURCE_VALUE": "1"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": [],
+            "detail": "Select one source for rohd_hierarchy, rohd_waveform, and rohd_devtools_widgets. Git repository/ref and local root are shared settings."
+        },
+        {
+            "label": "Configure Wave Viewer Package Dependencies",
+            "type": "shell",
+            "command": "bash scripts/wave_dev_mode.sh configure-group viewer-packages ${input:viewerPackageSource} && flutter pub get",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "WAVE_PROMPT_SOURCE_VALUE": "1"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": [],
+            "detail": "Select one source for packages maintained in this repository, currently dart_wellen. Git prompts for repository/ref; local uses this workspace."
+        },
+        {
+            "label": "Configure All ROHD Dependencies",
+            "type": "shell",
+            "command": "bash scripts/wave_dev_mode.sh configure-group all ${input:allRohdSource} && flutter pub get",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "WAVE_PROMPT_SOURCE_VALUE": "1"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": [],
+            "detail": "Select one source for rohd and all ROHD companion packages without changing the Wave Viewer package source."
+        },
+        {
+            "label": "ROHD Wave Viewer: Web Debug",
+            "type": "shell",
+            "command": "flutter pub get && bash scripts/wave_run.sh web-debug",
+            "isBackground": true,
+            "problemMatcher": {"pattern": {"regexp": "^$"}, "background": {"activeOnStart": true, "beginsPattern": "^Launching", "endsPattern": "is being served at"}},
+            "presentation": {"reveal": "always", "panel": "dedicated", "focus": true}
+        },
+        {
+            "label": "ROHD Wave Viewer: Web Release WASM",
+            "type": "shell",
+            "command": "flutter pub get && bash scripts/wave_run.sh web-release",
+            "isBackground": true,
+            "problemMatcher": {"pattern": {"regexp": "^$"}, "background": {"activeOnStart": true, "beginsPattern": "^Launching", "endsPattern": "is being served at"}},
+            "presentation": {"reveal": "always", "panel": "dedicated", "focus": true}
+        },
+        {
+            "label": "ROHD Wave Viewer: Linux Debug",
+            "type": "shell",
+            "command": "flutter pub get && bash scripts/wave_run.sh linux-debug",
+            "isBackground": true,
+            "problemMatcher": {"pattern": {"regexp": "^$"}, "background": {"activeOnStart": true, "beginsPattern": "^Launching", "endsPattern": "^Application finished"}},
+            "presentation": {"reveal": "always", "panel": "dedicated", "focus": true}
+        },
+        {
+            "label": "ROHD Wave Viewer: Linux Release",
+            "type": "shell",
+            "command": "flutter pub get && bash scripts/wave_run.sh linux-release",
+            "isBackground": true,
+            "problemMatcher": {"pattern": {"regexp": "^$"}, "background": {"activeOnStart": true, "beginsPattern": "^Launching", "endsPattern": "^Application finished"}},
+            "presentation": {"reveal": "always", "panel": "dedicated", "focus": true}
+        },
+        {
             "label": "Build Extension",
             "type": "shell",
-            "command": "cd vscode-extension && npm run compile",
+            "command": "npm install && npm run compile",
+            "options": {
+                "cwd": "${workspaceFolder}/vscode-extension"
+            },
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -13,49 +124,38 @@
             "presentation": {
                 "reveal": "always",
                 "panel": "shared"
-            }
+            },
+            "detail": "Compile the VS Code TypeScript host. Use make extension for the complete staged package."
+        }
+    ],
+    "inputs": [
+        {
+            "id": "rohdSource",
+            "type": "pickString",
+            "description": "Source for rohd",
+            "options": ["hosted", "git", "local"],
+            "default": "hosted"
         },
         {
-            "label": "Flutter Web (port 9299)",
-            "type": "shell",
-            "command": "flutter run -d web-server --web-port=9299 --web-hostname=localhost lib/main_web.dart",
-            "isBackground": true,
-            "problemMatcher": {
-                "pattern": {
-                    "regexp": "^$"
-                },
-                "background": {
-                    "activeOnStart": true,
-                    "beginsPattern": "^Launching",
-                    "endsPattern": "is being served at"
-                }
-            },
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "focus": true
-            }
+            "id": "rohdPackageSource",
+            "type": "pickString",
+            "description": "Source for rohd_hierarchy, rohd_waveform, and rohd_devtools_widgets",
+            "options": ["hosted", "git", "local"],
+            "default": "hosted"
         },
         {
-            "label": "Flutter Linux",
-            "type": "shell",
-            "command": "flutter run -d linux",
-            "isBackground": true,
-            "problemMatcher": {
-                "pattern": {
-                    "regexp": "^$"
-                },
-                "background": {
-                    "activeOnStart": true,
-                    "beginsPattern": "^Launching",
-                    "endsPattern": "^Application finished"
-                }
-            },
-            "presentation": {
-                "reveal": "always",
-                "panel": "dedicated",
-                "focus": true
-            }
+            "id": "viewerPackageSource",
+            "type": "pickString",
+            "description": "Source for dart_wellen and other Wave Viewer workspace packages",
+            "options": ["hosted", "git", "local"],
+            "default": "local"
+        },
+        {
+            "id": "allRohdSource",
+            "type": "pickString",
+            "description": "Source for rohd and all ROHD companion packages",
+            "options": ["hosted", "git", "local"],
+            "default": "hosted"
         }
     ]
 }

@@ -2,14 +2,15 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // wellen_wave_dumper.dart
-// A WaveDumper-compatible class for dumping waveforms using wellen.
+// Manual adapter for writing timestamped waveform changes to VCD.
 //
 // 2026 January 03
 // Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
 
 import 'dart:async';
 
-import 'package:module_structure_api/module_structure_api.dart';
+import 'package:rohd_hierarchy/rohd_hierarchy.dart';
+import 'package:rohd_waveform/rohd_waveform.dart';
 import 'wellen_writer.dart';
 
 /// A callback type for registering signal value changes.
@@ -18,51 +19,11 @@ typedef SignalChangeCallback = void Function(String signalId, String value);
 /// A callback type for getting the current simulation time.
 typedef SimulatorTimeGetter = int Function();
 
-/// A waveform dumper that uses wellen for output.
+/// A manual adapter for recording signal changes in a native VCD file.
 ///
-/// This class provides a WaveDumper-compatible interface that can write
-/// to VCD or FST formats using the wellen library.
-///
-/// ## Usage with ROHD (conceptual - requires ROHD integration)
-///
-/// ```dart
-/// // Create the dumper
-/// final dumper = WellenWaveDumper(
-///   'output.vcd',
-///   format: WaveFormat.vcd,
-/// );
-///
-/// // Register signals
-/// dumper.registerSignal(SignalInfo(
-///   id: 'top.clk',
-///   name: 'clk',
-///   fullPath: 'top.clk',
-///   type: 'wire',
-///   width: 1,
-///   scopeId: 0,
-/// ));
-///
-/// // Open and write header
-/// await dumper.open();
-///
-/// // Record value changes
-/// dumper.recordChange(0, 'top.clk', '0');
-/// dumper.recordChange(5, 'top.clk', '1');
-/// dumper.recordChange(10, 'top.clk', '0');
-///
-/// // Close when done
-/// await dumper.close();
-/// ```
-///
-/// ## Integration with ROHD Module
-///
-/// For integration with ROHD's Module and Simulator, you would typically:
-/// 1. Walk the module hierarchy to register all signals
-/// 2. Subscribe to signal.changed events
-/// 3. Use Simulator.preTick to batch timestamp changes
-/// 4. Use Simulator.registerEndOfSimulationAction to close
-///
-/// See the ROHD WaveDumper source for the full pattern.
+/// Callers register [SignalOccurrence] objects before [open], then forward
+/// timestamped changes through [recordChange]. This class does not attach
+/// itself to a ROHD simulator. FST output is not implemented.
 class WellenWaveDumper {
   /// The output file path.
   final String outputPath;
@@ -83,7 +44,7 @@ class WellenWaveDumper {
   final WellenWriter _writer = WellenWriter();
 
   /// Registered signals.
-  final Map<String, SignalInfo> _signals = {};
+  final Map<String, SignalOccurrence> _signals = {};
 
   /// Current timestamp for batching.
   int _currentTimestamp = 0;
@@ -97,7 +58,7 @@ class WellenWaveDumper {
   /// Creates a new WellenWaveDumper.
   ///
   /// [outputPath] - The output file path.
-  /// [format] - The output format (default: VCD).
+  /// [format] - The output format (only VCD is currently supported).
   /// [timescale] - The timescale string (default: "1ps").
   /// [date] - Optional date for the header.
   /// [version] - Optional version for the header.
@@ -115,20 +76,18 @@ class WellenWaveDumper {
   /// Register a signal to be dumped.
   ///
   /// Must be called before [open].
-  void registerSignal(SignalInfo signal) {
+  void registerSignal(SignalOccurrence signal) {
     if (_isOpen) {
       throw WellenWaveDumperException(
         'Cannot register signals after dumper is opened',
       );
     }
-    _signals[signal.id] = signal;
+    _signals[signal.path()] = signal;
   }
 
   /// Register multiple signals at once.
-  void registerSignals(Iterable<SignalInfo> signals) {
-    for (final signal in signals) {
-      registerSignal(signal);
-    }
+  void registerSignals(Iterable<SignalOccurrence> signals) {
+    signals.forEach(registerSignal);
   }
 
   /// Open the dumper and write the header.
@@ -156,8 +115,8 @@ class WellenWaveDumper {
     // Write initial values (all zeros or X)
     _writeTimestamp(0);
     for (final signal in _signals.values) {
-      final initialValue = '0' * (signal.width ?? 1);
-      _writer.writeValue(0, signal.id, initialValue);
+      final initialValue = '0' * signal.width;
+      _writer.writeValue(0, signal.path(), initialValue);
     }
   }
 
@@ -171,7 +130,9 @@ class WellenWaveDumper {
     }
 
     if (!_signals.containsKey(signalId)) {
-      throw WellenWaveDumperException('Signal not registered: $signalId');
+      throw WellenWaveDumperException(
+        'SignalOccurrence not registered: $signalId',
+      );
     }
 
     // If timestamp has advanced, flush pending changes

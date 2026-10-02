@@ -42,6 +42,10 @@ tool/gh_actions/verify_formatting.sh
 print_step 'Analyze project source'
 tool/gh_actions/analyze_source.sh
 
+# Verify Dart source headers after analysis generates the FRB bindings
+print_step 'Verify Dart source headers'
+dart run tool/gh_actions/verify_dart_headers.dart
+
 # Check project documentation
 print_step 'Check project documentation'
 tool/gh_actions/generate_documentation.sh

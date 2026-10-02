@@ -3,15 +3,15 @@
 //
 // wellen_reader_test.dart
 // Comprehensive tests for WellenReader using example VCD/FST/GHW files
-// NOTE: Most tests require files from surfer/examples which may not be available.
 // For CI/testing environments, use wellen_reader_simple_test.dart instead.
 //
 // 2026 January 03
 // Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
 
 import 'dart:io';
-import 'package:test/test.dart';
 import 'package:dart_wellen/dart_wellen.dart';
+import 'package:dart_wellen/src/regex_utils.dart' show regExpPattern;
+import 'package:test/test.dart';
 
 /// Path to test fixture files
 String get fixturesPath {
@@ -57,8 +57,8 @@ void main() {
       expect(tb.name, equals('tb'));
 
       // Check for sub-module 'dut'
-      expect(tb.subModules, isNotEmpty);
-      final dut = tb.subModules.firstWhere(
+      expect(tb.children, isNotEmpty);
+      final dut = tb.children.firstWhere(
         (m) => m.name == 'dut',
         orElse: () => throw StateError('Module dut not found'),
       );
@@ -414,7 +414,7 @@ void main() {
       for (final dataPoint in waveformData.first.data) {
         expect(
           dataPoint.value,
-          matches(RegExp(r'^[01xzXZ?\-]+$')),
+          matches(regExpPattern(r'^[01xzXZ?\-]+$')),
           reason: 'Value should be binary: ${dataPoint.value}',
         );
       }

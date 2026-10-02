@@ -5,6 +5,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+WASM_PACK_VERSION="0.13.1"
+WASM_BINDGEN_VERSION="0.2.121"
 
 # Load rust environment (expects install_rust_1_92.sh or equivalent run beforehand)
 source "$ROOT_DIR/scripts/setup_rust_env.sh"
@@ -27,13 +29,13 @@ fi
 # Install binaryen (wasm-opt) - needed by wasm-pack for optimization
 if ! command -v wasm-opt >/dev/null 2>&1; then
   echo "[install-wasm-tools] Installing binaryen (wasm-opt)..."
-  
+
   # Determine if we need sudo (only when not already root)
   SUDO_CMD=""
   if [ "$EUID" -ne 0 ]; then
     SUDO_CMD="sudo -E"
   fi
-  
+
   OS="$(uname -s)"
   case "$OS" in
     Linux*)
@@ -68,32 +70,34 @@ else
   echo "[install-wasm-tools] binaryen (wasm-opt) already installed"
 fi
 
-# Install wasm-pack if missing
-if ! command -v wasm-pack >/dev/null 2>&1; then
-  echo "[install-wasm-tools] Installing wasm-pack via cargo..."
-  cargo install wasm-pack || true
+# Install the pinned wasm-pack version if missing or different
+if ! command -v wasm-pack >/dev/null 2>&1 ||
+  [ "$(wasm-pack --version | awk '{print $2}')" != "$WASM_PACK_VERSION" ]; then
+  echo "[install-wasm-tools] Installing wasm-pack $WASM_PACK_VERSION via cargo..."
+  cargo install wasm-pack --version "$WASM_PACK_VERSION" --locked --force
 else
-  echo "[install-wasm-tools] wasm-pack already installed"
+  echo "[install-wasm-tools] wasm-pack $WASM_PACK_VERSION already installed"
 fi
 
-# Install wasm-bindgen-cli if missing
-if ! command -v wasm-bindgen >/dev/null 2>&1; then
-  echo "[install-wasm-tools] Installing wasm-bindgen-cli via cargo..."
-  cargo install -f wasm-bindgen-cli || true
+# Install the version matching rust/wellen_bridge/Cargo.lock
+if ! command -v wasm-bindgen >/dev/null 2>&1 ||
+  [ "$(wasm-bindgen --version | awk '{print $2}')" != "$WASM_BINDGEN_VERSION" ]; then
+  echo "[install-wasm-tools] Installing wasm-bindgen-cli $WASM_BINDGEN_VERSION via cargo..."
+  cargo install wasm-bindgen-cli --version "$WASM_BINDGEN_VERSION" --locked --force
 else
-  echo "[install-wasm-tools] wasm-bindgen already installed"
+  echo "[install-wasm-tools] wasm-bindgen $WASM_BINDGEN_VERSION already installed"
 fi
 
 # Install wabt (WebAssembly Binary Toolkit) - needed for patching WASM for webview compatibility
 if ! command -v wasm2wat >/dev/null 2>&1 || ! command -v wat2wasm >/dev/null 2>&1; then
   echo "[install-wasm-tools] Installing wabt (wasm2wat, wat2wasm)..."
-  
+
   # Determine if we need sudo (only when not already root)
   SUDO_CMD=""
   if [ "$EUID" -ne 0 ]; then
     SUDO_CMD="sudo -E"
   fi
-  
+
   OS="$(uname -s)"
   case "$OS" in
     Linux*)
@@ -127,5 +131,12 @@ if ! command -v wasm2wat >/dev/null 2>&1 || ! command -v wat2wasm >/dev/null 2>&
 else
   echo "[install-wasm-tools] wabt (wasm2wat, wat2wasm) already installed"
 fi
+
+for required_tool in wasm-pack wasm-bindgen wasm-opt wasm2wat wat2wasm; do
+  if ! command -v "$required_tool" >/dev/null 2>&1; then
+    echo "[install-wasm-tools] ERROR: required tool not found after installation: $required_tool" >&2
+    exit 1
+  fi
+done
 
 echo "[install-wasm-tools] Done."

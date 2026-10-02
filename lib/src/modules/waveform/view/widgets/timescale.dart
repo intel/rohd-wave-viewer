@@ -1,49 +1,72 @@
-// Copyright (C) 2024 Intel Corporation
+// Copyright (C) 2024-2026 Intel Corporation
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // timescale.dart
 // The timescale widget for the waveform display.
 //
 // 2024 April
-// Author: Yao Jing Quek <yao.jing.quek@intel.com>
+// Author(s): Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
+//            Yao Jing Quek <yao.jing.quek@intel.com>
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:rohd_wave_viewer/src/const/const.dart';
 
+/// Widget that paints the waveform timescale for the current viewport.
 class TimescaleWidget extends StatelessWidget {
-  final double zoomLevel;
-  final double finalTime;
-  final double startTime;
-  final double viewportWidth; // Actual viewport width for painting
-  final double leftOffset; // Left offset to align with waveforms
-  final Color lineColor;
+  final double _zoomLevel;
+  final double _finalTime;
+  final double _startTime;
+  final double _viewportWidth;
+  final double _leftOffset;
+  final double _scrollOffset;
+  final Color _lineColor;
+  final Color? _backgroundColor;
 
+  /// Creates a timescale widget.
   const TimescaleWidget({
+    required double zoomLevel,
+    required double finalTime,
+    required double viewportWidth,
     super.key,
-    required this.zoomLevel,
-    required this.finalTime,
-    required this.viewportWidth,
-    this.startTime = 0.0,
-    this.leftOffset =
+    double startTime = 0.0,
+    double leftOffset =
         waveformLeftOffset, // Match SignalTabContainer horizontal padding
-    this.lineColor = Colors.blue,
-  });
+    double scrollOffset = 0.0,
+    Color lineColor = Colors.blue,
+    Color? backgroundColor,
+  })  : _zoomLevel = zoomLevel,
+        _finalTime = finalTime,
+        _viewportWidth = viewportWidth,
+        _startTime = startTime,
+        _leftOffset = leftOffset,
+        _scrollOffset = scrollOffset,
+        _lineColor = lineColor,
+        _backgroundColor = backgroundColor;
 
   @override
   Widget build(BuildContext context) {
     // Use viewport width for painting, not the constraint from parent
-    return CustomPaint(
-      size: Size(viewportWidth, 60),
+    final Widget painter = CustomPaint(
+      size: Size(_viewportWidth, 60),
       painter: TimescalePainter(
-        timeScale: zoomLevel,
-        finalTime: finalTime,
-        startTime: startTime,
-        leftOffset: leftOffset,
+        timeScale: _zoomLevel,
+        finalTime: _finalTime,
+        startTime: _startTime,
+        leftOffset: _leftOffset,
+        viewportWidth: _viewportWidth,
+        scrollOffset: _scrollOffset,
+        lineColor: _lineColor,
       ),
     );
+
+    if (_backgroundColor != null) {
+      return ColoredBox(color: _backgroundColor, child: painter);
+    }
+    return painter;
   }
 }
 
+/// Painter that renders timescale ticks and labels for the waveform view.
 class TimescalePainter extends CustomPainter {
   /// The unit if the timescale, default to pico seconds
   final String timeUnit;
@@ -51,384 +74,470 @@ class TimescalePainter extends CustomPainter {
   /// The zoom level of the painter.
   final double timeScale;
 
-  /// The final time of the simulation timescale. Interval of the time in
-  /// between.
+  /// The full timescale duration (total simulation time in ps).
   final double finalTime;
 
-  /// The start time of the visible range
+  /// The start time (usually 0 for absolute mapping)
   final double startTime;
 
   /// Left offset to align with waveform content
   final double leftOffset;
 
-  TimescalePainter({
-    this.timeUnit = 'ps',
-    required this.timeScale,
-    required this.finalTime,
-    this.startTime = 0.0,
-    this.leftOffset = waveformLeftOffset,
-  });
+  /// The viewport width (visible area width)
+  final double viewportWidth;
 
-  // No temporary diagnostic logging.
+  /// Horizontal scroll offset in pixels
+  final double scrollOffset;
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Timescale paint logging removed
+  /// Color for the timescale lines and labels
+  final Color lineColor;
 
-    final paint = Paint()
-      ..color = Colors.blue
-      ..strokeWidth = 1;
+  // ----- Label TextPainter cache -----
+  // Labels are deterministic: same text + style → same laid-out TextPainter.
+  // We cache per (text, isMajor) to avoid creating dozens of TextPainters
+  // every scroll frame.  A static cache with a size cap keeps memory bounded.
+  static const int _maxCacheSize = 128;
+  static final Map<String, TextPainter> _majorLabelCache = {};
+  static final Map<String, TextPainter> _minorLabelCache = {};
 
-    final majorTickPaint = Paint()
-      ..color = Colors.blue
-      ..strokeWidth = 3;
-
-    const double initPosY = 28; // Center line lower to allow alternating labels
-    const double majorTickHeight = 16.0;
-    const double minorTickHeight = 9.0; // Medium minor ticks
-    const double labelOffset = 20.0; // vertical offset for alternating labels
-
-    // Reserve a right padding equal to leftOffset for visual cleanliness
-    const double rightPadding = waveformLeftOffset;
-    // Drawing area starts at leftOffset and ends before right padding
-    final double drawWidth =
-        (size.width - leftOffset - rightPadding).clamp(0.0, double.infinity);
-
-    /// Draw the horizontal scale line (from leftOffset to end)
-    // Draw the horizontal scale line from leftOffset to right boundary
-    canvas.drawLine(
-      Offset(leftOffset, initPosY),
-      Offset(leftOffset + drawWidth, initPosY),
-      paint,
-    );
-
-    // Target: ~10 major ticks on screen
-    const int targetMajorTicks = 10;
-
-    // Choose a "nice" major interval from the sequence {1,2,5} * 10^n
-    // Do interval math in integer picoseconds to avoid floating rounding artifacts
-    int chooseNiceIntervalPs(double rough) {
-      // Integer-only "nice" chooser. Input `rough` is in picoseconds (may be fractional),
-      // but we work with integer powers-of-ten and multipliers {1,2,5,10}.
-      if (rough <= 0) return 1;
-      // Convert rough to integer ps (ceil to avoid undersizing)
-      int r = rough.ceil();
-
-      // Determine power of ten base (pow10) as largest power of 10 <= r
-      int pow10 = 1;
-      while (pow10 * 10 <= r) {
-        pow10 *= 10;
-      }
-
-      // Try multipliers 1,2,5,10 against pow10 to find the smallest >= r
-      final int m1 = pow10 * 1;
-      final int m2 = pow10 * 2;
-      final int m5 = pow10 * 5;
-      final int m10 = pow10 * 10;
-
-      if (r <= m1) return m1;
-      if (r <= m2) return m2;
-      if (r <= m5) return m5;
-      return m10;
-    }
-
-    // Work in integer picoseconds for tick generation
-    final int startPs = startTime.round();
-    final int finalTimePs = finalTime.round();
-    final int endPs = startPs + finalTimePs;
-
-    // Compute rough interval in picoseconds (work in integer ps)
-    final double roughInterval = finalTimePs / targetMajorTicks;
-
-    final int majorIntervalPs = chooseNiceIntervalPs(roughInterval);
-    // Prefer a half-major minor subdivision (e.g., 100ns major -> 50ns minor)
-    int minorIntervalPs = (majorIntervalPs ~/ 2);
-    if (minorIntervalPs <= 0) {
-      minorIntervalPs = (majorIntervalPs ~/ 10).clamp(1, majorIntervalPs);
-    }
-    // Expose as doubles for pixel mapping
-    final double majorInterval = majorIntervalPs.toDouble();
-
-    // Calculate how many major ticks we'll actually draw
-    final int numMajorTicks = (finalTime / majorInterval).ceil() + 1;
-
-    // Measure actual major label widths (more accurate than conservative estimate)
-    const double minLabelSpacing =
-        2.0; // Minimum gap between labels (reduced to avoid clipping)
-
-    // Compute first major/minor tick in integer picoseconds (round up to next interval)
-    final int firstMajorTickPs =
-        ((startPs + majorIntervalPs - 1) ~/ majorIntervalPs) * majorIntervalPs;
-    final int firstMinorTickPs =
-        ((startPs + minorIntervalPs - 1) ~/ minorIntervalPs) * minorIntervalPs;
-
-    // Gather major tick times (in picoseconds) and measure label widths to decide if majors fit
-    final List<int> majorTimesPs = [];
-    for (int t = firstMajorTickPs; t <= endPs; t += majorIntervalPs) {
-      majorTimesPs.add(t);
-    }
-    // Extra diagnostics for small intervals (help reproduce 1ns/5ns anomaly)
-    // (Additional verbose diagnostics removed)
-    double maxMeasuredMajorWidth = 0.0;
-    for (final t in majorTimesPs) {
-      final int labelValue = t;
-      final textPainter = TextPainter(
+  TextPainter _getMajorLabel(String text) {
+    final key = '$text@${lineColor.toARGB32()}';
+    return _majorLabelCache.putIfAbsent(key, () {
+      final tp = TextPainter(
         text: TextSpan(
-          text: _formatTimeLabel(labelValue),
-          style: const TextStyle(
-            color: Colors.blue,
+          text: text,
+          style: TextStyle(
+            color: lineColor,
             fontSize: 12,
             fontWeight: FontWeight.bold,
           ),
         ),
         textDirection: TextDirection.ltr,
-      );
-      textPainter.layout();
-      if (textPainter.width > maxMeasuredMajorWidth) {
-        maxMeasuredMajorWidth = textPainter.width;
+      )..layout();
+      if (_majorLabelCache.length > _maxCacheSize) {
+        for (final tp in _majorLabelCache.values) {
+          tp.dispose();
+        }
+        _majorLabelCache.clear();
+      }
+      return tp;
+    });
+  }
+
+  TextPainter _getMinorLabel(String text) {
+    final key = '$text@${lineColor.toARGB32()}';
+    return _minorLabelCache.putIfAbsent(key, () {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(color: lineColor, fontSize: 10),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      if (_minorLabelCache.length > _maxCacheSize) {
+        for (final tp in _minorLabelCache.values) {
+          tp.dispose();
+        }
+        _minorLabelCache.clear();
+      }
+      return tp;
+    });
+  }
+
+  // ── Pre-allocated Paint objects (avoid per-paint() allocations) ──
+  late final Paint _tickPaint = Paint()
+    ..color = lineColor
+    ..strokeWidth = 1;
+  late final Paint _majorTickPaint = Paint()
+    ..color = lineColor
+    ..strokeWidth = 3;
+
+  /// Creates a timescale painter.
+  TimescalePainter({
+    required this.timeScale,
+    required this.finalTime,
+    this.timeUnit = 'ps',
+    this.startTime = 0.0,
+    this.leftOffset = waveformLeftOffset,
+    this.viewportWidth = 0.0,
+    this.scrollOffset = 0.0,
+    this.lineColor = Colors.blue,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Timescale paint logging removed
+
+    final paint = _tickPaint;
+    final majorTickPaint = _majorTickPaint;
+
+    // Shifted up to free bottom area for cursor label
+    // (+2 breathing room)
+    const double initPosY = 12;
+    const majorTickHeight = 10;
+    const minorTickHeight = 6; // Medium minor ticks
+    const labelOffset = 12; // vertical offset for labels above line
+
+    // Use the SAME absolute coordinate mapping as waveform painters:
+    // contentX = leftOffset + (time / timescale) * drawingContentWidth
+    // where drawingContentWidth = contentWidth - leftOffset - rightPadding
+    //       contentWidth = viewportWidth * zoomLevel
+    //
+    // To convert contentX to viewportX: viewportX = contentX - scrollOffset
+    final contentWidth = viewportWidth * timeScale;
+    const rightPadding = waveformLeftOffset;
+    final drawingContentWidth =
+        (contentWidth - leftOffset - rightPadding).clamp(0.0, double.infinity);
+
+    // Helper: convert time (ps) to viewport X coordinate
+    double timeToViewportX(double time) {
+      if (finalTime <= 0 || drawingContentWidth <= 0) {
+        return leftOffset;
+      }
+      final contentX = leftOffset + (time / finalTime) * drawingContentWidth;
+      return contentX - scrollOffset;
+    }
+
+    // Drawing area in viewport coordinates
+    final viewportDrawStart = leftOffset;
+    final viewportDrawEnd = size.width - rightPadding;
+
+    /// Draw the horizontal scale line (from leftOffset to end of viewport)
+    canvas.drawLine(
+      Offset(viewportDrawStart, initPosY),
+      Offset(viewportDrawEnd, initPosY),
+      paint,
+    );
+
+    // Calculate visible time range from scroll position. Visible content spans
+    // [scrollOffset, scrollOffset + viewportWidth] in content coordinates
+    // Convert to time: time = ((contentX - leftOffset) / drawingContentWidth) *
+    // finalTime.
+    double contentXToTime(double contentX) {
+      if (drawingContentWidth <= 0 || finalTime <= 0) {
+        return 0;
+      }
+      return ((contentX - leftOffset) / drawingContentWidth) * finalTime;
+    }
+
+    final visibleStartTime = contentXToTime(scrollOffset).clamp(0.0, finalTime);
+    final visibleEndTime = contentXToTime(
+      scrollOffset + viewportWidth,
+    ).clamp(0.0, finalTime);
+    final visibleTimeRange = visibleEndTime - visibleStartTime;
+
+    // Target: ~10 major ticks on screen
+    const targetMajorTicks = 10;
+
+    // Choose a "nice" major interval from the sequence {1,2,5} * 10^n Do
+    // interval math in integer picoseconds to avoid floating rounding artifacts
+    int chooseNiceIntervalPs(double rough) {
+      // Integer-only "nice" chooser. Input `rough` is in picoseconds (may be
+      // fractional), but we work with integer powers-of-ten and multipliers
+      // {1,2,5,10}.
+      if (rough <= 0) {
+        return 1;
+      }
+      // Convert rough to integer ps (ceil to avoid undersizing)
+      final r = rough.ceil();
+
+      // Determine power of ten base (pow10) as largest power of 10 <= r
+      var pow10 = 1;
+      while (pow10 * 10 <= r) {
+        pow10 *= 10;
+      }
+
+      // Try multipliers 1,2,5,10 against pow10 to find the smallest >= r
+      final m1 = pow10 * 1;
+      final m2 = pow10 * 2;
+      final m5 = pow10 * 5;
+      final m10 = pow10 * 10;
+
+      if (r <= m1) {
+        return m1;
+      }
+      if (r <= m2) {
+        return m2;
+      }
+      if (r <= m5) {
+        return m5;
+      }
+      return m10;
+    }
+
+    // Work in integer picoseconds for tick generation
+    // Use visible time range for calculating tick intervals
+    final visibleStartPs = visibleStartTime.round();
+    final visibleEndPs = visibleEndTime.round();
+    final visibleRangePs = visibleTimeRange.round();
+
+    // Compute rough interval based on VISIBLE time range
+    final roughInterval = visibleRangePs / targetMajorTicks;
+
+    final majorIntervalPs = chooseNiceIntervalPs(roughInterval);
+    // Measure actual major label widths (more accurate than conservative
+    // estimate)
+    const minLabelSpacing =
+        2; // Minimum gap between labels (reduced to avoid clipping)
+
+    // Compute first major/minor tick in integer picoseconds (round up to next
+    // interval) Start from visible range, but align to interval boundaries for
+    // consistency
+    final firstMajorTickPs =
+        (visibleStartPs ~/ majorIntervalPs) * majorIntervalPs;
+
+    // Gather major tick times (in picoseconds) across full timeline
+    // but we'll only draw those within visible range
+    final totalTimePs = finalTime.round();
+    final majorTimesPs = <int>[];
+    for (var t = firstMajorTickPs;
+        t <= visibleEndPs + majorIntervalPs;
+        t += majorIntervalPs) {
+      if (t >= 0 && t <= totalTimePs) {
+        majorTimesPs.add(t);
+      }
+    }
+    // Extra diagnostics for small intervals (help reproduce 1ns/5ns anomaly)
+    // (Additional verbose diagnostics removed)
+
+    // --- Use label cache instead of creating fresh TextPainters ---
+    // Measure max major label width from cache
+    var maxMeasuredMajorWidth = 0.0;
+    for (final t in majorTimesPs) {
+      final tp = _getMajorLabel(_formatTimeLabel(t, majorIntervalPs));
+      if (tp.width > maxMeasuredMajorWidth) {
+        maxMeasuredMajorWidth = tp.width;
       }
     }
 
     // Always prefer showing major labels; minors will collapse first when
     // space is tight.
-    const bool showMajorLabels = true;
 
-    // Measure minor label widths (conservative max) and decide if minors fit.
-    double maxMeasuredMinorWidth = 0.0;
-    // We'll sample up to 20 minor labels across the range using
-    // integer picosecond ticks.
-    const int minorSamples = 20;
-    if (minorIntervalPs > 0 && numMajorTicks > 0) {
-      int sampled = 0;
-      for (int t = firstMinorTickPs;
-          t <= endPs && sampled < minorSamples;
-          t += minorIntervalPs) {
-        final int labelValue = t;
-        final textPainter = TextPainter(
-          text: TextSpan(
-            text: _formatTimeLabel(labelValue),
-            style: const TextStyle(
-              color: Colors.blue,
-              fontSize: 10,
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-        );
-        textPainter.layout();
-        if (textPainter.width > maxMeasuredMinorWidth) {
-          maxMeasuredMinorWidth = textPainter.width;
-        }
-        sampled++;
+    // Precompute which major labels will actually be drawn (so minors can refer
+    // to them) Record fields: (x, left, right, textPainter)
+    final drawnMajors = <(double, double, double, TextPainter)>[];
+    var precomputeLastMajorRight = -1000000000000.0;
+    // Iterate precomputed integer picosecond major times
+    for (final t in majorTimesPs) {
+      final absoluteTime = t.toDouble();
+      final x = timeToViewportX(absoluteTime);
+      // Skip ticks that fall outside the visible drawing area
+      if (x < viewportDrawStart || x > viewportDrawEnd) {
+        continue;
+      }
+      final tp = _getMajorLabel(_formatTimeLabel(t, majorIntervalPs));
+      final labelLeft = x - tp.width / 2;
+      final labelRight = x + tp.width / 2;
+      if (labelLeft > precomputeLastMajorRight + minLabelSpacing) {
+        drawnMajors.add((x, labelLeft, labelRight, tp));
+        precomputeLastMajorRight = labelRight;
+      }
+    }
+    // Ensure first and last visible major labels are present for orientation
+    if (majorTimesPs.isNotEmpty) {
+      final firstT = majorTimesPs.first;
+      final lastT = majorTimesPs.last;
+      final firstX = timeToViewportX(firstT.toDouble());
+      final lastX = timeToViewportX(lastT.toDouble());
+      final hasFirst = drawnMajors.any((m) => m.$1 == firstX);
+      final hasLast = drawnMajors.any((m) => m.$1 == lastX);
+      if (!hasFirst &&
+          firstX >= viewportDrawStart &&
+          firstX <= viewportDrawEnd) {
+        final tp = _getMajorLabel(_formatTimeLabel(firstT, majorIntervalPs));
+        final labelLeft = firstX - tp.width / 2;
+        final labelRight = firstX + tp.width / 2;
+        drawnMajors.insert(0, (firstX, labelLeft, labelRight, tp));
+      }
+      if (!hasLast && lastX >= viewportDrawStart && lastX <= viewportDrawEnd) {
+        final tp = _getMajorLabel(_formatTimeLabel(lastT, majorIntervalPs));
+        final labelLeft = lastX - tp.width / 2;
+        final labelRight = lastX + tp.width / 2;
+        drawnMajors.add((lastX, labelLeft, labelRight, tp));
       }
     }
 
-    // Precompute which major labels will actually be drawn (so minors can refer to them)
-    final List<Map<String, dynamic>> drawnMajors = [];
-    double precomputeLastMajorRight = -1e12;
-    if (showMajorLabels) {
-      // Iterate precomputed integer picosecond major times to avoid floating relics
-      for (final t in majorTimesPs) {
-        final double absoluteTime = t.toDouble();
-        final double x =
-            leftOffset + ((absoluteTime - startTime) / finalTime) * drawWidth;
-        // Skip ticks that fall outside the drawing area (respect right padding)
-        if (x < leftOffset || x > leftOffset + drawWidth) continue;
-        final int labelValue = t;
-        final String labelText = _formatTimeLabel(labelValue);
-        final textPainter = TextPainter(
-          text: TextSpan(
-            text: labelText,
-            style: const TextStyle(
-              color: Colors.blue,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-        );
-        textPainter.layout();
-        final labelLeft = x - textPainter.width / 2;
-        final labelRight = x + textPainter.width / 2;
-        if (labelLeft > precomputeLastMajorRight + minLabelSpacing) {
-          // Force majors to be above the scale line
-          drawnMajors.add({
-            'x': x,
-            'left': labelLeft,
-            'right': labelRight,
-            'above': true,
-            'textPainter': textPainter,
-          });
-          precomputeLastMajorRight = labelRight;
-        }
+    // Place exactly one minor tick at the midpoint between each pair of
+    // drawn major ticks.  This avoids the "two unnecessary minors" problem
+    // (e.g. 8.376ns + 8.378ns) and instead shows a single label like 8.3775ns.
+    // We also add a minor before the first major and after the last if they
+    // fall within the visible area.
+    final minorMidpoints = <(double, double)>[]; // (x, timePs)
+    // Add midpoint before first drawn major (using majorIntervalPs)
+    if (drawnMajors.isNotEmpty) {
+      final firstMajorTime =
+          (drawnMajors.first.$1 + scrollOffset - leftOffset) /
+              drawingContentWidth *
+              finalTime;
+      final prevTime = firstMajorTime - majorIntervalPs;
+      final midTime = (prevTime + firstMajorTime) / 2;
+      final midX = timeToViewportX(midTime);
+      if (midX >= viewportDrawStart &&
+          midX <= viewportDrawEnd &&
+          midTime >= 0) {
+        minorMidpoints.add((midX, midTime));
       }
-      // Ensure first and last major labels are present for orientation
-      if (majorTimesPs.isNotEmpty) {
-        final int firstT = majorTimesPs.first;
-        final int lastT = majorTimesPs.last;
-        bool hasFirst = drawnMajors.any((m) =>
-            (m['x'] as double) ==
-            leftOffset + ((firstT - startTime) / finalTime) * drawWidth);
-        bool hasLast = drawnMajors.any((m) =>
-            (m['x'] as double) ==
-            leftOffset + ((lastT - startTime) / finalTime) * drawWidth);
-        if (!hasFirst) {
-          final double x =
-              leftOffset + ((firstT - startTime) / finalTime) * drawWidth;
-          final int labelValue = firstT;
-          final textPainter = TextPainter(
-            text: TextSpan(
-              text: _formatTimeLabel(labelValue),
-              style: const TextStyle(
-                color: Colors.blue,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            textDirection: TextDirection.ltr,
-          );
-          textPainter.layout();
-          final labelLeft = x - textPainter.width / 2;
-          final labelRight = x + textPainter.width / 2;
-          drawnMajors.insert(0, {
-            'x': x,
-            'left': labelLeft,
-            'right': labelRight,
-            'above': true,
-            'textPainter': textPainter
-          });
-        }
-        if (!hasLast) {
-          final double x =
-              leftOffset + ((lastT - startTime) / finalTime) * drawWidth;
-          final int labelValue = lastT;
-          final textPainter = TextPainter(
-            text: TextSpan(
-              text: _formatTimeLabel(labelValue),
-              style: const TextStyle(
-                color: Colors.blue,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            textDirection: TextDirection.ltr,
-          );
-          textPainter.layout();
-          final labelLeft = x - textPainter.width / 2;
-          final labelRight = x + textPainter.width / 2;
-          drawnMajors.add({
-            'x': x,
-            'left': labelLeft,
-            'right': labelRight,
-            'above': true,
-            'textPainter': textPainter
-          });
-        }
+    }
+    // Add midpoints between consecutive drawn majors
+    for (var i = 0; i < drawnMajors.length - 1; i++) {
+      final x1 = drawnMajors[i].$1;
+      final x2 = drawnMajors[i + 1].$1;
+      final midX = (x1 + x2) / 2;
+      // Compute the time at the midpoint
+      final t1 =
+          (x1 + scrollOffset - leftOffset) / drawingContentWidth * finalTime;
+      final t2 =
+          (x2 + scrollOffset - leftOffset) / drawingContentWidth * finalTime;
+      final midTime = (t1 + t2) / 2;
+      if (midX >= viewportDrawStart && midX <= viewportDrawEnd) {
+        minorMidpoints.add((midX, midTime));
+      }
+    }
+    // Add midpoint after last drawn major
+    if (drawnMajors.isNotEmpty) {
+      final lastMajorTime = (drawnMajors.last.$1 + scrollOffset - leftOffset) /
+          drawingContentWidth *
+          finalTime;
+      final nextTime = lastMajorTime + majorIntervalPs;
+      final midTime = (lastMajorTime + nextTime) / 2;
+      final midX = timeToViewportX(midTime);
+      if (midX >= viewportDrawStart &&
+          midX <= viewportDrawEnd &&
+          midTime <= totalTimePs) {
+        minorMidpoints.add((midX, midTime));
       }
     }
 
-    // Now gather minor ticks into a list (sorted) and draw them.
-    final List<int> minorTimesPs = [];
-    for (int t = firstMinorTickPs; t <= endPs; t += minorIntervalPs) {
-      if ((t % majorIntervalPs) == 0) continue; // skip majors
-      minorTimesPs.add(t);
-    }
-    minorTimesPs.sort();
+    // The minor interval for formatting purposes is half the major interval
+    final minorIntervalForFormat = (majorIntervalPs + 1) ~/ 2;
 
-    const lastMinorRight = -1e12;
-    for (final absoluteTime in minorTimesPs) {
-      final double x =
-          leftOffset + ((absoluteTime - startTime) / finalTime) * drawWidth;
-      if (x < leftOffset || x > leftOffset + drawWidth) continue;
-
+    for (final (midX, midTime) in minorMidpoints) {
       // Draw minor tick mark
       canvas.drawLine(
-        Offset(x, initPosY),
-        Offset(x, initPosY + minorTickHeight),
+        Offset(midX, initPosY),
+        Offset(midX, initPosY + minorTickHeight),
         paint,
       );
 
-      final labelText = _formatTimeLabel(absoluteTime);
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: labelText,
-          style: const TextStyle(
-            color: Colors.blue,
-            fontSize: 10,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
+      final tp = _getMinorLabel(
+        _formatTimeLabel(midTime.round(), minorIntervalForFormat),
       );
-      textPainter.layout();
 
-      // Place all minor labels below the scale line
-      const yOffset = initPosY + 6;
-      final labelLeft = x - textPainter.width / 2;
+      // Place minor labels below the scale line
+      const yOffset = initPosY + 5;
+      final labelLeft = midX - tp.width / 2;
 
-      // Skip if overlaps previous minor
-      if (!(labelLeft > lastMinorRight + minLabelSpacing)) {
+      // Skip if overlaps any major label
+      var overlaps = false;
+      for (final m in drawnMajors) {
+        if (labelLeft < m.$3 + minLabelSpacing &&
+            labelLeft + tp.width > m.$2 - minLabelSpacing) {
+          overlaps = true;
+          break;
+        }
+      }
+      if (overlaps) {
         continue;
       }
 
-      textPainter.paint(canvas, Offset(labelLeft, yOffset));
+      tp.paint(canvas, Offset(labelLeft, yOffset));
     }
 
-    // Draw major ticks LAST (on top of minor ticks) using precomputed drawnMajors
+    // Draw major ticks LAST (on top of minor ticks) using precomputed
+    // drawnMajors
     for (final m in drawnMajors) {
-      final double x = m['x'] as double;
       // Draw major tick mark
       canvas.drawLine(
-        Offset(x, initPosY),
-        Offset(x, initPosY + majorTickHeight),
+        Offset(m.$1, initPosY),
+        Offset(m.$1, initPosY + majorTickHeight),
         majorTickPaint,
       );
-      final textPainter = m['textPainter'] as TextPainter;
-      final bool mAbove = m['above'] as bool;
-      final double yOffset = mAbove ? (initPosY - labelOffset) : (initPosY + 6);
-      textPainter.paint(canvas, Offset(m['left'] as double, yOffset));
+      const yOffset = initPosY - labelOffset;
+      m.$4.paint(canvas, Offset(m.$2, yOffset));
     }
   }
 
-  String _formatTimeLabel(int value) {
-    // Convert ps to larger units when appropriate and format with decimals
-    if (value == 0) return '0ps';
-    double v = value.toDouble();
+  /// Format a time value (in ps) as a human-readable label.
+  ///
+  /// [intervalPs] is the tick spacing in ps.  We use enough decimal places
+  /// so that adjacent ticks produce *different* label strings, e.g.
+  /// 9440ps and 9445ps → "9.440ns" / "9.445ns" instead of both "9.44ns".
+  String _formatTimeLabel(int value, [int intervalPs = 0]) {
+    if (value == 0) {
+      return '0ps';
+    }
+    final v = value.toDouble();
     String unit;
-    double displayVal;
+    double divisor;
     if (v.abs() >= 1e9) {
       unit = 's';
-      displayVal = v / 1e9;
+      divisor = 1e9;
     } else if (v.abs() >= 1e6) {
       unit = 'ms';
-      displayVal = v / 1e6;
+      divisor = 1e6;
     } else if (v.abs() >= 1e3) {
       unit = 'ns';
-      displayVal = v / 1e3;
+      divisor = 1e3;
     } else {
       unit = 'ps';
-      displayVal = v;
+      divisor = 1;
     }
+    final displayVal = v / divisor;
 
-    String fmtNum(double x) {
-      final double ax = x.abs();
-      if (ax >= 100) {
-        return x.toStringAsFixed(0);
-      } else if (ax >= 10) {
-        // Keep one decimal for 2-digit numbers, but strip only trailing zeros after decimal
-        return x.toStringAsFixed(1).replaceAll(RegExp(r"(\.\d)0+\$"), r"\1");
-      } else {
-        // Keep two decimals for small numbers; strip only trailing zeros after decimal
-        return x.toStringAsFixed(2).replaceAll(RegExp(r"(\.\d)0+\$"), r"\1");
+    // Determine minimum decimals needed so that the interval is visible
+    // in the formatted string.  E.g. interval 5ps with divisor 1000
+    // → intervalInUnit = 0.005 → need 3 decimals.
+    var minDecimals = 0;
+    if (intervalPs > 0 && divisor > 1) {
+      final intervalInUnit = intervalPs / divisor;
+      // Find how many decimals to represent the interval
+      var threshold = 1.0;
+      for (var d = 1; d <= 9; d++) {
+        threshold /= 10.0;
+        if (intervalInUnit >= threshold * 0.99) {
+          minDecimals = d;
+          break;
+        }
       }
     }
 
-    return '${fmtNum(displayVal)}$unit';
+    // Default decimals based on magnitude
+    int defaultDecimals;
+    final ax = displayVal.abs();
+    if (ax >= 100) {
+      defaultDecimals = 0;
+    } else if (ax >= 10) {
+      defaultDecimals = 1;
+    } else {
+      defaultDecimals = 2;
+    }
+
+    final decimals =
+        minDecimals > defaultDecimals ? minDecimals : defaultDecimals;
+    var s = displayVal.toStringAsFixed(decimals);
+
+    // Strip trailing zeros, but keep at least one digit after the decimal
+    // point when there is a decimal.
+    if (decimals > minDecimals) {
+      // We can strip zeros down to minDecimals places
+      while (s.endsWith('0')) {
+        s = s.substring(0, s.length - 1);
+      }
+      if (s.endsWith('.')) {
+        s = s.substring(0, s.length - 1);
+      }
+    }
+
+    return '$s$unit';
   }
 
   @override
-  bool shouldRepaint(covariant TimescalePainter oldDelegate) {
-    return oldDelegate.timeScale != timeScale ||
-        oldDelegate.finalTime != finalTime ||
-        oldDelegate.startTime != startTime ||
-        oldDelegate.leftOffset != leftOffset;
-  }
+  bool shouldRepaint(covariant TimescalePainter oldDelegate) =>
+      oldDelegate.timeScale != timeScale ||
+      oldDelegate.finalTime != finalTime ||
+      oldDelegate.startTime != startTime ||
+      oldDelegate.leftOffset != leftOffset ||
+      oldDelegate.viewportWidth != viewportWidth ||
+      oldDelegate.scrollOffset != scrollOffset ||
+      oldDelegate.lineColor != lineColor;
 }

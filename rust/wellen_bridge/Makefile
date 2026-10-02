@@ -10,7 +10,7 @@ NATIVE_LIB := $(BRIDGE_DIR)/target/release
 FRB_GENERATED_RS := $(BRIDGE_DIR)/src/frb_generated.rs
 FRB_GENERATED_DART := $(ROOT_DIR)/packages/dart_wellen/lib/src/rust/frb_generated.dart
 
-.PHONY: all wasm native clean clean-wasm clean-native help
+.PHONY: all wasm native clean clean-wasm clean-native real-clean help
 
 help:
 	@echo "wellen_bridge Rust Library - Build Targets"
@@ -61,3 +61,10 @@ clean-wasm:
 clean-native:
 	@echo "Cleaning native artifacts..."
 	@rm -rf "$(BRIDGE_DIR)/target"
+
+# Deep clean - full clean plus flutter clean at root
+real-clean: clean
+	@echo "Running flutter clean from wellen_bridge..."
+	-@cd "$(ROOT_DIR)" && flutter clean
+	@echo "Removing Rust target directory..."
+	-@rm -rf "$(BRIDGE_DIR)/target"

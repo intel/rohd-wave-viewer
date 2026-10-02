@@ -12,7 +12,7 @@ echo "[rust-native] Building native library for wellen_bridge..."
 cd "$ROOT_DIR/rust/wellen_bridge"
 "$RUSTUP_BIN" run "$RUST_TOOLCHAIN" cargo build --release
 
-# Best-effort info on produced artifact name
+# Report built artifact
 case "$(uname -s)" in
   Linux*)  ART="$ROOT_DIR/rust/wellen_bridge/target/release/libwellen_bridge.so" ;;
   Darwin*) ART="$ROOT_DIR/rust/wellen_bridge/target/release/libwellen_bridge.dylib" ;;

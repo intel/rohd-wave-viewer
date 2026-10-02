@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
+
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# configure_vscode_association.sh
+# Adds the Wave Viewer editor association to VS Code settings.
+#
+# 2026 August
+# Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
+
 # Adds a workbench.editorAssociations entry to the user's VS Code settings.json
 set -euo pipefail
 SETTINGS="$HOME/.config/Code/User/settings.json"

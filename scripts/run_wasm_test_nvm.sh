@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
+
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# run_wasm_test_nvm.sh
+# Runs Wellen WASM tests with the configured Node Version Manager.
+#
+# 2026 January
+# Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,10 +22,10 @@ else
   echo "Warning: nvm not found at $NVM_DIR. Proceeding with system node if available."
 fi
 
-echo "Using Node via nvm (requesting v20)..."
+echo "Using Node via nvm (requesting v24)..."
 if command -v nvm >/dev/null 2>&1; then
-  nvm install 20 >/dev/null 2>&1 || true
-  nvm use 20 >/dev/null 2>&1 || true
+  nvm install 24 >/dev/null 2>&1 || true
+  nvm use 24 >/dev/null 2>&1 || true
 fi
 
 echo "node: $(command -v node || echo 'not found') $(node --version 2>/dev/null || true)"
@@ -52,7 +62,7 @@ for tf in "${TEST_FILES[@]}"; do
   echo "Running wasm node test for $abs_test_file -> $out"
 
   # run harness using the nvm node (or system node)
-  bash -lc "export NVM_DIR=\"$NVM_DIR\"; [ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\"; nvm use 20 >/dev/null 2>&1 || true; node '$SCRIPT_DIR/run_wasm_node_test.cjs'" > "$out" 2>&1 || echo "Test failed for $tf (see $out)"
+  bash -lc "export NVM_DIR=\"$NVM_DIR\"; [ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\"; nvm use 24 >/dev/null 2>&1 || true; node '$SCRIPT_DIR/run_wasm_node_test.cjs'" > "$out" 2>&1 || echo "Test failed for $tf (see $out)"
 
   echo "Log written: $out"
 done

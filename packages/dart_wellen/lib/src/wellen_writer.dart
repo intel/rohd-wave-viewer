@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // wellen_writer.dart
-// Wellen-based waveform file writer for VCD, FST formats.
+// Native VCD waveform file writer.
 //
 // 2026 January 03
 // Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
@@ -10,41 +10,13 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:module_structure_api/module_structure_api.dart';
+import 'package:rohd_hierarchy/rohd_hierarchy.dart';
+import 'package:rohd_waveform/rohd_waveform.dart';
 
-/// A writer for waveform files.
+/// A native VCD waveform writer.
 ///
-/// This class provides functionality to write VCD and FST waveform files.
-/// It can be used standalone or as part of a WaveDumper implementation.
-///
-/// Example usage:
-/// ```dart
-/// final writer = WellenWriter();
-///
-/// await writer.open(
-///   '/path/to/output.vcd',
-///   format: WaveFormat.vcd,
-///   timescale: '1ns',
-/// );
-///
-/// // Register signals
-/// writer.registerSignal(SignalInfo(
-///   id: 'clk',
-///   name: 'clk',
-///   fullPath: 'top.clk',
-///   type: 'wire',
-///   width: 1,
-///   scopeId: 0,
-/// ));
-///
-/// // Write data
-/// writer.writeHeader();
-/// writer.writeValue(0, 'clk', '0');
-/// writer.writeValue(5, 'clk', '1');
-/// writer.writeValue(10, 'clk', '0');
-///
-/// await writer.close();
-/// ```
+/// The API retains a format parameter for future expansion, but currently
+/// rejects every format except [WaveFormat.vcd].
 class WellenWriter {
   /// The file being written to.
   File? _file;
@@ -79,7 +51,7 @@ class WellenWriter {
   /// Open a file for writing.
   ///
   /// [filePath] - Path to the output file.
-  /// [format] - Output format (VCD or FST). Defaults to VCD.
+  /// [format] - Output format. Only VCD is implemented.
   /// [timescale] - Timescale string (e.g., "1ns", "1ps"). Defaults to "1ns".
   /// [date] - Optional date string for the header.
   /// [version] - Optional version string for the header.
@@ -120,7 +92,7 @@ class WellenWriter {
       _sink!.writeln('\$end');
     }
 
-    // TODO: Implement FST writing via Rust FFI
+    // TODO(desmond.a.kirkpatrick): Implement FST writing via Rust FFI.
     if (_format == WaveFormat.fst) {
       throw WellenWriterException('FST writing not yet implemented');
     }
@@ -129,7 +101,7 @@ class WellenWriter {
   /// Register a signal to be written.
   ///
   /// Signals must be registered before calling [writeHeader].
-  void registerSignal(SignalInfo signal) {
+  void registerSignal(SignalOccurrence signal) {
     if (_headerWritten) {
       throw WellenWriterException(
         'Cannot register signals after header is written',
@@ -137,17 +109,15 @@ class WellenWriter {
     }
 
     final idCode = _generateIdCode();
-    _signals[signal.id] = _SignalRegistration(
+    _signals[signal.path()] = _SignalRegistration(
       info: signal,
       vcdCode: idCode,
     );
   }
 
   /// Register multiple signals at once.
-  void registerSignals(Iterable<SignalInfo> signals) {
-    for (final signal in signals) {
-      registerSignal(signal);
-    }
+  void registerSignals(Iterable<SignalOccurrence> signals) {
+    signals.forEach(registerSignal);
   }
 
   /// Write the header section with scope and signal definitions.
@@ -183,7 +153,7 @@ class WellenWriter {
 
     final registration = _signals[signalId];
     if (registration == null) {
-      throw WellenWriterException('Signal not registered: $signalId');
+      throw WellenWriterException('SignalOccurrence not registered: $signalId');
     }
 
     if (_format == WaveFormat.vcd) {
@@ -194,7 +164,7 @@ class WellenWriter {
       }
 
       // Write value change
-      final width = registration.info.width ?? 1;
+      final width = registration.info.width;
       if (width == 1) {
         // Single-bit: just value followed by code
         _sink!.writeln('$value${registration.vcdCode}');
@@ -269,7 +239,7 @@ class WellenWriter {
     final scopes = <String, List<_SignalRegistration>>{};
 
     for (final reg in _signals.values) {
-      final scopePath = _getScopePath(reg.info.fullPath ?? reg.info.id);
+      final scopePath = _getScopePath(reg.info.path());
       scopes.putIfAbsent(scopePath, () => []).add(reg);
     }
 
@@ -322,9 +292,9 @@ class WellenWriter {
     final signals = scopes[scopePath];
     if (signals != null) {
       for (final reg in signals) {
-        final typeStr = _vcdVarType(reg.info.type);
+        final typeStr = _vcdVarType('wire');
         _sink!.writeln(
-          '\$var $typeStr ${reg.info.width ?? 1} ${reg.vcdCode} ${reg.info.name} \$end',
+          '\$var $typeStr ${reg.info.width} ${reg.vcdCode} ${reg.info.name} \$end',
         );
       }
     }
@@ -378,13 +348,10 @@ class WellenWriter {
 
 /// Internal signal registration data.
 class _SignalRegistration {
-  final SignalInfo info;
+  final SignalOccurrence info;
   final String vcdCode;
 
-  _SignalRegistration({
-    required this.info,
-    required this.vcdCode,
-  });
+  _SignalRegistration({required this.info, required this.vcdCode});
 }
 
 /// Exception thrown by WellenWriter operations.

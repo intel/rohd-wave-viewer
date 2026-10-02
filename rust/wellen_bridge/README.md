@@ -1,161 +1,74 @@
 # Wellen Bridge
 
-This Rust crate provides Flutter bindings to the [wellen](https://crates.io/crates/wellen) waveform parsing library using [flutter_rust_bridge](https://github.com/aspect-ratio-studios/flutter_rust_bridge).
+`wellen_bridge` is the Rust implementation behind the ROHD Wave Viewer's
+`dart_wellen` package. It uses
+[Wellen](https://github.com/ekiwi/wellen) to parse VCD, FST, and GHW data and
+[Flutter Rust Bridge](https://cjycode.com/flutter_rust_bridge/) to expose the
+parser to native Dart and browser WebAssembly.
 
-## Supported Formats
+Application code should consume `package:dart_wellen/dart_wellen.dart` rather
+than call this crate directly.
 
-- **VCD** - Value Change Dump
-- **FST** - Fast Signal Trace (GTKWave)
-- **GHW** - GHDL Waveform
+## Bridge API
 
-## Prerequisites
+The handwritten API is in `src/api.rs` and exposes these operations to
+generated bindings:
 
-1. **Rust toolchain** (1.70+)
+- `load_waveform` for a native file path;
+- `load_waveform_from_bytes` for in-memory data;
+- `get_waveform_structure`;
+- `get_waveform_data` for selected signals and an optional time range;
+- `get_max_timestamp` and `get_all_timestamps`;
+- `is_waveform_loaded`; and
+- `unload_waveform`.
 
-   ```bash
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   ```
+The bridge keeps one loaded waveform in process-wide state. Loading another
+waveform replaces it.
 
-2. **flutter_rust_bridge_codegen**
+## Supported Outputs
 
-   ```bash
-   cargo install flutter_rust_bridge_codegen
-   ```
+The crate builds as `cdylib`, `staticlib`, and `rlib`:
 
-3. **LLVM** (for code generation)
-   - Ubuntu: `sudo apt install llvm-dev libclang-dev clang`
-   - macOS: `brew install llvm`
-   - Windows: Download from <https://releases.llvm.org/>
+- native builds place a platform-specific library under
+  `rust/wellen_bridge/target/release/`;
+- WebAssembly builds place the wasm-pack package under `web/pkg/`; and
+- Flutter Rust Bridge generation writes `src/frb_generated.rs` plus the Dart
+  bindings under `packages/dart_wellen/lib/src/rust/`.
 
-## Building
+The repository validates Linux native and browser WebAssembly outputs.
 
-### Generate Dart bindings
+## Build
 
-From the project root:
-
-```bash
-flutter_rust_bridge_codegen generate
-```
-
-This will generate Dart code in `lib/src/generated/`.
-
-### Build the Rust library
-
-For Linux:
-
-```bash
-cd rust/wellen_bridge
-cargo build --release
-```
-
-For macOS:
+Use the root Makefile so code generation, patches, and artifact dependencies
+remain synchronized:
 
 ```bash
-cd rust/wellen_bridge
-cargo build --release
+make dart         # Generate Dart and Rust bridge bindings.
+make rust-native  # Build the native library.
+make wasm         # Build and patch the wasm-pack package.
+make rust-test    # Run Rust tests with the pinned toolchain.
 ```
 
-For Android (requires NDK):
+The repository's `rust/wellen_bridge/BUILDING.md` and `doc/BUILD.md` guides
+describe the authoritative toolchain setup and installation commands.
 
-```bash
-cargo install cargo-ndk
-rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
-cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -t x86 -o ../android/app/src/main/jniLibs build --release
-```
-
-For iOS:
-
-```bash
-rustup target add aarch64-apple-ios x86_64-apple-ios
-cargo build --release --target aarch64-apple-ios
-cargo build --release --target x86_64-apple-ios
-```
-
-## API
-
-### Load a waveform file
-
-```dart
-import 'package:rohd_wave_viewer/wellen_module_structure_api.dart';
-
-final api = WellenModuleStructureApi();
-await api.loadFile('path/to/waveform.vcd');
-```
-
-### Get module structure
-
-```dart
-final structure = await api.getModuleStructure();
-for (final module in structure.modules) {
-  print('Module: ${module.name}');
-  for (final signal in module.signals) {
-    print('  Signal: ${signal.name} (${signal.type})');
-  }
-}
-```
-
-### Get waveform data
-
-```dart
-final waveformData = await api.getWaveformData(
-  signalIds: ['top.clk', 'top.counter.value'],
-  startTime: 0,
-  endTime: 1000,
-);
-
-for (final signal in waveformData) {
-  print('Signal: ${signal.signalId}');
-  for (final point in signal.data) {
-    print('  ${point.time}: ${point.value}');
-  }
-}
-```
-
-### Stream waveform data incrementally
-
-```dart
-await for (final data in api.streamWaveformData(signalIds: ['top.clk'])) {
-  // Process data as it arrives
-  updateUI(data);
-}
-```
-
-## Architecture
+## Source Layout
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                     Flutter/Dart                            │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  WellenModuleStructureApi                            │   │
-│  │  - loadFile(path)                                    │   │
-│  │  - getModuleStructure()                              │   │
-│  │  - getWaveformData(signalIds, timeRange)             │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                           │                                 │
-│                           │ flutter_rust_bridge             │
-│                           ▼                                 │
-├─────────────────────────────────────────────────────────────┤
-│                     Rust (FFI)                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  wellen_bridge                                       │   │
-│  │  - load_waveform(file_path)                          │   │
-│  │  - get_waveform_structure()                          │   │
-│  │  - get_waveform_data(signal_ids, start, end)         │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                           │                                 │
-│                           ▼                                 │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │  wellen library                                      │   │
-│  │  - VCD/FST/GHW parsing                               │   │
-│  │  - Signal hierarchy                                  │   │
-│  │  - Time-indexed value lookup                         │   │
-│  └──────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
+rust/wellen_bridge/
+├── Cargo.toml
+├── src/
+│   ├── api.rs
+│   ├── frb_generated.rs
+│   └── lib.rs
+├── build_native.sh
+└── build_wasm.sh
 ```
 
-## Performance Notes
+`frb_generated.rs` is generated. Change the handwritten API or generator
+configuration, then run `make dart`; do not edit generated bindings manually.
 
-- **Header parsing** is fast and loads the signal hierarchy
-- **Body parsing** loads the time table (can be slow for large files)
-- **Signal loading** is lazy - signals are loaded on demand
-- For very large files, consider using `streamWaveformData` for incremental loading
+---
+
+Copyright (C) 2024-2026 Intel Corporation
+SPDX-License-Identifier: BSD-3-Clause

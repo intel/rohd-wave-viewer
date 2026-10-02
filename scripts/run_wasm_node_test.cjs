@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CommonJS copy of run_wasm_node_test.js for older Node versions
+// CommonJS harness to load web/pkg/wellen_bridge.js and its wasm and run simple tests
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');

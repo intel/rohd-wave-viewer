@@ -65,7 +65,7 @@ pub struct SignalInfo {
     pub full_path: String,
     pub signal_type: String,
     pub bit_width: u32,
-    pub scope_id: u64,
+    pub scope_id: String,
 }
 
 /// A single data point in a waveform
@@ -88,6 +88,11 @@ pub struct ModuleNode {
     pub name: String,
     pub full_path: String,
     pub scope_type: String,
+    /// Component (definition) name supplied by the wave format, e.g. the
+    /// instantiated module type for VHDL/SV scopes or — for ROHD-emitted
+    /// FST — the Dart `Module.definitionName`.  Empty string when the
+    /// underlying format does not carry this information.
+    pub component_name: String,
     pub signals: Vec<SignalInfo>,
     pub sub_modules: Vec<ModuleNode>,
 }
@@ -247,7 +252,7 @@ pub fn load_waveform(_file_path: String) -> Result<WaveformMetadata, String> {
 fn load_waveform_native(file_path: String) -> Result<WaveformMetadata, String> {
     use wellen::viewers::{read_body, read_header_from_file};
     use wellen::LoadOptions;
-    // Early debug print so we can confirm this native code path executes
+    #[cfg(debug_assertions)]
     eprintln!("[ROHD_DEBUG] load_waveform_native file_path={}", file_path);
 
     // Read header from file
@@ -275,7 +280,7 @@ fn load_waveform_native(file_path: String) -> Result<WaveformMetadata, String> {
     // Get metadata
     let metadata = create_metadata(&hierarchy, format, file_path, &time_table);
 
-    // Debug: print a short list of signals with type and width for diagnosis
+    #[cfg(debug_assertions)]
     {
         let sigs: Vec<String> = hierarchy
             .iter_vars()
@@ -348,16 +353,14 @@ pub fn load_waveform_from_bytes(bytes: Vec<u8>, file_name: Option<String>) -> Re
     let source_name = file_name.unwrap_or_else(|| String::from("<bytes>"));
     let metadata = create_metadata(&hierarchy, format, source_name.clone(), &time_table);
 
-    // Debug: print info so we can confirm execution path
-    eprintln!("[ROHD_DEBUG] load_waveform_from_bytes source_name={} vars={} times={} format={:?}",
-        source_name,
-        hierarchy.iter_vars().count(),
-        time_table.len(),
-        format
-    );
-
-    // Debug: print a short list of signals with type and width for diagnosis
+    #[cfg(debug_assertions)]
     {
+        eprintln!("[ROHD_DEBUG] load_waveform_from_bytes source_name={} vars={} times={} format={:?}",
+            source_name,
+            hierarchy.iter_vars().count(),
+            time_table.len(),
+            format
+        );
         let sigs: Vec<String> = hierarchy
             .iter_vars()
             .map(|var| {
@@ -425,7 +428,7 @@ pub fn get_waveform_structure() -> Result<WaveformStructure, String> {
                     full_path: signal_full_path,
                     signal_type: var_type_to_string(var.var_type()).to_string(),
                     bit_width: var.length().unwrap_or(1),
-                    scope_id: scope_ref.index() as u64,
+                    scope_id: full_path.clone(),
                 }
             })
             .collect();
@@ -440,6 +443,7 @@ pub fn get_waveform_structure() -> Result<WaveformStructure, String> {
             name,
             full_path,
             scope_type: scope_type_to_string(scope.scope_type()).to_string(),
+            component_name: scope.component(h).unwrap_or("").to_string(),
             signals,
             sub_modules,
         }
@@ -548,26 +552,9 @@ pub fn get_waveform_data(
         });
     }
 
-    // Dump a brief diagnostic snapshot for debugging
-    dump_waveform_debug(&result);
-
     Ok(result)
 }
 
-// Debug helper: write first few signal outputs to a file for diagnosis.
-fn dump_waveform_debug(result: &Vec<SignalWaveformData>) {
-    if result.is_empty() {
-        return;
-    }
-    eprintln!("--- get_waveform_data DUMP ---");
-    for s in result.iter().take(4) {
-        let mut vals: Vec<String> = Vec::new();
-        for p in s.data.iter().take(8) {
-            vals.push(p.value.clone());
-        }
-        eprintln!("signal_id={} first_values={:?}", s.signal_id, vals);
-    }
-}
 
 /// Format a signal value to a string
 fn format_signal_value(value: &wellen::SignalValue) -> String {
@@ -580,11 +567,7 @@ fn format_signal_value(value: &wellen::SignalValue) -> String {
             // If bits buffer contains more bits than `len`, assume the value is
             // right-aligned in the provided bytes (big-endian). Compute a start
             // offset so we read the most-significant `len` bits of the buffer.
-            let start = if total_bits >= (*len as usize) {
-                total_bits - (*len as usize)
-            } else {
-                0
-            };
+            let start = total_bits.saturating_sub(*len as usize);
             for p in 0..(*len as usize) {
                 let bit_pos = start + p;
                 let byte_idx = bit_pos / 8;

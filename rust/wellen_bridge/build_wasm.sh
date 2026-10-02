@@ -22,11 +22,12 @@ if ! command -v wasm-bindgen >/dev/null 2>&1; then
     exit 1
 fi
 
-# Check for wasm-opt (binaryen) - wasm-pack will try to download it if missing
+# wasm-opt is intentionally disabled in Cargo metadata for clean-state builds.
 if ! command -v wasm-opt >/dev/null 2>&1; then
-    echo "[rust-wasm] WARNING: wasm-opt (binaryen) not found."
-    echo "[rust-wasm] wasm-pack will attempt to download it automatically."
-    echo "[rust-wasm] If download fails (e.g., proxy issues), install manually:"
+    echo "[rust-wasm] NOTE: wasm-opt (binaryen) not found."
+    echo "[rust-wasm] Continuing because wasm-pack release builds are configured"
+    echo "[rust-wasm] with wasm-opt disabled for offline/clean-state reliability."
+    echo "[rust-wasm] Install binaryen if you want an extra optimization pass:"
     echo "[rust-wasm]   Run: tool/gh_actions/install_wasm_tools.sh"
     echo "[rust-wasm]   Or Ubuntu/Debian: sudo apt install binaryen"
     echo "[rust-wasm]   Or macOS: brew install binaryen"

@@ -1,165 +1,120 @@
-# Building wellen_bridge
+# Building the Wellen Bridge
 
-This crate builds with a single pinned Rust toolchain (1.92.0) plus helper tools. Everything installs under ~/.cargo and ~/.rustup.
+Run supported bridge builds from the ROHD Wave Viewer repository root. The
+root Makefile tracks both generated binding files and applies the WebAssembly
+patches required by the VS Code webview.
 
-## Prerequisites
+## Toolchain
 
-Install once per environment/machine:
+The development and CI toolchain uses:
 
-```bash
-# Rust 1.92.0 toolchain
-tool/gh_actions/install_rust_1_92.sh
+- the repository-pinned Rust toolchain with the `wasm32-unknown-unknown`
+  target;
+- the Flutter Rust Bridge code generator;
+- wasm-pack and wasm-bindgen-cli;
+- LLVM/Clang and `libclang` for binding generation; and
+- Binaryen and wabt for WebAssembly inspection and patching.
 
-# WASM tools
-tool/gh_actions/install_wasm_tools.sh
+The setup scripts and package manifests are authoritative for compatible
+versions; this guide does not duplicate them.
 
-# Build tools + LLVM/libclang (for codegen)
-tool/gh_actions/install_build_tools.sh
-```
-
-These installers auto-detect your OS and package manager, handle both CI (root) and local dev (regular user) contexts.
-
-Verify installation:
-
-```bash
-rustc --version        # should be 1.92.0
-wasm-pack --version
-wasm-bindgen --version
-flutter_rust_bridge_codegen --version   # should be 2.7.0
-clang --version        # verifies LLVM/libclang
-```
-
-## Build WASM (for web)
-
-From the repo root, this auto-detects and builds only what's missing:
+Install or verify those tools with the repository scripts:
 
 ```bash
-./rust/wellen_bridge/build.sh
-```
-
-Or explicitly:
-
-```bash
-./rust/wellen_bridge/build_wasm.sh
-```
-
-Output lands in `web/pkg/` (wellen_bridge.js, wellen_bridge_bg.wasm, etc.).
-
-## Build native (for desktop)
-
-From the repo root:
-
-```bash
-./rust/wellen_bridge/build_native.sh
-```
-
-Output lands in `rust/wellen_bridge/target/release/libwellen_bridge.so` (or .dylib on macOS, .dll on Windows).
-
-## Generate Dart bindings (required for both WASM and native)
-
-The Dart/Rust bridge (FFI) bindings are generated from Rust annotations:
-
-```bash
-scripts/build_dart_wellen_bridge.sh
-```
-
-This:
-
-- Detects libclang via ldconfig or filesystem search
-- Runs flutter_rust_bridge_codegen to generate Dart interfaces
-- Creates `packages/dart_wellen/lib/src/rust/frb_generated.dart`
-- Creates `rust/wellen_bridge/src/frb_generated.rs`
-
-The build_wasm.sh and build_native.sh scripts automatically call this if needed.
-
-## Integrated build flows
-
-### Full WASM (web)
-
-```bash
-# One-time setup
 tool/gh_actions/install_rust_1_92.sh
 tool/gh_actions/install_wasm_tools.sh
 tool/gh_actions/install_build_tools.sh
-
-# Build (auto-generates Dart bindings, builds WASM)
-rust/wellen_bridge/build.sh
+tool/gh_actions/install_dependencies.sh
 ```
 
-### Full native (desktop)
+## Generate Bindings
 
 ```bash
-# One-time setup
-tool/gh_actions/install_rust_1_92.sh
-tool/gh_actions/install_build_tools.sh
-
-# Build Dart bindings
-scripts/build_dart_wellen_bridge.sh
-
-# Build native library
-rust/wellen_bridge/build_native.sh
+make dart
 ```
 
-### From Flutter app level
+This command uses
+`packages/dart_wellen/flutter_rust_bridge.yaml` and updates both:
+
+- `packages/dart_wellen/lib/src/rust/frb_generated.dart`
+- `rust/wellen_bridge/src/frb_generated.rs`
+
+The Cargo manifest, bridge configuration, handwritten `src/api.rs`, and
+generator script are prerequisites. Native and WebAssembly builds also depend
+on both generated files.
+
+## Native Build
 
 ```bash
-# Builds everything Flutter needs
-make linux                    # includes native lib + Dart bindings
-make extension                # includes WASM + Dart bindings
+make rust-native
 ```
 
-## Cleaning
+The platform-specific release library is written under
+`rust/wellen_bridge/target/release/`. On Linux the expected artifact is
+`libwellen_bridge.so`.
+
+Run the crate tests with the pinned toolchain:
 
 ```bash
-# Clean WASM artifacts only
-./rust/wellen_bridge/clean_wasm.sh
-
-# Clean native artifacts only
-./rust/wellen_bridge/clean_native.sh
-
-# Clean everything (native + WASM + generated FRB files)
-./rust/wellen_bridge/clean.sh
+make rust-test
 ```
 
-Manual cleanup:
+## WebAssembly Build
 
 ```bash
-cd rust/wellen_bridge
-cargo clean
-rm -rf target/
-rm -rf ../../web/pkg
-rm -f src/frb_generated.rs
-rm -f ../../packages/dart_wellen/lib/src/rust/frb_generated.dart
+make wasm
 ```
+
+This command:
+
+1. generates bindings when required;
+2. runs wasm-pack with the `no-modules` target;
+3. writes the generated package under `web/pkg/`;
+4. patches the WebAssembly binary for VS Code webview compatibility; and
+5. patches the JavaScript loader to match the adjusted imports.
+
+Do not package a raw wasm-pack output for the extension. The post-build patches
+are part of the supported artifact. See the
+[WASM webview patch guide](../../doc/WASM_WEBVIEW_PATCH.md) for their
+rationale.
+
+## Application and Extension Builds
+
+The bridge is prepared automatically by higher-level targets:
+
+```bash
+make linux-release
+make web-release
+make extension
+make vsix
+```
+
+Use `make extension` for the staged slim extension archive and `make vsix` for
+the installable VSIX.
+
+## Cleanup
+
+```bash
+make clean
+make real-clean
+```
+
+`make clean` removes Flutter and staged extension output while retaining
+dependency caches and Rust/WASM build output. `make real-clean` also removes
+the retained Node, Rust, WASM, and related caches.
 
 ## Troubleshooting
 
-**libclang not found during codegen:**
+- If either generated binding is missing, rerun `make dart`.
+- If binding generation cannot locate Clang, run
+  `tool/gh_actions/install_build_tools.sh` and verify `LIBCLANG_PATH`.
+- If wasm-pack or wasm-bindgen reports a version mismatch, rerun
+  `tool/gh_actions/install_wasm_tools.sh` rather than installing an unpinned
+  version.
+- If Flutter cannot load the native bridge, rebuild with `make rust-native`
+  and verify the platform library under `target/release/`.
 
-```bash
-# Set LIBCLANG_PATH if auto-detection fails
-export LIBCLANG_PATH=/usr/lib/llvm-14/lib
-scripts/build_dart_wellen_bridge.sh
-```
+---
 
-**Rust version mismatch:**
-
-```bash
-# Ensure pinned 1.92.0 is active
-source scripts/setup_rust_env.sh
-rustc --version
-```
-
-**Missing WASM target:**
-
-```bash
-rustup target add wasm32-unknown-unknown --toolchain 1.92.0
-```
-
-**Stale generated files:**
-
-```bash
-# Clean and rebuild
-rust/wellen_bridge/clean.sh
-rust/wellen_bridge/build.sh
-```
+Copyright (C) 2024-2026 Intel Corporation
+SPDX-License-Identifier: BSD-3-Clause

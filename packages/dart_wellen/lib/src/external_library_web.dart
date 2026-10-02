@@ -3,9 +3,14 @@
 //
 // external_library_web.dart
 // Web platform implementation - WASM initialization and utilities
+//
+// 2026 January 03
+// Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
 
 // 2026 January 03
 // Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
+
+// ignore_for_file: invalid_runtime_check_with_js_interop_types
 
 import 'dart:async';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';

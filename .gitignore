@@ -10,6 +10,7 @@
 .history
 .svn/
 migrate_working_dir/
+*~
 
 # IntelliJ related
 *.iml
@@ -31,6 +32,20 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+coverage/
+node_modules/
+build_logs/
+pubspec_overrides.yaml
+pubspec_overrides.yaml.disabled*
+/packages/*/pubspec.lock
+.wave_dependency_sources
+
+# Coverity local scan output
+build/coverity/
+report.json
+wave_coverity_html.tgz
+web.tgz
+*.sbom.spdx.json
 
 # Symbolication related
 app.*.symbols
@@ -47,6 +62,8 @@ app.*.map.json
 devtools_options.yaml
 rust/wellen_bridge/target
 rust/wellen_bridge/src/frb_generated.rs
-packages/dart_wellen/**/*generated.*
-packages/dart_wellen/lib/src/rust/api.dart
+# Generated locally but retained in Pub archives for package consumers.
+packages/dart_wellen/lib/src/rust/
 packages/wellen_bridge/**/*generated.*
+
+**/NOTICES
