@@ -1,0 +1,36 @@
+$date
+    March 19, 2026
+$end
+$version
+    rohd-wave-viewer deterministic counter test fixture
+$end
+$timescale 1ns $end
+$scope module tb $end
+$var wire 1 ! clk $end
+$scope module dut $end
+$var wire 8 " counter [7:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+
+#0
+$dumpvars
+0!
+b00000000 "
+$end
+
+#5
+1!
+#10
+0!
+b00000001 "
+#15
+1!
+#20
+0!
+b00000010 "
+#25
+1!
+#30
+0!
+b00000011 "

@@ -18,17 +18,11 @@ import 'package:rohd_waveform/rohd_waveform.dart';
 /// The API retains a format parameter for future expansion, but currently
 /// rejects every format except [WaveFormat.vcd].
 class WellenWriter {
-  /// The file being written to.
-  File? _file;
-
   /// The output sink.
   IOSink? _sink;
 
   /// The output format.
   WaveFormat _format = WaveFormat.vcd;
-
-  /// The timescale string.
-  String _timescale = '1ns';
 
   /// Registered signals.
   final Map<String, _SignalRegistration> _signals = {};
@@ -66,6 +60,10 @@ class WellenWriter {
       throw WellenWriterException('Writer is already open');
     }
 
+    if (format == WaveFormat.fst) {
+      throw WellenWriterException('FST writing not yet implemented');
+    }
+
     if (format == WaveFormat.ghw) {
       throw WellenWriterException('GHW format is read-only');
     }
@@ -74,28 +72,33 @@ class WellenWriter {
       throw WellenWriterException('Unknown format is not supported');
     }
 
+    final file = File(filePath);
+    IOSink? sink;
+    try {
+      sink = file.openWrite();
+      sink.writeln('\$date');
+      sink.writeln('   ${date ?? DateTime.now().toIso8601String()}');
+      sink.writeln('\$end');
+      sink.writeln('\$version');
+      sink.writeln('   ${version ?? 'ROHD Wellen Writer 1.0'}');
+      sink.writeln('\$end');
+      sink.writeln('\$timescale');
+      sink.writeln('   $timescale');
+      sink.writeln('\$end');
+      await sink.flush();
+    } catch (_) {
+      if (sink != null) {
+        try {
+          await sink.close();
+        } catch (_) {
+          // Preserve the original failure from opening or initializing.
+        }
+      }
+      rethrow;
+    }
+
     _format = format;
-    _timescale = timescale;
-    _file = File(filePath);
-    _sink = _file!.openWrite();
-
-    // Write VCD header preamble
-    if (_format == WaveFormat.vcd) {
-      _sink!.writeln('\$date');
-      _sink!.writeln('   ${date ?? DateTime.now().toIso8601String()}');
-      _sink!.writeln('\$end');
-      _sink!.writeln('\$version');
-      _sink!.writeln('   ${version ?? 'ROHD Wellen Writer 1.0'}');
-      _sink!.writeln('\$end');
-      _sink!.writeln('\$timescale');
-      _sink!.writeln('   $_timescale');
-      _sink!.writeln('\$end');
-    }
-
-    // TODO(desmond.a.kirkpatrick): Implement FST writing via Rust FFI.
-    if (_format == WaveFormat.fst) {
-      throw WellenWriterException('FST writing not yet implemented');
-    }
+    _sink = sink;
   }
 
   /// Register a signal to be written.
@@ -224,7 +227,6 @@ class WellenWriter {
       await _sink!.flush();
       await _sink!.close();
       _sink = null;
-      _file = null;
     }
 
     _signals.clear();
@@ -242,69 +244,66 @@ class WellenWriter {
       final scopePath = _getScopePath(reg.info.path());
       scopes.putIfAbsent(scopePath, () => []).add(reg);
     }
-
-    // Write scope hierarchy
-    final writtenScopes = <String>{};
-
-    for (final scopePath in scopes.keys.toList()..sort()) {
-      _writeScopeHierarchy(scopePath, writtenScopes, scopes);
-    }
-
-    // Close any open scopes
-    for (var i = 0; i < writtenScopes.length; i++) {
-      _sink!.writeln('\$upscope \$end');
-    }
-
-    // End definitions
-    _sink!.writeln('\$enddefinitions \$end');
-  }
-
-  /// Write scope hierarchy for a given path.
-  void _writeScopeHierarchy(
-    String scopePath,
-    Set<String> writtenScopes,
-    Map<String, List<_SignalRegistration>> scopes,
-  ) {
-    if (writtenScopes.contains(scopePath)) {
-      return;
-    }
-
-    // Write parent scopes first
-    final parts = scopePath.split('.');
-    var currentPath = '';
-
-    for (var i = 0; i < parts.length; i++) {
-      if (i > 0) currentPath += '.';
-      currentPath += parts[i];
-
-      if (!writtenScopes.contains(currentPath)) {
-        // Close previous scope if needed
-        if (i > 0) {
-          // Don't close, we're going deeper
-        }
-
-        _sink!.writeln('\$scope module ${parts[i]} \$end');
-        writtenScopes.add(currentPath);
+    final openScopes = <String>[];
+    final sortedScopePaths = scopes.keys.toList()..sort(_compareScopePaths);
+    for (final scopePath in sortedScopePaths) {
+      final scopeParts = _scopeParts(scopePath);
+      var commonDepth = 0;
+      while (commonDepth < openScopes.length &&
+          commonDepth < scopeParts.length &&
+          openScopes[commonDepth] == scopeParts[commonDepth]) {
+        commonDepth++;
       }
-    }
 
-    // Write signals in this scope
-    final signals = scopes[scopePath];
-    if (signals != null) {
-      for (final reg in signals) {
+      while (openScopes.length > commonDepth) {
+        _sink!.writeln('\$upscope \$end');
+        openScopes.removeLast();
+      }
+
+      for (final scope in scopeParts.skip(commonDepth)) {
+        _sink!.writeln('\$scope module $scope \$end');
+        openScopes.add(scope);
+      }
+
+      for (final reg in scopes[scopePath]!) {
         final typeStr = _vcdVarType('wire');
         _sink!.writeln(
           '\$var $typeStr ${reg.info.width} ${reg.vcdCode} ${reg.info.name} \$end',
         );
       }
     }
+
+    while (openScopes.isNotEmpty) {
+      _sink!.writeln('\$upscope \$end');
+      openScopes.removeLast();
+    }
+
+    // End definitions
+    _sink!.writeln('\$enddefinitions \$end');
   }
+
+  int _compareScopePaths(String first, String second) {
+    final firstParts = _scopeParts(first);
+    final secondParts = _scopeParts(second);
+    final sharedLength = firstParts.length < secondParts.length
+        ? firstParts.length
+        : secondParts.length;
+    for (var i = 0; i < sharedLength; i++) {
+      final comparison = firstParts[i].compareTo(secondParts[i]);
+      if (comparison != 0) return comparison;
+    }
+    return firstParts.length.compareTo(secondParts.length);
+  }
+
+  List<String> _scopeParts(String scopePath) => scopePath.isEmpty
+      ? const <String>[]
+      : scopePath.split(hierarchyPathSeparator);
 
   /// Get the scope path from a full signal path.
   String _getScopePath(String fullPath) {
-    final lastDot = fullPath.lastIndexOf('.');
-    if (lastDot < 0) return '';
-    return fullPath.substring(0, lastDot);
+    final lastSeparator = fullPath.lastIndexOf(hierarchyPathSeparator);
+    if (lastSeparator < 0) return '';
+    return fullPath.substring(0, lastSeparator);
   }
 
   /// Convert signal type to VCD variable type.

@@ -69,6 +69,8 @@ class WellenReader {
   ModuleStructure? get structure => _structure;
   ModuleStructure? _structure;
 
+  final Map<String, String> _wellenSignalIdsByPath = {};
+
   /// Load a waveform file.
   ///
   /// Supports VCD, FST, and GHW formats.
@@ -79,6 +81,8 @@ class WellenReader {
   Future<MetaData> loadFile(String filePath) async {
     try {
       final rustMetadata = rust_api.loadWaveform(filePath: filePath);
+      _structure = null;
+      _wellenSignalIdsByPath.clear();
 
       _metadata = MetaData(
         source: rustMetadata.source,
@@ -115,8 +119,14 @@ class WellenReader {
 
     try {
       final rustStructure = rust_api.getWaveformStructure();
+      final modules = rustStructure.modules.map(_convertModuleNode).toList();
 
-      _structure = ModuleStructure(
+      for (final (index, module) in modules.indexed) {
+        module.buildAddresses(OccurrenceAddress.root.child(index));
+        _mapWellenSignalIds(module, rustStructure.modules[index]);
+      }
+
+      final structure = ModuleStructure(
         metadata: MetaData(
           source: rustStructure.metadata.source,
           timescale: rustStructure.metadata.timescale,
@@ -127,10 +137,11 @@ class WellenReader {
           startTime: rustStructure.metadata.startTime.toInt(),
           endTime: rustStructure.metadata.endTime.toInt(),
         ),
-        modules: rustStructure.modules.map(_convertModuleNode).toList(),
+        modules: modules,
       );
 
-      return _structure!;
+      _structure = structure;
+      return structure;
     } catch (e) {
       throw WellenException('Failed to get waveform structure: $e');
     }
@@ -153,16 +164,29 @@ class WellenReader {
     }
 
     try {
+      await getStructure();
+      final resolvedSignalIds = signalIds
+          .map((signalId) => _wellenSignalIdsByPath[signalId] ?? signalId)
+          .toList();
       final rustData = rust_api.getWaveformData(
-        signalIds: signalIds,
+        signalIds: resolvedSignalIds,
         startTime: startTime != null ? BigInt.from(startTime) : null,
         endTime: endTime != null ? BigInt.from(endTime) : null,
       );
+      final dataByWellenId = {
+        for (final data in rustData) data.signalId: data.data,
+      };
 
-      return rustData.map((data) {
+      return signalIds.indexed.map((entry) {
+        final (index, signalId) = entry;
+        final wellenId = resolvedSignalIds[index];
+        final data = dataByWellenId[wellenId];
+        if (data == null) {
+          throw WellenException('No waveform data returned for $signalId');
+        }
         return WaveformData(
-          signalId: data.signalId,
-          data: data.data
+          signalId: signalId,
+          data: data
               .map(
                 (point) => Data(time: point.time.toInt(), value: point.value),
               )
@@ -242,6 +266,7 @@ class WellenReader {
       _isLoaded = false;
       _metadata = null;
       _structure = null;
+      _wellenSignalIdsByPath.clear();
     }
   }
 
@@ -252,6 +277,7 @@ class WellenReader {
       _isLoaded = false;
       _metadata = null;
       _structure = null;
+      _wellenSignalIdsByPath.clear();
     }
   }
 
@@ -300,6 +326,25 @@ class WellenReader {
       direction: _inferDirection(rustSignal.name),
       width: rustSignal.bitWidth,
     );
+  }
+
+  void _mapWellenSignalIds(
+    HierarchyOccurrence occurrence,
+    rust_api.ModuleNode rustNode,
+  ) {
+    for (var index = 0; index < occurrence.signals.length; index++) {
+      final signal = occurrence.signals[index];
+      final wellenId = rustNode.signals[index].fullPath;
+      _wellenSignalIdsByPath[signal.path()] = wellenId;
+      _wellenSignalIdsByPath[wellenId] = wellenId;
+    }
+
+    for (var index = 0; index < occurrence.children.length; index++) {
+      _mapWellenSignalIds(
+        occurrence.children[index],
+        rustNode.subModules[index],
+      );
+    }
   }
 
   /// Infer port direction from signal name conventions.

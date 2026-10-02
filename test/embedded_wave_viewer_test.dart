@@ -7,9 +7,13 @@
 // 2026 September 29
 // Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
 
+import 'package:dart_wellen/dart_wellen.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:rohd_wave_viewer/rohd_wave_viewer.dart';
+import 'package:rohd_wave_viewer/src/modules/home/view/home.dart';
+import 'package:rohd_wave_viewer/src/modules/rohd_module/bloc/rohd_module_bloc.dart';
 import 'package:rohd_wave_viewer/src/ui/wave_viewer_app.dart';
 import 'package:rohd_wave_viewer/testing.dart';
 
@@ -56,6 +60,29 @@ void main() {
 
     expect(find.text('No waveform data available'), findsNothing);
     expect(find.byType(EmbeddedWaveViewer), findsOneWidget);
+  });
+
+  testWidgets('extension mode loads API hierarchy without an external source', (
+    tester,
+  ) async {
+    useDesktopViewport(tester);
+    await WellenSignalWaveformApi.init();
+    final api = WellenSignalWaveformApi();
+    await api.loadFile('test/fixtures/mock_counter.vcd');
+
+    await tester.pumpWidget(
+      EmbeddedWaveViewer(
+        waveformApi: api,
+        isExtensionMode: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final moduleBloc = BlocProvider.of<RohdModuleBloc>(
+      tester.element(find.byType(WaveFormViewerPage)),
+    );
+    expect(moduleBloc.state, isA<ModuleSelected>());
+    expect(moduleBloc.state.moduleStructure.modules.single.name, 'Counter');
   });
 
   testWidgets('recreates internal state when the waveform API changes', (

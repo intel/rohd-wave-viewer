@@ -14,7 +14,6 @@ import 'dart:developer' as dev;
 import 'package:bloc/bloc.dart';
 import 'package:dart_wellen/dart_wellen.dart' hide SignalWaveform;
 import 'package:equatable/equatable.dart';
-import 'package:rohd_hierarchy/rohd_hierarchy.dart';
 import 'package:rohd_wave_viewer/src/viewer_waveform_client.dart';
 
 part 'rohd_module_event.dart';
@@ -118,61 +117,61 @@ class RohdModuleBloc extends Bloc<RohdModuleEvent, RohdModuleState> {
     emit(Loading(ModuleStructure.empty()));
   }
 
-  /// Re-read metadata (endTime) from the API after data reload,
-  /// without resetting the tree or selected module.
+  /// Rebuild the hierarchy after the waveform backend reloads.
   Future<void> _onRefresh(
     RohdModuleRefresh event,
     Emitter<RohdModuleState> emit,
   ) async {
     try {
-      // Preserve the current structure and selection — hierarchy doesn't
-      // change on refresh, only the waveform metadata (endTime).
       final currentState = state;
-      ModuleStructure? currentStructure;
-      HierarchyOccurrence? previousSelected;
-
-      if (currentState is ModuleSelected) {
-        currentStructure = currentState.rohdModules;
-        previousSelected = currentState.singleModule;
-      } else if (currentState is WaveformUpdated) {
-        currentStructure = currentState.rohdModules;
-        previousSelected = currentState.selectedModule;
-      } else if (currentState is Rendered) {
-        currentStructure = currentState.rohdModules;
-      }
-
-      if (currentStructure == null || currentStructure.modules.isEmpty) {
-        return;
-      }
-
-      // Refresh endTime from the waveform API.
-      final currentTime = await _signalWaveformRepository.getCurrentTime();
-      if (currentTime != null && currentTime > 0) {
-        final oldMeta = currentStructure.metadata;
-        final updatedStructure = ModuleStructure(
-          metadata: MetaData(
-            source: oldMeta.source,
-            timescale: oldMeta.timescale,
-            date: oldMeta.date,
-            startTime: oldMeta.startTime,
-            endTime: currentTime,
-            timescaleFactor: oldMeta.timescaleFactor,
-            version: oldMeta.version,
-            format: oldMeta.format,
-          ),
-          modules: currentStructure.modules,
-          hierarchyService: currentStructure.hierarchyService,
+      final previousSelected = switch (currentState) {
+        ModuleSelected() => currentState.singleModule,
+        WaveformUpdated() => currentState.selectedModule,
+        _ => null,
+      };
+      final api = _signalWaveformRepository.api;
+      final sourceStructure = event.moduleStructure ??
+          (api is WellenSignalWaveformApi
+              ? await api.getModuleStructureOnly()
+              : null);
+      if (sourceStructure == null) {
+        throw StateError(
+          'RohdModuleRefresh requires a module structure for '
+          '${api.runtimeType}.',
         );
-
-        final selected = previousSelected ?? currentStructure.modules.first;
-        _signalWaveformRepository.selectedModule = selected;
-        emit(ModuleSelected(updatedStructure, selected));
       }
-    } on Object catch (e) {
+
+      final resolved = resolveModuleStructure(sourceStructure);
+      final selected = previousSelected == null
+          ? resolved.root
+          : _findNodeByPath(
+                [resolved.root],
+                previousSelected.path(),
+              ) ??
+              resolved.root;
+
+      _signalWaveformRepository
+        ..clearSignalCache()
+        ..hierarchyService = resolved.hierarchyService
+        ..buildSignalCacheFromHierarchy([resolved.root])
+        ..selectedModule = selected;
+
+      emit(Rendered(resolved.structure));
+      emit(ModuleSelected(resolved.structure, selected));
+    } on Object catch (e, stackTrace) {
       dev.log(
-        'Refresh skipped (data not yet available): $e',
+        'Waveform hierarchy refresh failed: $e',
         name: 'RohdModuleBloc',
+        error: e,
+        stackTrace: stackTrace,
       );
+      if (event.completion != null && !event.completion!.isCompleted) {
+        event.completion!.completeError(e, stackTrace);
+      }
+    } finally {
+      if (event.completion != null && !event.completion!.isCompleted) {
+        event.completion!.complete();
+      }
     }
   }
 
@@ -236,26 +235,20 @@ class RohdModuleBloc extends Bloc<RohdModuleEvent, RohdModuleState> {
       try {
         final structure = await api.getModuleStructureOnly();
         if (structure.modules.isNotEmpty) {
-          final root = structure.modules.first;
-          final hierarchyService = BaseHierarchyAdapter.fromTree(root);
+          final resolved = resolveModuleStructure(structure);
+          final root = resolved.root;
           dev.log(
             '_initializeModule: '
             'built hierarchy from API — root=${root.name}',
             name: 'RohdModuleBloc',
           );
 
-          final moduleStructure = ModuleStructure(
-            metadata: structure.metadata,
-            modules: [root],
-            hierarchyService: hierarchyService,
-          );
-
-          emit(Rendered(moduleStructure));
+          emit(Rendered(resolved.structure));
           _signalWaveformRepository
-            ..hierarchyService = hierarchyService
+            ..hierarchyService = resolved.hierarchyService
             ..buildSignalCacheFromHierarchy([root])
             ..selectedModule = root;
-          emit(ModuleSelected(moduleStructure, root));
+          emit(ModuleSelected(resolved.structure, root));
           return;
         }
       } on Object catch (e) {

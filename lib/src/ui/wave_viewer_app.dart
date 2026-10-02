@@ -61,6 +61,7 @@ class App extends StatefulWidget {
     CrossProbeService? crossProbeService,
     RohdExtensionClient? extensionClient,
     Stream<void>? apiReloads,
+    Stream<String>? apiReloadErrors,
   })  : _signalWaveformRepository = signalWaveformRepository,
         _initialThemeMode = initialThemeMode,
         _title = title,
@@ -80,7 +81,8 @@ class App extends StatefulWidget {
         _incomingSignalPaths = incomingSignalPaths,
         _crossProbeService = crossProbeService,
         _extensionClient = extensionClient,
-        _apiReloads = apiReloads;
+        _apiReloads = apiReloads,
+        _apiReloadErrors = apiReloadErrors;
 
   /// Repository used to fetch and cache waveform data.
   final SignalWaveformRepository _signalWaveformRepository;
@@ -173,6 +175,9 @@ class App extends StatefulWidget {
   /// Events emitted after the VS Code host successfully reloads waveform data.
   final Stream<void>? _apiReloads;
 
+  /// Errors emitted when the VS Code host cannot reload waveform data.
+  final Stream<String>? _apiReloadErrors;
+
   /// The currently selected module from the parent application.
   /// When this changes, the wave viewer will switch to display this module.
   final HierarchyOccurrence? _selectedModule;
@@ -210,7 +215,7 @@ class _AppState extends State<App> {
     _rohdModuleBloc = RohdModuleBloc(
       signalWaveformRepository: widget._signalWaveformRepository,
       liveUpdates: widget._liveUpdates,
-      expectsExternalHierarchy: widget._isExtensionMode,
+      expectsExternalHierarchy: widget._externalHierarchy != null,
     );
     _signalBloc = SignalBloc(
       widget._signalWaveformRepository,
@@ -491,6 +496,7 @@ class _AppState extends State<App> {
                           crossProbeService: widget._crossProbeService,
                           extensionClient: widget._extensionClient,
                           apiReloads: widget._apiReloads,
+                          apiReloadErrors: widget._apiReloadErrors,
                         ),
                   },
                 ),

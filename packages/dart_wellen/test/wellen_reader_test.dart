@@ -2,13 +2,11 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // wellen_reader_test.dart
-// Comprehensive tests for WellenReader using example VCD/FST/GHW files
-// For CI/testing environments, use wellen_reader_simple_test.dart instead.
+// Comprehensive tests for WellenReader using tracked VCD/FST/GHW fixtures.
 //
 // 2026 January 03
 // Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
 
-import 'dart:io';
 import 'package:dart_wellen/dart_wellen.dart';
 import 'package:dart_wellen/src/regex_utils.dart' show regExpPattern;
 import 'package:test/test.dart';
@@ -27,15 +25,9 @@ void main() {
   });
 
   group('WellenReader VCD parsing', () {
-    test('loads simple_counter.vcd and reads hierarchy', () async {
+    test('loads counter.vcd and reads hierarchy', () async {
       final reader = WellenReader();
-      final vcdPath = '$fixturesPath/simple_counter.vcd';
-
-      // Skip if file doesn't exist (CI environment)
-      if (!File(vcdPath).existsSync()) {
-        markTestSkipped('Test VCD file not found: $vcdPath');
-        return;
-      }
+      final vcdPath = '$fixturesPath/counter.vcd';
 
       final metadata = await reader.loadFile(vcdPath);
 
@@ -77,11 +69,6 @@ void main() {
       final reader = WellenReader();
       final vcdPath = '$fixturesPath/counter.vcd';
 
-      if (!File(vcdPath).existsSync()) {
-        markTestSkipped('Test VCD file not found: $vcdPath');
-        return;
-      }
-
       await reader.loadFile(vcdPath);
       final structure = await reader.getStructure();
 
@@ -106,11 +93,6 @@ void main() {
     test('loads counter.vcd and filters by time range', () async {
       final reader = WellenReader();
       final vcdPath = '$fixturesPath/counter.vcd';
-
-      if (!File(vcdPath).existsSync()) {
-        markTestSkipped('Test VCD file not found: $vcdPath');
-        return;
-      }
 
       await reader.loadFile(vcdPath);
       final maxTime = await reader.getMaxTimestamp();
@@ -138,13 +120,7 @@ void main() {
 
     test('handles signals with X and Z values', () async {
       final reader = WellenReader();
-      // xx_1.vcd or xx_2.vcd likely have X values
-      final vcdPath = '$fixturesPath/xx_1.vcd';
-
-      if (!File(vcdPath).existsSync()) {
-        markTestSkipped('Test VCD file not found: $vcdPath');
-        return;
-      }
+      final vcdPath = '$fixturesPath/xz_transitions.vcd';
 
       await reader.loadFile(vcdPath);
       final structure = await reader.getStructure();
@@ -159,14 +135,9 @@ void main() {
   });
 
   group('WellenReader FST parsing', () {
-    test('loads many_sv_datatypes.fst and reads hierarchy', () async {
+    test('loads structured FST and reads hierarchy', () async {
       final reader = WellenReader();
-      final fstPath = '$fixturesPath/many_sv_datatypes.fst';
-
-      if (!File(fstPath).existsSync()) {
-        markTestSkipped('Test FST file not found: $fstPath');
-        return;
-      }
+      final fstPath = '$fixturesPath/fp_adder_struct.fst';
 
       await reader.loadFile(fstPath);
       final structure = await reader.getStructure();
@@ -176,14 +147,9 @@ void main() {
       expect(structure.allSignalIds, isNotEmpty);
     });
 
-    test('loads vhdl3.fst and reads VHDL signals', () async {
+    test('loads FST with four-state signals', () async {
       final reader = WellenReader();
-      final fstPath = '$fixturesPath/vhdl3.fst';
-
-      if (!File(fstPath).existsSync()) {
-        markTestSkipped('Test FST file not found: $fstPath');
-        return;
-      }
+      final fstPath = '$fixturesPath/xz_transitions.fst';
 
       await reader.loadFile(fstPath);
       final structure = await reader.getStructure();
@@ -194,14 +160,9 @@ void main() {
   });
 
   group('WellenReader GHW parsing', () {
-    test('loads oscar_test.ghw and reads VHDL hierarchy', () async {
+    test('loads GHW and reads VHDL hierarchy', () async {
       final reader = WellenReader();
-      final ghwPath = '$fixturesPath/oscar_test.ghw';
-
-      if (!File(ghwPath).existsSync()) {
-        markTestSkipped('Test GHW file not found: $ghwPath');
-        return;
-      }
+      final ghwPath = '$fixturesPath/xz_transitions.ghw';
 
       await reader.loadFile(ghwPath);
       final structure = await reader.getStructure();
@@ -211,20 +172,19 @@ void main() {
       expect(structure.allSignalIds, isNotEmpty);
     });
 
-    test('loads vhdlfixed.ghw and reads fixed-point signals', () async {
+    test('loads GHW waveform data', () async {
       final reader = WellenReader();
-      final ghwPath = '$fixturesPath/vhdlfixed.ghw';
-
-      if (!File(ghwPath).existsSync()) {
-        markTestSkipped('Test GHW file not found: $ghwPath');
-        return;
-      }
+      final ghwPath = '$fixturesPath/xz_transitions.ghw';
 
       await reader.loadFile(ghwPath);
       final structure = await reader.getStructure();
 
       expect(structure.metadata.format, equals(WaveFormat.ghw));
       expect(structure.allSignalIds, isNotEmpty);
+      expect(
+        await reader.getWaveformData(structure.allSignalIds),
+        isNotEmpty,
+      );
     });
   });
 
@@ -235,10 +195,6 @@ void main() {
       expect(reader.isLoaded, isFalse);
 
       final vcdPath = '$fixturesPath/counter.vcd';
-      if (!File(vcdPath).existsSync()) {
-        markTestSkipped('Test VCD file not found: $vcdPath');
-        return;
-      }
 
       await reader.loadFile(vcdPath);
       expect(reader.isLoaded, isTrue);
@@ -249,37 +205,60 @@ void main() {
 
     test('can reload different files', () async {
       final reader = WellenReader();
-      final vcdPath1 = '$fixturesPath/counter.vcd';
-      final vcdPath2 = '$fixturesPath/counter2.vcd';
+      addTearDown(reader.close);
+      final vcdPath1 = '$fixturesPath/reload_first.vcd';
+      final vcdPath2 = '$fixturesPath/reload_second.vcd';
 
-      if (!File(vcdPath1).existsSync() || !File(vcdPath2).existsSync()) {
-        markTestSkipped('Test VCD files not found');
-        return;
-      }
-
-      // Load first file
       await reader.loadFile(vcdPath1);
       final structure1 = await reader.getStructure();
-      final signalCount1 = structure1.allSignalIds.length;
+      expect(structure1.modules.map((module) => module.name), [
+        'reload_first_root',
+      ]);
+      expect(structure1.allSignalIds, ['reload_first_root/first_signal']);
 
-      // Load second file (should replace first)
       await reader.loadFile(vcdPath2);
       final structure2 = await reader.getStructure();
-      final signalCount2 = structure2.allSignalIds.length;
 
-      // Files may have different signal counts
-      expect(signalCount1, greaterThan(0));
-      expect(signalCount2, greaterThan(0));
+      expect(structure2, isNot(same(structure1)));
+      expect(structure2.modules.map((module) => module.name), [
+        'reload_second_root',
+      ]);
+      expect(structure2.allSignalIds, ['reload_second_root/second_signal']);
+    });
+
+    test('keeps cached structure when a replacement load fails', () async {
+      final reader = WellenReader();
+      addTearDown(reader.close);
+
+      await reader.loadFile('$fixturesPath/reload_first.vcd');
+      final structure = await reader.getStructure();
+      final signalId = structure.allSignalIds.single;
+      final valuesBeforeFailure = (await reader.getWaveformData([
+        signalId,
+      ]))
+          .single
+          .data
+          .map((datum) => datum.value)
+          .toList();
+
+      await expectLater(
+        reader.loadFile('$fixturesPath/reload_malformed.vcd'),
+        throwsA(isA<WellenException>()),
+      );
+      expect(reader.structure, same(structure));
+      expect(await reader.getStructure(), same(structure));
+      expect(
+        (await reader.getWaveformData([signalId]))
+            .single
+            .data
+            .map((datum) => datum.value),
+        valuesBeforeFailure,
+      );
     });
 
     test('getAllTimestamps returns sorted timestamps', () async {
       final reader = WellenReader();
       final vcdPath = '$fixturesPath/counter.vcd';
-
-      if (!File(vcdPath).existsSync()) {
-        markTestSkipped('Test VCD file not found: $vcdPath');
-        return;
-      }
 
       await reader.loadFile(vcdPath);
       final timestamps = await reader.getAllTimestamps();
@@ -294,14 +273,9 @@ void main() {
   });
 
   group('WellenReader edge cases', () {
-    test('handles empty scope (verilator_empty_scope.vcd)', () async {
+    test('handles an empty scope', () async {
       final reader = WellenReader();
-      final vcdPath = '$fixturesPath/verilator_empty_scope.vcd';
-
-      if (!File(vcdPath).existsSync()) {
-        markTestSkipped('Test VCD file not found: $vcdPath');
-        return;
-      }
+      final vcdPath = '$fixturesPath/empty_scope.vcd';
 
       final metadata = await reader.loadFile(vcdPath);
       expect(metadata.format, equals(WaveFormat.vcd));
@@ -310,11 +284,6 @@ void main() {
     test('handles analog signals (analog.vcd)', () async {
       final reader = WellenReader();
       final vcdPath = '$fixturesPath/analog.vcd';
-
-      if (!File(vcdPath).existsSync()) {
-        markTestSkipped('Test VCD file not found: $vcdPath');
-        return;
-      }
 
       final metadata = await reader.loadFile(vcdPath);
       expect(metadata.format, equals(WaveFormat.vcd));
@@ -331,11 +300,6 @@ void main() {
       final reader = WellenReader();
       final vcdPath = '$fixturesPath/events.vcd';
 
-      if (!File(vcdPath).existsSync()) {
-        markTestSkipped('Test VCD file not found: $vcdPath');
-        return;
-      }
-
       final metadata = await reader.loadFile(vcdPath);
       expect(metadata.format, equals(WaveFormat.vcd));
 
@@ -351,35 +315,14 @@ void main() {
 
     test('handles non-zero start time', () async {
       final reader = WellenReader();
-      final vcdPath = '$fixturesPath/gameroy_trace_with_non_zero_start.vcd';
-
-      if (!File(vcdPath).existsSync()) {
-        markTestSkipped('Test VCD file not found: $vcdPath');
-        return;
-      }
+      final vcdPath = '$fixturesPath/non_zero_start.vcd';
 
       final metadata = await reader.loadFile(vcdPath);
       expect(metadata.format, equals(WaveFormat.vcd));
 
       final timestamps = await reader.getAllTimestamps();
-      // First timestamp may be non-zero
       expect(timestamps, isNotEmpty);
-    });
-
-    test('loads vhdl3.vcd and reads VHDL signals', () async {
-      final reader = WellenReader();
-      final vcdPath = '$fixturesPath/vhdl3.vcd';
-
-      if (!File(vcdPath).existsSync()) {
-        markTestSkipped('Test VCD file not found: $vcdPath');
-        return;
-      }
-
-      final metadata = await reader.loadFile(vcdPath);
-      final structure = await reader.getStructure();
-
-      expect(metadata.format, equals(WaveFormat.vcd));
-      expect(structure.allSignalIds, isNotEmpty);
+      expect(timestamps.first, 100);
     });
   });
 
@@ -388,24 +331,13 @@ void main() {
       final reader = WellenReader();
       final vcdPath = '$fixturesPath/counter.vcd';
 
-      if (!File(vcdPath).existsSync()) {
-        markTestSkipped('Test VCD file not found: $vcdPath');
-        return;
-      }
-
       await reader.loadFile(vcdPath);
       final structure = await reader.getStructure();
 
       // Find a multi-bit signal (counter)
       final counterSignalId = structure.allSignalIds.firstWhere(
         (s) => s.contains('counter'),
-        orElse: () => '',
       );
-
-      if (counterSignalId.isEmpty) {
-        markTestSkipped('Counter signal not found');
-        return;
-      }
 
       final waveformData = await reader.getWaveformData([counterSignalId]);
       expect(waveformData, isNotEmpty);

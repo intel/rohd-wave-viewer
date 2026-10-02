@@ -283,6 +283,104 @@ void main() {
       expect(moduleBloc.state.moduleStructure.modules, isNotEmpty);
     });
 
+    testWidgets('rejects a malformed replacement without losing the session', (
+      tester,
+    ) async {
+      _useDesktopViewport(tester);
+      final dialogs = _FakeFileDialogs()..install(tester);
+      final repository = await _emptyRepository();
+      final malformedPath = _scratchPath('malformed.vcd');
+      File(malformedPath).writeAsStringSync('not a waveform');
+
+      await tester.pumpWidget(App(signalWaveformRepository: repository));
+      await tester.pumpAndSettle();
+
+      dialogs.openPath = 'test/fixtures/mock_counter.vcd';
+      await tester.tap(find.byTooltip('Load waveform file'));
+      await _settleWithFileIo(
+        tester,
+        until: () => find.text('- mock_counter.vcd').evaluate().isNotEmpty,
+      );
+
+      final pageContext = tester.element(find.byType(WaveFormViewerPage));
+      final moduleBloc = BlocProvider.of<RohdModuleBloc>(pageContext);
+      final signalBloc = BlocProvider.of<SignalBloc>(pageContext);
+      final previousApi = repository.api;
+      final previousStructure = moduleBloc.state.moduleStructure;
+      final monitoredPath = previousStructure.allSignalIds.first;
+      signalBloc.add(SignalRestoreMonitoredEvent([monitoredPath]));
+      await _settleWithFileIo(
+        tester,
+        until: () => signalBloc.state.monitorSignalsList.isNotEmpty,
+      );
+
+      dialogs.openPath = malformedPath;
+      await tester.tap(find.byTooltip('Load waveform file'));
+      await _settleWithFileIo(
+        tester,
+        until: () =>
+            find.textContaining('Error loading file').evaluate().isNotEmpty,
+      );
+
+      expect(find.text('- mock_counter.vcd'), findsOneWidget);
+      expect(find.text('- malformed.vcd'), findsNothing);
+      expect(repository.api, same(previousApi));
+      expect(moduleBloc.state.moduleStructure, same(previousStructure));
+      expect(
+        signalBloc.state.monitorSignalsList.map((waveform) => waveform.id),
+        [monitoredPath],
+      );
+    });
+
+    testWidgets('reloads a changed hierarchy and removes missing monitors', (
+      tester,
+    ) async {
+      _useDesktopViewport(tester);
+      final dialogs = _FakeFileDialogs()..install(tester);
+      final repository = await _emptyRepository();
+      final reloadPath = _scratchPath('changing.vcd');
+      File('test/fixtures/mock_counter.vcd').copySync(reloadPath);
+
+      await tester.pumpWidget(App(signalWaveformRepository: repository));
+      await tester.pumpAndSettle();
+
+      dialogs.openPath = reloadPath;
+      await tester.tap(find.byTooltip('Load waveform file'));
+      await _settleWithFileIo(
+        tester,
+        until: () => find.text('- changing.vcd').evaluate().isNotEmpty,
+      );
+
+      final pageContext = tester.element(find.byType(WaveFormViewerPage));
+      final moduleBloc = BlocProvider.of<RohdModuleBloc>(pageContext);
+      final signalBloc = BlocProvider.of<SignalBloc>(pageContext);
+      expect(moduleBloc.state.moduleStructure.modules.single.name, 'Counter');
+
+      final monitoredPath = moduleBloc.state.moduleStructure.allSignalIds.first;
+      signalBloc.add(SignalRestoreMonitoredEvent([monitoredPath]));
+      await _settleWithFileIo(
+        tester,
+        until: () => signalBloc.state.monitorSignalsList.isNotEmpty,
+      );
+
+      File('test/fixtures/xz_transitions.vcd').copySync(reloadPath);
+      await tester.tap(find.byTooltip('Reload waveform'));
+      await _settleWithFileIo(
+        tester,
+        until: () =>
+            moduleBloc.state.moduleStructure.modules.single.name == 'test',
+      );
+
+      expect(find.text('- changing.vcd'), findsOneWidget);
+      expect(moduleBloc.state.moduleStructure.modules.single.name, 'test');
+      expect(signalBloc.state.signals, isNotEmpty);
+      expect(
+        signalBloc.state.signals.map((signal) => signal.path()).toSet(),
+        moduleBloc.state.moduleStructure.allSignalIds.toSet(),
+      );
+      expect(signalBloc.state.monitorSignalsList, isEmpty);
+    });
+
     testWidgets('shows an error when the waveform file cannot be picked', (
       tester,
     ) async {
@@ -410,6 +508,69 @@ void main() {
       // The export button is restored after the capture completes.
       expect(find.byTooltip('Export waveform as PNG'), findsOneWidget);
       await tester.pump(const Duration(seconds: 3));
+    });
+  });
+
+  group('host reload streams', () {
+    testWidgets('refreshes the mounted viewer after a successful host reload', (
+      tester,
+    ) async {
+      _useDesktopViewport(tester);
+      final fixture = await _loadFixture('test/fixtures/mock_counter.vcd');
+      final reloads = StreamController<void>();
+      addTearDown(reloads.close);
+
+      await tester.pumpWidget(
+        App(
+          signalWaveformRepository: fixture.repository,
+          externalHierarchy: fixture.hierarchy,
+          apiReloads: reloads.stream,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final moduleBloc = BlocProvider.of<RohdModuleBloc>(
+        tester.element(find.byType(WaveFormViewerPage)),
+      );
+      expect(moduleBloc.state.moduleStructure.modules.single.name, 'Counter');
+
+      await tester.runAsync(
+        () => (fixture.repository.api as WellenSignalWaveformApi)
+            .loadFile('test/fixtures/xz_transitions.vcd'),
+      );
+      reloads.add(null);
+      await _settleWithFileIo(
+        tester,
+        until: () =>
+            moduleBloc.state.moduleStructure.modules.single.name == 'test',
+      );
+
+      expect(moduleBloc.state.moduleStructure.modules.single.name, 'test');
+      expect(find.textContaining('Error reloading waveform'), findsNothing);
+    });
+
+    testWidgets('shows host reload failures', (tester) async {
+      _useDesktopViewport(tester);
+      final fixture = await _loadFixture('test/fixtures/mock_counter.vcd');
+      final reloadErrors = StreamController<String>();
+      addTearDown(reloadErrors.close);
+
+      await tester.pumpWidget(
+        App(
+          signalWaveformRepository: fixture.repository,
+          externalHierarchy: fixture.hierarchy,
+          apiReloadErrors: reloadErrors.stream,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      reloadErrors.add('invalid replacement');
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Error reloading waveform: invalid replacement'),
+        findsOneWidget,
+      );
     });
   });
 

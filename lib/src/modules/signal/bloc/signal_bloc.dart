@@ -761,6 +761,8 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
   /// Reset the signal bloc to initial state when loading a new file.
   void resetSignals(SignalResetEvent event, Emitter<SignalState> emit) {
     _occurrenceValueFormats.clear();
+    _undoMonitorHistory.clear();
+    _redoMonitorHistory.clear();
     emit(SignalLoading());
   }
 
@@ -770,10 +772,19 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
     SignalRefreshEvent event,
     Emitter<SignalState> emit,
   ) async {
+    if (event.resetMonitorHistory) {
+      _undoMonitorHistory.clear();
+      _redoMonitorHistory.clear();
+    }
+
     // Re-load waveform data for all monitored signals to pick up new
     // breakpoints
+    final availableMonitors = state.monitorSignalsList.where((waveform) {
+      final parentId = waveform.id.split('#').first;
+      return _signalWaveformRepository.getSignalById(parentId) != null;
+    }).toList();
     final monitoredSignalIds =
-        state.monitorSignalsList.map((waveform) => waveform.id).toList();
+        availableMonitors.map((waveform) => waveform.id).toList();
 
     // When cacheOnly is true (breakpoint-triggered updates), skip the
     // network call — data was already placed in the repo cache by
@@ -790,25 +801,41 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
     // reference as the current monitor entry (after a previous refresh).
     // Without a copy, Equatable sees identical references → considers the
     // state unchanged → BLoC silently drops the emit → UI never updates.
-    final updatedMonitorList = state.monitorSignalsList.map((waveform) {
+    final updatedMonitorList = availableMonitors.map((waveform) {
       final updated = _signalWaveformRepository.getWaveformById(waveform.id);
       if (updated != null) {
-        return SignalWaveform.copyFrom(updated, monitorId: waveform.monitorId);
+        return SignalWaveform.copyFrom(
+          updated,
+          monitorId: waveform.monitorId,
+        )
+          ..valueFormat = waveform.valueFormat
+          ..monitorGroup = waveform.monitorGroup
+          ..monitorParentId = waveform.monitorParentId
+          ..overrideWidth = waveform.overrideWidth
+          ..overrideName = waveform.overrideName;
       }
       return waveform;
     }).toList();
+    final availableMonitorIds =
+        availableMonitors.map((waveform) => waveform.monitorId).toSet();
+    final availableSignalIds =
+        availableMonitors.map((waveform) => waveform.id).toSet();
 
     emit(
       SignalLoaded(
         state.signals,
         updatedMonitorList,
-        focusedSignalIds: state.focusedSignalIds,
+        focusedSignalIds: state.focusedSignalIds.intersection(
+          availableMonitorIds,
+        ),
         showInternalSignals: state.showInternalSignals,
         selectedModulePath: state.selectedModulePath,
         filterText: state.filterText,
         sortAscending: state.sortAscending,
         moduleSelectedSignalIds: state.moduleSelectedSignalIds,
-        expandedMonitorSignals: state.expandedMonitorSignals,
+        expandedMonitorSignals: state.expandedMonitorSignals.intersection(
+          availableSignalIds,
+        ),
       ),
     );
   }

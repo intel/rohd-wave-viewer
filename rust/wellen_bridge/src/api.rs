@@ -580,32 +580,16 @@ fn format_signal_value(value: &wellen::SignalValue) -> String {
                 s.push(if bit == 0 { '0' } else { '1' });
             }
 
-            // One-time debug dump
-            if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/rohd_signal_debug.log") {
-                use std::io::Write;
-                let _ = writeln!(f, "BINARY DUMP len={} total_bytes={} start={}", len, bits.len(), start);
-                let _ = writeln!(f, "raw_bytes={:?}", bits.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>());
-                let _ = writeln!(f, "formatted={}", s);
+            if s.is_empty() {
+                "0".to_string()
+            } else {
+                s
             }
-
-            if s.is_empty() { "0".to_string() } else { s }
         }
-        wellen::SignalValue::FourValue(bits, len) => {
-            let mut s = String::new();
-            for i in (0..*len).rev() {
-                let byte_idx = (i / 4) as usize;
-                let bit_idx = (i % 4) * 2;
-                if byte_idx < bits.len() {
-                    let val = (bits[byte_idx] >> bit_idx) & 0x03;
-                    s.push(match val {
-                        0 => '0',
-                        1 => '1',
-                        2 => 'x',
-                        3 => 'z',
-                        _ => '?',
-                    });
-                }
-            }
+        wellen::SignalValue::FourValue(_, _) | wellen::SignalValue::NineValue(_, _) => {
+            let s = value
+                .to_bit_string()
+                .expect("four- and nine-state values always have a bit-string representation");
             if s.is_empty() {
                 "0".to_string()
             } else {
@@ -615,29 +599,6 @@ fn format_signal_value(value: &wellen::SignalValue) -> String {
         wellen::SignalValue::String(s) => s.to_string(),
         wellen::SignalValue::Real(r) => r.to_string(),
         wellen::SignalValue::Event => "event".to_string(),
-        wellen::SignalValue::NineValue(bits, len) => {
-            // Similar to FourValue but with 9 states
-            let mut s = String::new();
-            for i in (0..*len).rev() {
-                let byte_idx = (i / 2) as usize;
-                let bit_idx = (i % 2) * 4;
-                if byte_idx < bits.len() {
-                    let val = (bits[byte_idx] >> bit_idx) & 0x0F;
-                    s.push(match val {
-                        0 => '0',
-                        1 => '1',
-                        2 => 'x',
-                        3 => 'z',
-                        _ => '?',
-                    });
-                }
-            }
-            if s.is_empty() {
-                "0".to_string()
-            } else {
-                s
-            }
-        }
     }
 }
 
@@ -667,4 +628,59 @@ pub fn is_waveform_loaded() -> bool {
 #[flutter_rust_bridge::frb(sync)]
 pub fn unload_waveform() {
     *WAVEFORM_STATE.lock().unwrap() = None;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_signal_value;
+    use wellen::SignalValue;
+
+    #[test]
+    fn formats_four_state_values_in_wellen_packed_order() {
+        let cases: &[(&[u8], u32, &str)] = &[
+            (&[0b0001_1011], 4, "01xz"),
+            (&[0b0000_0011, 0b0001_1011], 5, "z01xz"),
+            (&[0b0000_1011, 0b0001_1110], 6, "xz01zx"),
+            (&[0b0001_1011, 0b1110_0100], 8, "01xzzx10"),
+        ];
+
+        for &(data, width, expected) in cases {
+            assert_eq!(
+                format_signal_value(&SignalValue::FourValue(data, width)),
+                expected,
+                "width={width}"
+            );
+        }
+        assert_eq!(format_signal_value(&SignalValue::FourValue(&[], 0)), "0");
+    }
+
+    #[test]
+    fn formats_all_nine_state_symbols_in_wellen_packed_order() {
+        let cases: &[(&[u8], u32, &str)] = &[
+            (&[0x23], 2, "xz"),
+            (&[0x04, 0x23], 3, "hxz"),
+            (&[0x45, 0x67], 4, "huwl"),
+            (&[0x00, 0x12, 0x34, 0x56, 0x78], 9, "01xzhuwl-"),
+        ];
+
+        for &(data, width, expected) in cases {
+            assert_eq!(
+                format_signal_value(&SignalValue::NineValue(data, width)),
+                expected,
+                "width={width}"
+            );
+        }
+        assert_eq!(format_signal_value(&SignalValue::NineValue(&[], 0)), "0");
+    }
+
+    #[test]
+    fn preserves_other_signal_value_output_conventions() {
+        assert_eq!(
+            format_signal_value(&SignalValue::Binary(&[0b0000_0101], 3)),
+            "101"
+        );
+        assert_eq!(format_signal_value(&SignalValue::Real(1.25)), "1.25");
+        assert_eq!(format_signal_value(&SignalValue::String("ready")), "ready");
+        assert_eq!(format_signal_value(&SignalValue::Event), "event");
+    }
 }

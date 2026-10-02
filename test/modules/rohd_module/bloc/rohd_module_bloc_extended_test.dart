@@ -306,8 +306,13 @@ void main() {
 
     // ──── Refresh ────
 
+    late HierarchyOccurrence refreshedRoot;
+    late HierarchyOccurrence refreshedSelection;
+    late ModuleStructure refreshedStructure;
+    late Completer<void> refreshCompletion;
+
     blocTest<RohdModuleBloc, RohdModuleState>(
-      'RohdModuleRefresh updates endTime from ModuleSelected',
+      'RohdModuleRefresh rebuilds hierarchy, caches, and selection',
       build: () => RohdModuleBloc(signalWaveformRepository: repo),
       seed: () {
         final ms = ModuleStructure(
@@ -320,13 +325,59 @@ void main() {
           modules: [rootModule],
           hierarchyService: hierarchyService,
         );
-        return ModuleSelected(ms, rootModule);
+        return ModuleSelected(ms, rootModule.children.first);
       },
-      act: (bloc) => bloc.add(const RohdModuleRefresh()),
+      act: (bloc) {
+        refreshedSelection = HierarchyOccurrence(
+          name: rootModule.children.first.name,
+          signals: [SignalOccurrence(name: 'replacement', width: 4)],
+        );
+        refreshedRoot = HierarchyOccurrence(
+          name: rootModule.name,
+          children: [
+            refreshedSelection,
+            HierarchyOccurrence(name: 'newChild'),
+          ],
+        );
+        refreshedStructure = ModuleStructure(
+          metadata: const MetaData(
+            source: 'replacement',
+            timescale: '1ns',
+            date: '',
+            endTime: 500,
+          ),
+          modules: [refreshedRoot],
+        );
+        refreshCompletion = Completer<void>();
+        bloc.add(
+          RohdModuleRefresh(
+            moduleStructure: refreshedStructure,
+            completion: refreshCompletion,
+          ),
+        );
+      },
+      expect: () => [
+        isA<Rendered>().having(
+          (state) => state.moduleStructure.metadata.endTime,
+          'endTime',
+          500,
+        ),
+        isA<ModuleSelected>().having(
+          (state) => state.singleModule.name,
+          'selected module',
+          refreshedSelection.name,
+        ),
+      ],
       verify: (bloc) {
-        // After refresh, state should be ModuleSelected with updated endTime
-        // MockSignalWaveformApi.getCurrentTime returns non-null value
-        expect(bloc.state, isA<ModuleSelected>());
+        expect(refreshCompletion.isCompleted, isTrue);
+        expect(
+          (bloc.state as ModuleSelected).singleModule,
+          same(refreshedSelection),
+        );
+        expect(
+          repo.getSignalById(refreshedSelection.signals.single.path()),
+          same(refreshedSelection.signals.single),
+        );
       },
     );
 
@@ -348,8 +399,7 @@ void main() {
       },
       act: (bloc) => bloc.add(const RohdModuleRefresh()),
       verify: (bloc) {
-        // Mock API doesn't implement getCurrentTime — refresh catches and
-        // leaves state unchanged.
+        // The mock API cannot provide a replacement module structure.
         expect(bloc.state, isA<WaveformUpdated>());
       },
     );
@@ -372,8 +422,7 @@ void main() {
       },
       act: (bloc) => bloc.add(const RohdModuleRefresh()),
       verify: (bloc) {
-        // Mock API doesn't implement getCurrentTime — refresh catches and
-        // leaves state unchanged.
+        // The mock API cannot provide a replacement module structure.
         expect(bloc.state, isA<Rendered>());
       },
     );

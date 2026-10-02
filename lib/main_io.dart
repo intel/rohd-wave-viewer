@@ -12,10 +12,14 @@ import 'dart:io';
 import 'package:dart_wellen/dart_wellen.dart' hide SignalWaveform;
 import 'package:rohd_wave_viewer/src/viewer_waveform_client.dart';
 
-/// Initialize SignalWaveformApi for native platforms (Linux, macOS, Windows)
-Future<SignalWaveformApi?> initializeSignalWaveformApi(
-  List<String> args,
-) async {
+/// Initializes the waveform API for native platforms.
+///
+/// [environment] overrides the process environment for startup integrations
+/// and deterministic tests.
+Future<SignalWaveformApi> initializeSignalWaveformApi(
+  List<String> args, {
+  Map<String, String>? environment,
+}) async {
   if (args.isNotEmpty) {
     // First argument is assumed to be a waveform file path
     final filePath = args[0];
@@ -41,7 +45,7 @@ Future<SignalWaveformApi?> initializeSignalWaveformApi(
     }
   } else {
     // No CLI args — allow environment variable fallback for desktop debug runs
-    final envPath = Platform.environment['ROHD_WAVE_VCD'];
+    final envPath = (environment ?? Platform.environment)['ROHD_WAVE_VCD'];
     if (envPath != null && envPath.isNotEmpty) {
       final file = File(envPath);
       if (file.existsSync()) {
@@ -59,5 +63,5 @@ Future<SignalWaveformApi?> initializeSignalWaveformApi(
     }
   }
 
-  return null;
+  return WellenSignalWaveformApi();
 }

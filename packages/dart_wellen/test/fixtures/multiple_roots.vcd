@@ -1,0 +1,20 @@
+$date
+  2026-10-01
+$end
+$version
+  dart_wellen multi-root regression fixture
+$end
+$timescale 1ns $end
+$scope module alpha $end
+$var wire 1 ! a $end
+$upscope $end
+$scope module beta $end
+$var wire 1 " b $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+1"
+#5
+1!
+0"

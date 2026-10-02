@@ -253,11 +253,20 @@ class SignalRefreshEvent extends SignalEvent {
   /// Whether to refresh strictly from cached data.
   final bool cacheOnly;
 
+  /// Whether this refresh establishes a new waveform-session baseline.
+  ///
+  /// Backend replacements set this so undo cannot restore rows or samples
+  /// captured from the previous waveform.
+  final bool resetMonitorHistory;
+
   /// Creates a signal refresh event.
-  SignalRefreshEvent({this.cacheOnly = false});
+  SignalRefreshEvent({
+    this.cacheOnly = false,
+    this.resetMonitorHistory = false,
+  });
 
   @override
-  List<Object?> get props => [cacheOnly];
+  List<Object?> get props => [cacheOnly, resetMonitorHistory];
 }
 
 /// Toggles the display of internal signals (wires, registers) in the signal

@@ -406,6 +406,42 @@ void main() {
       );
 
       blocTest<SignalBloc, SignalState>(
+        'reset clears undo and redo history from the previous file',
+        build: () => signalBloc,
+        seed: () => SignalLoaded(mockSignals, [
+          SignalWaveform.empty('old.a'),
+          SignalWaveform.empty('old.b'),
+        ]),
+        act: (bloc) async {
+          final removed = bloc.stream.firstWhere(
+            (state) =>
+                state is SignalLoaded && state.monitorSignalsList.length == 1,
+          );
+          bloc.add(
+            SignalRemoveEvent(bloc.state.monitorSignalsList.first),
+          );
+          await removed;
+
+          final reset =
+              bloc.stream.firstWhere((state) => state is SignalLoading);
+          bloc.add(SignalResetEvent());
+          await reset;
+
+          final reloaded = bloc.stream.firstWhere(
+            (state) => state is SignalLoaded,
+          );
+          bloc.add(SignalUpdateEvent(rootModule));
+          await reloaded;
+          bloc.add(SignalUndoMonitorEvent());
+        },
+        verify: (bloc) {
+          expect(bloc.state.monitorSignalsList, isEmpty);
+          expect(bloc.canUndoMonitorEdit, isFalse);
+          expect(bloc.canRedoMonitorEdit, isFalse);
+        },
+      );
+
+      blocTest<SignalBloc, SignalState>(
         'sets and undoes a per-row display format',
         build: () => signalBloc,
         seed: () => SignalLoaded(mockSignals, [SignalWaveform.empty('a')]),
@@ -719,6 +755,68 @@ void main() {
         act: (bloc) => bloc.add(SignalRefreshEvent(cacheOnly: true)),
         verify: (bloc) {
           expect(bloc.state.monitorSignalsList.length, 1);
+        },
+      );
+
+      blocTest<SignalBloc, SignalState>(
+        'SignalRefreshEvent preserves row-specific display metadata',
+        build: () => signalBloc,
+        seed: () {
+          final waveform = SignalWaveform.empty(mockSignals.first.path())
+            ..valueFormat = MonitorValueFormat.signedDecimal
+            ..monitorGroup = 'Control'
+            ..monitorParentId = 'parent-monitor'
+            ..overrideWidth = 3
+            ..overrideName = 'status';
+          return SignalLoaded(mockSignals, [waveform]);
+        },
+        act: (bloc) => bloc.add(SignalRefreshEvent()),
+        verify: (bloc) {
+          final waveform = bloc.state.monitorSignalsList.single;
+          expect(waveform.valueFormat, MonitorValueFormat.signedDecimal);
+          expect(waveform.monitorGroup, 'Control');
+          expect(waveform.monitorParentId, 'parent-monitor');
+          expect(waveform.overrideWidth, 3);
+          expect(waveform.overrideName, 'status');
+        },
+      );
+
+      blocTest<SignalBloc, SignalState>(
+        'session refresh clears history without discarding current rows',
+        build: () => signalBloc,
+        seed: () => SignalLoaded(mockSignals, [
+          SignalWaveform.empty(mockSignals.first.path()),
+        ]),
+        act: (bloc) async {
+          final grouped = bloc.stream.firstWhere(
+            (state) => state.monitorSignalsList.single.monitorGroup == 'New',
+          );
+          final row = bloc.state.monitorSignalsList.single;
+          bloc.add(
+            SignalSetMonitorGroupEvent(
+              monitorIds: {row.monitorId},
+              groupName: 'New',
+            ),
+          );
+          await grouped;
+
+          final refreshed = bloc.stream.firstWhere(
+            (state) => state is SignalLoaded,
+          );
+          bloc.add(
+            SignalRefreshEvent(
+              cacheOnly: true,
+              resetMonitorHistory: true,
+            ),
+          );
+          await refreshed;
+          bloc.add(SignalUndoMonitorEvent());
+        },
+        verify: (bloc) {
+          expect(bloc.state.monitorSignalsList, hasLength(1));
+          expect(bloc.state.monitorSignalsList.single.monitorGroup, 'New');
+          expect(bloc.canUndoMonitorEdit, isFalse);
+          expect(bloc.canRedoMonitorEdit, isFalse);
         },
       );
     });

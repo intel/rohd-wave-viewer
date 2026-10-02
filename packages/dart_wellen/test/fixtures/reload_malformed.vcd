@@ -1,0 +1,11 @@
+$date
+  2026-10-02
+$end
+$version
+  dart_wellen malformed reload regression fixture
+$end
+$timescale 1ns $end
+$scope module malformed_root $end
+$var wire invalid ! broken_signal $end
+$upscope $end
+$enddefinitions $end

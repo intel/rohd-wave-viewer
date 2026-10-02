@@ -1,0 +1,20 @@
+$date
+    March 19, 2026
+$end
+$version
+    rohd-wave-viewer analog-value test fixture
+$end
+$timescale 1ns $end
+$scope module analog_test $end
+$var real 64 ! temperature $end
+$upscope $end
+$enddefinitions $end
+
+#0
+$dumpvars
+r20.0 !
+$end
+#10
+r20.5 !
+#20
+r19.75 !

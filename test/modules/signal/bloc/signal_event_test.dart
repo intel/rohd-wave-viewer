@@ -113,12 +113,20 @@ void main() {
     group('SignalRefresh', () {
       test('default cacheOnly is false', () {
         expect(SignalRefreshEvent().cacheOnly, isFalse);
+        expect(SignalRefreshEvent().resetMonitorHistory, isFalse);
       });
 
       test('supports value comparison', () {
         expect(
           SignalRefreshEvent(cacheOnly: true),
           equals(SignalRefreshEvent(cacheOnly: true)),
+        );
+      });
+
+      test('history baseline participates in value comparison', () {
+        expect(
+          SignalRefreshEvent(resetMonitorHistory: true),
+          isNot(equals(SignalRefreshEvent())),
         );
       });
     });

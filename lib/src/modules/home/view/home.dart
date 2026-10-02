@@ -8,7 +8,7 @@
 // Author(s): Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
 //            Yao Jing Quek <yao.jing.quek@intel.com>
 
-import 'dart:async' show StreamSubscription, unawaited;
+import 'dart:async' show Completer, StreamSubscription, unawaited;
 import 'dart:convert';
 import 'dart:ui' as ui;
 
@@ -19,7 +19,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:rohd_devtools_widgets/rohd_devtools_widgets.dart';
-import 'package:rohd_hierarchy/rohd_hierarchy.dart';
 import 'package:rohd_wave_viewer/src/const/app_theme.dart';
 import 'package:rohd_wave_viewer/src/const/layout.dart';
 import 'package:rohd_wave_viewer/src/cubit/wave_viewer_theme_cubit.dart';
@@ -44,6 +43,7 @@ import 'package:rohd_wave_viewer/src/services/vscode_extension_client.dart'
 import 'package:rohd_wave_viewer/src/services/vscode_webview_interop_io.dart'
     if (dart.library.js_interop) 'package:rohd_wave_viewer/src/services/vscode_webview_interop_web.dart'
     as vscode;
+import 'package:rohd_wave_viewer/src/waveform_client_core/module_structure_hierarchy.dart';
 
 /// Main page for the standalone and embedded waveform viewer.
 class WaveFormViewerPage extends StatefulWidget {
@@ -106,6 +106,9 @@ class WaveFormViewerPage extends StatefulWidget {
   /// Events emitted after VS Code reloads the waveform API.
   final Stream<void>? _apiReloads;
 
+  /// Errors emitted when the VS Code host cannot reload waveform data.
+  final Stream<String>? _apiReloadErrors;
+
   /// Creates the waveform viewer page.
   const WaveFormViewerPage({
     super.key,
@@ -121,6 +124,7 @@ class WaveFormViewerPage extends StatefulWidget {
     CrossProbeService? crossProbeService,
     RohdExtensionClient? extensionClient,
     Stream<void>? apiReloads,
+    Stream<String>? apiReloadErrors,
   })  : _isExtensionMode = isExtensionMode,
         _onSnapshotRequested = onSnapshotRequested,
         _lastSnapshotTimePs = lastSnapshotTimePs,
@@ -132,7 +136,8 @@ class WaveFormViewerPage extends StatefulWidget {
         _incomingSignalPaths = incomingSignalPaths,
         _crossProbeService = crossProbeService,
         _extensionClient = extensionClient,
-        _apiReloads = apiReloads;
+        _apiReloads = apiReloads,
+        _apiReloadErrors = apiReloadErrors;
 
   @override
   State<WaveFormViewerPage> createState() => _WaveFormViewerPageState();
@@ -216,6 +221,9 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
   /// Rebuilds the hierarchy when a VS Code webview reloads its waveform.
   StreamSubscription<void>? _apiReloadSub;
 
+  /// Reports reload failures from the VS Code webview host.
+  StreamSubscription<String>? _apiReloadErrorSub;
+
   /// File System Access API handle for true disk reload on web (standalone mode
   /// only). When available, this allows refreshing from the actual file on disk
   /// (e.g., after resimulating and generating a new VCD file).
@@ -270,11 +278,10 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
     _isVscodeWebview = vscode.isVscodeWebview();
     _isExtensionMode = widget._isExtensionMode || _isVscodeWebview;
 
-    if (_isVscodeWebview) {
-      _apiReloadSub = widget._apiReloads?.listen((_) {
-        unawaited(_onApiReloaded());
-      });
-    }
+    _apiReloadSub = widget._apiReloads?.listen((_) {
+      unawaited(_onApiReloaded());
+    });
+    _apiReloadErrorSub = widget._apiReloadErrors?.listen(_onApiReloadError);
 
     // Set up synchronized vertical scrolling for the three panels
     _setupSynchronizedScrolling();
@@ -362,11 +369,34 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
     if (api is! WellenSignalWaveformApi) {
       return;
     }
-    repository.clearSignalCache();
-    context.read<SignalBloc>().add(SignalResetEvent());
-    context.read<WaveformModuleBloc>().add(const WaveformModuleReset());
-    context.read<RohdModuleBloc>().add(const RohdModuleReset());
-    await _pushHierarchyFromApi(api);
+    setState(() => _isLoadingFile = true);
+    try {
+      final structure = await api.getModuleStructureOnly();
+      await _applyReloadedWaveform(api, structure);
+    } on Object catch (e, stackTrace) {
+      debugPrint('[Home] Error applying reloaded waveform: $e');
+      debugPrint('[Home] Stack trace: $stackTrace');
+      _showReloadError(e.toString());
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingFile = false);
+      }
+    }
+  }
+
+  void _onApiReloadError(String message) {
+    if (mounted) {
+      _showReloadError(message);
+    }
+  }
+
+  void _showReloadError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error reloading waveform: $message'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   /// Handle incoming cross-probed signal paths by adding them to the
@@ -649,6 +679,8 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
   void dispose() {
     unawaited(_apiReloadSub?.cancel());
     _apiReloadSub = null;
+    unawaited(_apiReloadErrorSub?.cancel());
+    _apiReloadErrorSub = null;
     widget._crossProbeService?.incomingSignals.removeListener(
       _onIncomingSignals,
     );
@@ -723,73 +755,50 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
       }
 
       if (bytes != null && fileName != null) {
-        setState(() {
-          _isLoadingFile = true;
-          _fileName = fileName;
-          _filePath = filePath;
-          _fileBytes = bytes;
-          _fileHandle = fileHandle;
-        });
+        setState(() => _isLoadingFile = true);
 
         // Allow the loading overlay to render before starting heavy processing
         await Future<void>.delayed(Duration.zero);
 
-        // Repository already captured before async gap
-        final api = repository.api;
+        debugPrint('[Home] Loading $fileName (${bytes.length} bytes)');
+        final newApi = WellenSignalWaveformApi();
+        await newApi.loadBytes(bytes, fileName: fileName);
+        final structure = await newApi.getModuleStructureOnly();
+        final resolved = resolveModuleStructure(structure);
+        debugPrint('[Home] File parsed successfully');
 
-        // Load the file bytes into the API
-        if (api is WellenSignalWaveformApi) {
-          debugPrint('[Home] Loading $fileName (${bytes.length} bytes)');
-
-          // Clear the old signal cache and reset BLoCs before loading new file
-          repository.clearSignalCache();
-          if (mounted) {
-            context.read<SignalBloc>().add(SignalResetEvent());
-            context.read<WaveformModuleBloc>().add(const WaveformModuleReset());
-            context.read<RohdModuleBloc>().add(const RohdModuleReset());
-          }
-
-          await api.loadBytes(bytes, fileName: fileName);
-          debugPrint('[Home] File loaded successfully');
-
-          // Extract hierarchy from the loaded VCD and push it into the bloc
-          await _pushHierarchyFromApi(api);
-        } else {
-          debugPrint(
-            '[Home] API is not WellenSignalWaveformApi: ${api.runtimeType}. '
-            'Creating a WellenSignalWaveformApi to load file.',
-          );
-
-          final newApi = WellenSignalWaveformApi();
-
-          // Clear caches and reset BLoCs before swapping API
-          repository.clearSignalCache();
-          if (mounted) {
-            context.read<SignalBloc>().add(SignalResetEvent());
-            context.read<WaveformModuleBloc>().add(const WaveformModuleReset());
-            context.read<RohdModuleBloc>().add(const RohdModuleReset());
-          }
-
-          await newApi.loadBytes(bytes, fileName: fileName);
-
-          // Swap the repository to use the new Wellen API
-          repository.setSignalWaveformApi(newApi);
-
-          // Extract hierarchy from the loaded VCD and push it into the bloc
-          await _pushHierarchyFromApi(newApi);
+        if (!mounted) {
+          return;
         }
 
+        // Commit the new backend and viewer state only after parsing and
+        // hierarchy validation both succeed.
+        repository.setSignalWaveformApi(newApi);
+        context.read<SignalBloc>().add(SignalResetEvent());
+        context.read<WaveformModuleBloc>().add(const WaveformModuleReset());
+        context.read<RohdModuleBloc>().add(const RohdModuleReset());
+        context.read<RohdModuleBloc>().add(
+              RohdModuleSetExternalHierarchy(
+                resolved.hierarchyService,
+                metadata: resolved.structure.metadata,
+              ),
+            );
+
         setState(() {
+          _fileName = fileName;
+          _filePath = filePath;
+          _fileBytes = bytes;
+          _fileHandle = fileHandle;
           _isLoadingFile = false;
         });
       }
     } on Object catch (e, stackTrace) {
       debugPrint('[Home] Error loading file: $e');
       debugPrint('[Home] Stack trace: $stackTrace');
-      setState(() => _isLoadingFile = false);
 
       // Show error to user
       if (mounted) {
+        setState(() => _isLoadingFile = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading file: $e'),
@@ -800,27 +809,27 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
     }
   }
 
-  /// Extract the hierarchy from a loaded [WellenSignalWaveformApi] and
-  /// dispatch [RohdModuleSetExternalHierarchy] so the bloc transitions
-  /// out of [Loading].
-  Future<void> _pushHierarchyFromApi(WellenSignalWaveformApi api) async {
-    final structure = await api.getModuleStructureOnly();
-    if (structure.modules.isEmpty) {
-      debugPrint('[Home] No modules found in loaded file');
-      return;
-    }
-    final root = structure.modules.first;
-    final hierarchyService = BaseHierarchyAdapter.fromTree(root);
-    debugPrint(
-      '[Home] Built hierarchy from VCD: '
-      'root=${root.name}, children=${root.children.length}',
-    );
+  Future<void> _applyReloadedWaveform(
+    WellenSignalWaveformApi api,
+    ModuleStructure structure,
+  ) async {
+    final resolved = resolveModuleStructure(structure);
+    final repository = context.read<RohdModuleBloc>().repository;
+    final completion = Completer<void>();
+
+    repository.setSignalWaveformApi(api);
+    context.read<WaveformModuleBloc>().add(const WaveformModuleReset());
+    context.read<RohdModuleBloc>().add(
+          RohdModuleRefresh(
+            moduleStructure: resolved.structure,
+            completion: completion,
+          ),
+        );
+    await completion.future;
+
     if (mounted) {
-      context.read<RohdModuleBloc>().add(
-            RohdModuleSetExternalHierarchy(
-              hierarchyService,
-              metadata: structure.metadata,
-            ),
+      context.read<SignalBloc>().add(
+            SignalRefreshEvent(resetMonitorHistory: true),
           );
     }
   }
@@ -846,8 +855,6 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
       return;
     }
 
-    final repository = context.read<RohdModuleBloc>().repository;
-
     setState(() => _isLoadingFile = true);
 
     // Allow the loading overlay to render before starting heavy processing
@@ -864,8 +871,6 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
         );
         try {
           bytes = await _fileHandle!.readBytes();
-          // Update stored bytes with fresh data
-          _fileBytes = bytes;
           debugPrint('[Home] Read ${bytes.length} fresh bytes from disk');
         } on Object catch (e) {
           debugPrint('[Home] Failed to read via FSAA handle: $e');
@@ -909,29 +914,14 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
         throw Exception('No file data available for refresh');
       }
 
-      final api = repository.api;
-
-      // ── Smart reload: preserve signal list, tree, and search state ──
-      // Only clear stale waveform data; keep signal metadata cache so
-      // the hierarchy tree and module-signals panel stay intact.
-      repository.clearAllWaveformData();
-
-      if (api is WellenSignalWaveformApi) {
-        await api.loadBytes(bytes, fileName: _fileName);
-      } else {
-        final newApi = WellenSignalWaveformApi();
-        await newApi.loadBytes(bytes, fileName: _fileName);
-        repository.setSignalWaveformApi(newApi);
-      }
+      final newApi = WellenSignalWaveformApi();
+      await newApi.loadBytes(bytes, fileName: _fileName);
+      final structure = await newApi.getModuleStructureOnly();
+      resolveModuleStructure(structure);
 
       if (mounted) {
-        // Re-read hierarchy & metadata (e.g. new endTime) while
-        // keeping the same selected module and tree expansion.
-        context.read<RohdModuleBloc>().add(const RohdModuleRefresh());
-
-        // Re-fetch waveform data for every signal in the monitor list
-        // so traces update to the new file contents.
-        context.read<SignalBloc>().add(SignalRefreshEvent());
+        await _applyReloadedWaveform(newApi, structure);
+        _fileBytes = bytes;
       }
     } on Object catch (e, stackTrace) {
       debugPrint('[Home] Error refreshing: $e');

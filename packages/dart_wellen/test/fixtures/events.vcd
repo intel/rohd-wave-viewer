@@ -1,0 +1,20 @@
+$date
+    March 19, 2026
+$end
+$version
+    rohd-wave-viewer event-signal test fixture
+$end
+$timescale 1ns $end
+$scope module event_test $end
+$var event 1 ! trigger $end
+$upscope $end
+$enddefinitions $end
+
+#0
+$dumpvars
+1!
+$end
+#10
+1!
+#25
+1!

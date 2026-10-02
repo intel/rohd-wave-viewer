@@ -56,6 +56,7 @@ class EmbeddedWaveViewer extends StatefulWidget {
     this.crossProbeService,
     this.extensionClient,
     this.apiReloads,
+    this.apiReloadErrors,
   });
 
   /// Waveform data source, or `null` while the host has no data available.
@@ -114,6 +115,9 @@ class EmbeddedWaveViewer extends StatefulWidget {
 
   /// Events emitted after the host reloads waveform data.
   final Stream<void>? apiReloads;
+
+  /// Errors emitted when the host cannot reload waveform data.
+  final Stream<String>? apiReloadErrors;
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
@@ -190,7 +194,13 @@ class EmbeddedWaveViewer extends StatefulWidget {
         'extensionClient',
         extensionClient,
       ))
-      ..add(ObjectFlagProperty<Stream<void>?>('apiReloads', apiReloads));
+      ..add(ObjectFlagProperty<Stream<void>?>('apiReloads', apiReloads))
+      ..add(
+        ObjectFlagProperty<Stream<String>?>(
+          'apiReloadErrors',
+          apiReloadErrors,
+        ),
+      );
   }
 
   @override
@@ -270,6 +280,7 @@ class _EmbeddedWaveViewerState extends State<EmbeddedWaveViewer> {
       crossProbeService: widget.crossProbeService,
       extensionClient: widget.extensionClient,
       apiReloads: widget.apiReloads,
+      apiReloadErrors: widget.apiReloadErrors,
     );
   }
 }

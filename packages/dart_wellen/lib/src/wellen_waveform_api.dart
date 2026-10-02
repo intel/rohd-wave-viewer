@@ -315,20 +315,33 @@ class WellenSignalWaveformApi extends SignalWaveformApi {
         .map((moduleNode) => _convertModuleNode(moduleNode, dataMap))
         .toList();
 
-    // Assign OccurrenceAddresses and build the Wellen signal ID map.
     _wellenSignalSources.clear();
-    for (final module in modules) {
-      module.buildAddresses();
+    if (modules.isEmpty) {
+      _hierarchyService = null;
+      return ModuleStructure(metadata: metadata, modules: const []);
     }
+
+    final root = modules.length == 1
+        ? modules.single
+        : HierarchyOccurrence(
+            name: 'root',
+            definition: 'waveform',
+            children: modules,
+          );
+    // Assign OccurrenceAddresses and build the Wellen signal ID map.
+    // Assign OccurrenceAddresses and build the Wellen signal ID map.
+    root.buildAddresses();
     for (var i = 0; i < modules.length; i++) {
       _buildWellenIdMap(modules[i], wellenStructure.modules[i]);
     }
     // Create a HierarchyService for pathname → address resolution.
-    if (modules.isNotEmpty) {
-      _hierarchyService = BaseHierarchyAdapter.fromTree(modules.first);
-    }
+    _hierarchyService = BaseHierarchyAdapter.fromTree(root);
 
-    return ModuleStructure(metadata: metadata, modules: modules);
+    return ModuleStructure(
+      metadata: metadata,
+      modules: [root],
+      hierarchyService: _hierarchyService,
+    );
   }
 
   /// Recursively converts a ModuleNode to HierarchyOccurrence.

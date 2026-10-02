@@ -14,7 +14,6 @@
 // 2026 January
 // Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
 
-import 'dart:io';
 import 'package:dart_wellen/dart_wellen.dart';
 import 'package:test/test.dart';
 
@@ -32,10 +31,6 @@ void main() {
   test('struct scopes become expandable struct signals, not child instances',
       () async {
     final filePath = '$fixturesPath/$_fixture';
-    if (!File(filePath).existsSync()) {
-      markTestSkipped('struct FST fixture not found: $filePath');
-      return;
-    }
 
     final api = WellenSignalWaveformApi();
     await api.loadFile(filePath);
@@ -82,10 +77,6 @@ void main() {
   test('struct signal waveform is the concatenation of its leaf fields',
       () async {
     final filePath = '$fixturesPath/$_fixture';
-    if (!File(filePath).existsSync()) {
-      markTestSkipped('struct FST fixture not found: $filePath');
-      return;
-    }
 
     final api = WellenSignalWaveformApi();
     await api.loadFile(filePath);
@@ -153,11 +144,6 @@ void main() {
 
   test('FilterBank struct ports replace scopes and duplicate flat signals',
       () async {
-    if (!File(_filterBankFixture).existsSync()) {
-      markTestSkipped('FilterBank FST fixture not found: $_filterBankFixture');
-      return;
-    }
-
     final api = WellenSignalWaveformApi();
     await api.loadFile(_filterBankFixture);
     final structure = await api.getModuleStructureOnly();

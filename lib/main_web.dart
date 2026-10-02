@@ -27,6 +27,9 @@ import 'package:rohd_wave_viewer/src/const/app_version.dart';
 import 'package:rohd_wave_viewer/src/platform/platform.dart' as plat;
 import 'package:web/web.dart' as web;
 
+final _apiReloadController = StreamController<void>.broadcast();
+final _apiReloadErrorController = StreamController<String>.broadcast();
+
 /// Cross-probe service that exchanges signal selections with the VS Code host.
 class VscodeCrossProbeService implements CrossProbeService {
   String? _viewerId;
@@ -122,6 +125,7 @@ class WebWellenApi {
       // poison [loaded] and block recovery on a subsequent successful reload
       // (e.g. after a window-reload restore). Leave it pending so a later load
       // can still complete it.
+      rethrow;
     }
   }
 
@@ -142,6 +146,7 @@ class WebWellenApi {
       // poison [loaded] and block recovery on a subsequent successful reload
       // (e.g. after a window-reload restore). Leave it pending so a later load
       // can still complete it.
+      rethrow;
     }
   }
 
@@ -240,6 +245,21 @@ void main() async {
   }
 
   // Set up listener for VCD content from host (VS Code extension)
+  Future<void> loadAndNotify(
+    String source,
+    Future<void> Function() load,
+  ) async {
+    try {
+      await load();
+      _apiReloadController.add(null);
+      debugPrint('[WebMain] Waveform loaded from $source successfully');
+    } on Object catch (e, stackTrace) {
+      debugPrint('[WebMain] Error loading waveform from $source: $e');
+      debugPrint('[WebMain] Stack trace: $stackTrace');
+      _apiReloadErrorController.add(e.toString());
+    }
+  }
+
   // Helper to process VCD messages
   Future<void> handleVcdMessage(dynamic data) async {
     debugPrint(
@@ -341,24 +361,30 @@ void main() async {
             }
           } on Object catch (_) {}
         }
-        fileName ??= uri?.split('/').last ?? 'waveform.vcd';
-        if (uri != null) {
-          debugPrint('[WebMain] Fetching waveform from URI: $uri');
-          try {
-            final bytes = await plat.fetchBytes(uri);
-            debugPrint('[WebMain] Fetched ${bytes.length} bytes for $fileName');
-            await webApi.loadFromBytes(bytes, fileName: fileName);
-            debugPrint('[WebMain] Waveform loaded from URI successfully');
-          } on Object catch (e) {
-            debugPrint('[WebMain] Error fetching/loading from URI: $e');
-          }
+        final waveformUri = uri;
+        final waveformFileName =
+            fileName ?? waveformUri?.split('/').last ?? 'waveform.vcd';
+        if (waveformUri != null) {
+          debugPrint('[WebMain] Fetching waveform from URI: $waveformUri');
+          await loadAndNotify('URI', () async {
+            final bytes = await plat.fetchBytes(waveformUri);
+            debugPrint(
+              '[WebMain] Fetched ${bytes.length} bytes for $waveformFileName',
+            );
+            await webApi.loadFromBytes(bytes, fileName: waveformFileName);
+          });
         } else {
           debugPrint('[WebMain] vcdUri message missing uri property');
+          _apiReloadErrorController
+              .add('The waveform URI message did not include a URI.');
         }
       } else if (type == 'vcdContents' && text != null) {
         // Legacy text-based loading (standalone web mode)
         debugPrint('[WebMain] Loading VCD content (${text.length} chars)');
-        await webApi.loadFromVcdContent(text);
+        await loadAndNotify(
+          'VCD contents',
+          () => webApi.loadFromVcdContent(text!),
+        );
       } else if (type == 'vcdBytes' && data != null) {
         // Legacy bytes-based loading
         try {
@@ -375,12 +401,13 @@ void main() async {
             uriStr = null;
           }
           final fName = uriStr != null ? uriStr.split('/').last : 'binary.wave';
-          await webApi.loadFromBytes(intList, fileName: fName);
-          debugPrint(
-            '[WebMain] Binary waveform loaded from ${uriStr ?? 'unknown'}',
+          await loadAndNotify(
+            uriStr ?? 'binary message',
+            () => webApi.loadFromBytes(intList, fileName: fName),
           );
         } on Object catch (e) {
           debugPrint('[WebMain] Error loading binary waveform: $e');
+          _apiReloadErrorController.add(e.toString());
         }
       } else {
         debugPrint(
@@ -390,7 +417,14 @@ void main() async {
       }
     } on Object catch (e) {
       debugPrint('[WebMain] Error handling message: $e');
+      _apiReloadErrorController.add(e.toString());
     }
+  }
+
+  var messageQueue = Future<void>.value();
+
+  void enqueueVcdMessage(dynamic data) {
+    messageQueue = messageQueue.then((_) => handleVcdMessage(data));
   }
 
   try {
@@ -406,8 +440,7 @@ void main() async {
           debugPrint('[WebMain] __rohdMessageCallback invoked!');
           // Convert JSAny to Dart Map
           final data = plat.dartify(jsData);
-          // Handle async in a microtask to not block JS
-          unawaited(Future.microtask(() => handleVcdMessage(data)));
+          enqueueVcdMessage(data);
           return null;
         });
         debugPrint(
@@ -425,13 +458,8 @@ void main() async {
               debugPrint(
                 '[WebMain] Replaying ${dartQueue.length} queued messages',
               );
-              for (final msg in dartQueue) {
-                try {
-                  await handleVcdMessage(msg);
-                } on Object catch (e) {
-                  debugPrint('[WebMain] Error replaying queued message: $e');
-                }
-              }
+              dartQueue.forEach(enqueueVcdMessage);
+              await messageQueue;
               // Clear the queue by setting it to empty array
               plat.setGlobalProperty('__rohdMessageQueue', <JSAny?>[].toJS);
             } else {
@@ -479,6 +507,8 @@ void main() async {
         // The repository will retry failed calls after this completes
       }),
       crossProbeService: crossProbeService,
+      apiReloads: _apiReloadController.stream,
+      apiReloadErrors: _apiReloadErrorController.stream,
     ),
   );
 }

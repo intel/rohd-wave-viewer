@@ -22,39 +22,23 @@
 //   - Coverage: X/Z transitions in binary format
 //
 // GHW Format (GHDL Waveform):
-//   - Source: Generated from test/vhdl/xz_transitions_tb.vhd using GHDL
+//   - Source: Tracked ROHD Wave Viewer X/Z transition fixture
 //   - File: xz_transitions.ghw
-//   - Generation: cd test/vhdl && ghdl -a xz_transitions_tb.vhd && ghdl -e test && ghdl -r test --stop-time=250ns --wave=../fixtures/xz_transitions.ghw
 //   - Coverage: X/Z transitions in GHDL format
 //
 // To regenerate or add new fixtures:
 //   1. VCD: Use ROHD simulation or write Verilog testbenches
-//   2. FST: Run bash scripts/convert_test_fixtures.sh (requires vcd2fst)
-//   3. GHW: Copy from Surfer examples or run the GHDL command above
+//   2. FST: Run vcd2fst on the package-local VCD fixture
+//   3. GHW: Generate an equivalent X/Z transition trace with GHDL
 //
 // 2026 January 09
 // Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
 
-import 'dart:io';
 import 'package:dart_wellen/dart_wellen.dart';
-import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
-/// Path to test fixture files
-String get fixturesPath {
-  // Find project root by looking for pubspec.yaml in parent directories
-  var current = Directory.current;
-  while (!File(path.join(current.path, 'pubspec.yaml')).existsSync() ||
-      !Directory(path.join(current.path, 'test', 'fixtures')).existsSync()) {
-    final parent = current.parent;
-    if (parent.path == current.path) {
-      // Reached filesystem root
-      return 'test/fixtures'; // fallback
-    }
-    current = parent;
-  }
-  return path.join(current.path, 'test', 'fixtures');
-}
+/// Path to package-local test fixture files.
+String get fixturesPath => 'test/fixtures';
 
 void main() {
   setUpAll(() async {
@@ -66,11 +50,6 @@ void main() {
     test('loads xz_transitions.vcd with X and Z values', () async {
       final reader = WellenReader();
       final vcdPath = '$fixturesPath/xz_transitions.vcd';
-
-      if (!File(vcdPath).existsSync()) {
-        markTestSkipped('Test VCD file not found: $vcdPath');
-        return;
-      }
 
       final metadata = await reader.loadFile(vcdPath);
       expect(metadata.format, equals(WaveFormat.vcd));
@@ -96,11 +75,6 @@ void main() {
       final reader = WellenReader();
       final vcdPath = '$fixturesPath/xz_transitions.vcd';
 
-      if (!File(vcdPath).existsSync()) {
-        markTestSkipped('Test VCD file not found: $vcdPath');
-        return;
-      }
-
       await reader.loadFile(vcdPath);
       final structure = await reader.getStructure();
       expect(structure.modules, isNotEmpty);
@@ -114,11 +88,6 @@ void main() {
     test('loads xz_transitions.fst with X and Z values', () async {
       final reader = WellenReader();
       final fstPath = '$fixturesPath/xz_transitions.fst';
-
-      if (!File(fstPath).existsSync()) {
-        markTestSkipped('Test FST file not found: $fstPath');
-        return;
-      }
 
       final metadata = await reader.loadFile(fstPath);
       expect(metadata.format, equals(WaveFormat.fst));
@@ -143,13 +112,6 @@ void main() {
     test('loads xz_transitions.ghw with X and Z values', () async {
       final reader = WellenReader();
       final ghwPath = '$fixturesPath/xz_transitions.ghw';
-
-      if (!File(ghwPath).existsSync()) {
-        markTestSkipped(
-          'Test GHW file not found: $ghwPath. Generate via test/vhdl/xz_transitions_tb.vhd using GHDL.',
-        );
-        return;
-      }
 
       final metadata = await reader.loadFile(ghwPath);
       expect(metadata.format, equals(WaveFormat.ghw));

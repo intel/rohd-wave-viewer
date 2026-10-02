@@ -69,15 +69,21 @@ final class RohdModuleSetExternalHierarchy extends RohdModuleEvent {
   List<Object?> get props => [hierarchyService, metadata];
 }
 
-/// Lightweight reload: re-reads the hierarchy from the (already re-loaded)
-/// API, updates metadata (e.g. endTime), and re-selects the same module.
-/// Does NOT reset the tree or emit Loading — preserves UI state.
+/// Replaces the hierarchy from an already reloaded waveform.
 final class RohdModuleRefresh extends RohdModuleEvent {
+  /// A structure already validated by the caller.
+  ///
+  /// When omitted, the BLoC reads the structure from its Wellen API.
+  final ModuleStructure? moduleStructure;
+
+  /// Completes after the hierarchy and repository caches are rebuilt.
+  final Completer<void>? completion;
+
   /// Creates a module refresh event.
-  const RohdModuleRefresh();
+  const RohdModuleRefresh({this.moduleStructure, this.completion});
 
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [moduleStructure];
 }
 
 /// Event triggered when incremental waveform data arrives from live updates.

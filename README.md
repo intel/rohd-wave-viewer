@@ -93,7 +93,8 @@ application server.
 
 ### Linux Desktop Application
 
-A native Linux build can open a waveform passed on the command line:
+A native Linux build opens the file picker when started without arguments. To
+load a waveform immediately, pass it on the command line:
 
 ```bash
 rohd_wave_viewer /path/to/design.fst

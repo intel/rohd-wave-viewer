@@ -321,6 +321,40 @@ void main() {
       expect(result.single.data, isEmpty);
     });
 
+    test('preserves positioned X/Z bits without contaminating known slices',
+        () async {
+      final signal = SignalOccurrence(name: 'state', width: 8);
+      final root = HierarchyOccurrence(name: 'top', signals: [signal])
+        ..buildAddresses();
+      final repository = SignalWaveformRepository(
+        signalWaveformApi: _RecordingWaveformApi(
+          waveformData: {
+            signal.path(): [
+              Data(time: 0, value: "8'b10xz0110"),
+              Data(time: 10, value: "8'hf"),
+            ],
+          },
+        ),
+      )..buildSignalCacheFromHierarchy([root]);
+      final upperKnownId = '${signal.path()}#b[7:6]';
+      final lowerKnownId = '${signal.path()}#b[3:0]';
+      final mixedId = '${signal.path()}#b[5:2]';
+      final zBitId = '${signal.path()}#b[4]';
+
+      final waveforms = await repository.getWaveformData(
+        signalIds: [upperKnownId, lowerKnownId, mixedId, zBitId],
+      );
+      final valuesById = {
+        for (final waveform in waveforms)
+          waveform.signalId: waveform.data.map((point) => point.value).toList(),
+      };
+
+      expect(valuesById[upperKnownId], ["2'h2", "2'h0"]);
+      expect(valuesById[lowerKnownId], ["4'h6", "4'hf"]);
+      expect(valuesById[mixedId], ["4'bxz01", "4'h3"]);
+      expect(valuesById[zBitId], ['z', '0']);
+    });
+
     test('synthesizes bits from an already-synthesized structure field',
         () async {
       final sample = SignalOccurrence(

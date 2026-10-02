@@ -12,5 +12,6 @@
 library;
 
 export 'models/signal_waveform.dart';
+export 'module_structure_hierarchy.dart';
 export 'signal_data_service_impl.dart';
 export 'waveform_repository.dart';
