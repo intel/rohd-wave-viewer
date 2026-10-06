@@ -45,6 +45,7 @@ if [[ -z "$chrome_executable" || ! -x "$chrome_executable" ]]; then
   exit 2
 fi
 export CHROME_EXECUTABLE="$chrome_executable"
+browser_platform="${BROWSER_TEST_PLATFORM:-chrome}"
 
 cleanup() {
   rm -rf "$browser_assets"
@@ -63,6 +64,6 @@ dart_bin="$(dirname "$flutter_bin")/dart"
 
 cd "$package_root"
 "$dart_bin" run test:test \
-  --platform chrome \
+  --platform "$browser_platform" \
   --concurrency 1 \
   test/web_wasm_integration_test.dart

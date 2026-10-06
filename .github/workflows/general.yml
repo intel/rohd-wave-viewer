@@ -144,5 +144,6 @@ jobs:
 
       - name: Run browser/WASM integration tests
         env:
+          BROWSER_TEST_PLATFORM: chrome_ci
           CHROME_EXECUTABLE: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: tool/gh_actions/run_browser_tests.sh

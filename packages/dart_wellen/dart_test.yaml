@@ -3,3 +3,13 @@
 
 # The Rust/WASM bridge owns one process-global waveform state.
 concurrency: 1
+
+# GitHub's hosted Ubuntu image blocks Chrome's sandbox for the downloaded
+# Chrome-for-Testing binary. Local runs continue to use the built-in `chrome`
+# platform and its sandbox.
+define_platforms:
+  chrome_ci:
+    name: Chrome CI
+    extends: chrome
+    settings:
+      arguments: --no-sandbox
