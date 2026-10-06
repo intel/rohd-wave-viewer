@@ -34,7 +34,8 @@ FLUTTER_WEB_BUILD_ARGS ?=
 # debug builds remain JavaScript-based unless explicitly overridden.
 FLUTTER_WEB_WASM ?= $(if $(filter release,$(FLUTTER_WEB_MODE)),1,0)
 FLUTTER_WEB_RELEASE_WASM ?= 1
-FLUTTER_WEB_WASM_ARGS := $(if $(filter 1 true yes,$(FLUTTER_WEB_WASM)),--wasm,)
+FLUTTER_WEB_WASM_ENABLED := $(if $(filter 1 true yes,$(FLUTTER_WEB_WASM)),1,0)
+FLUTTER_WEB_WASM_ARGS := $(if $(filter 1,$(FLUTTER_WEB_WASM_ENABLED)),--wasm,)
 ROHD_LOCAL_PATH ?= $(HOME)/release/rohd
 
 # Source file patterns for dependency tracking.
@@ -58,6 +59,7 @@ PKG_VERSION := $(PUBSPEC_VERSION)
 EXT_STAGE := $(ROOT)/build/extension/$(PKG_NAME)-$(PKG_VERSION)
 SLIM_ZIP := $(ROOT)/build/$(PKG_NAME)-$(PKG_VERSION)-slim.zip
 WEB_BUILD := $(ROOT)/build/web
+WEB_BUILD_CONFIG := $(ROOT)/build/.rohd-wave-web-build-config
 LINUX_BUNDLE := $(ROOT)/build/linux/x64/release/bundle
 LINUX_BUNDLE_DEBUG := $(ROOT)/build/linux/x64/debug/bundle
 DART_FRB_DIR := $(ROOT)/packages/dart_wellen/lib/src/rust
@@ -199,12 +201,13 @@ prepare: rust-native
 
 # Flutter web: both debug and release write to build/web/ (Flutter default).
 # FLUTTER_WEB_MODE controls the mode; web-debug/web-release force it.
-$(WEB_BUILD)/index.html: web/index.html $(WASM_OUTPUTS) pubspec.yaml $(DART_SOURCES) \
+$(WEB_BUILD)/index.html $(WEB_BUILD_CONFIG) &: web/index.html $(WASM_OUTPUTS) pubspec.yaml $(DART_SOURCES) \
 	scripts/fix_bootstrap.py scripts/patch_wasm_binary.sh scripts/patch_wasm_js.sh \
 	scripts/verify_flutter_native_dependencies.sh security/native-dependency-exceptions.json
 	@echo "Building Flutter web ($(FLUTTER_WEB_MODE))..."
 	# Flutter can retain a previous dual JS/WASM build in build/web, so always
 	# remove the output before producing a package.
+	@rm -f "$(WEB_BUILD_CONFIG)"
 	@rm -rf "$(WEB_BUILD)"
 	@cd "$(ROOT)" && $(FLUTTER) pub get
 	# The separately built Rust WASM bridge is copied below.
@@ -220,19 +223,22 @@ $(WEB_BUILD)/index.html: web/index.html $(WASM_OUTPUTS) pubspec.yaml $(DART_SOUR
 	@bash "$(ROOT)/scripts/patch_wasm_js.sh"
 	@bash "$(ROOT)/scripts/verify_flutter_native_dependencies.sh" \
 		"$(WEB_BUILD)/canvaskit/canvaskit.wasm"
+	@printf 'mode=%s\nwasm=%s\n' \
+		"$(FLUTTER_WEB_MODE)" "$(FLUTTER_WEB_WASM_ENABLED)" \
+		> "$(WEB_BUILD_CONFIG)"
 
 # Convenience aliases
-web: $(WEB_BUILD)/index.html
+web: $(WEB_BUILD)/index.html $(WEB_BUILD_CONFIG)
 
 # web-debug / web-release: force the correct mode by cleaning + rebuilding.
 # Both land in build/web/ so we must remove the stale output first.
 web-debug:
-	@rm -f $(WEB_BUILD)/index.html
-	@$(MAKE) $(WEB_BUILD)/index.html FLUTTER_WEB_MODE=debug FLUTTER_WEB_WASM=0
+	@rm -f "$(WEB_BUILD)/index.html" "$(WEB_BUILD_CONFIG)"
+	@$(MAKE) web FLUTTER_WEB_MODE=debug FLUTTER_WEB_WASM=0
 
 web-release:
-	@rm -f $(WEB_BUILD)/index.html
-	@$(MAKE) $(WEB_BUILD)/index.html FLUTTER_WEB_MODE=release FLUTTER_WEB_WASM=$(FLUTTER_WEB_RELEASE_WASM)
+	@rm -f "$(WEB_BUILD)/index.html" "$(WEB_BUILD_CONFIG)"
+	@$(MAKE) web FLUTTER_WEB_MODE=release FLUTTER_WEB_WASM=$(FLUTTER_WEB_RELEASE_WASM)
 
 # Flutter Linux release
 $(LINUX_BUNDLE)/wave_viewer: $(NATIVE_LIB) pubspec.yaml $(DART_SOURCES) \
@@ -396,7 +402,14 @@ vscode-extension/out/extension.js: $(TS_SOURCES) vscode-extension/package.json
 # payload. Keep the old target as a compatibility alias for callers that used
 # the previous JS-only name.
 extension-web:
-	@$(MAKE) web-release
+	@if [ -f "$(WEB_BUILD_CONFIG)" ] && \
+		grep -Fxq 'mode=release' "$(WEB_BUILD_CONFIG)" && \
+		grep -Fxq 'wasm=1' "$(WEB_BUILD_CONFIG)"; then \
+		echo "Reusing existing Flutter release/WASM web build..."; \
+		$(MAKE) web FLUTTER_WEB_MODE=release FLUTTER_WEB_WASM=1; \
+	else \
+		$(MAKE) web-release; \
+	fi
 
 extension-web-js: extension-web
 
@@ -468,6 +481,7 @@ clean-extension:
 clean-web:
 	@echo "Cleaning Flutter web build..."
 	-@rm -rf "$(WEB_BUILD)"
+	-@rm -f "$(WEB_BUILD_CONFIG)"
 
 clean-linux:
 	@echo "Cleaning Flutter Linux build..."
