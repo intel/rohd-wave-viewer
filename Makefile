@@ -71,13 +71,14 @@ FRB_OUTPUTS := $(DART_FRB_OUTPUTS) $(RUST_FRB)
 FRB_CONFIG := $(ROOT)/packages/dart_wellen/flutter_rust_bridge.yaml
 FRB_API := $(ROOT)/rust/wellen_bridge/src/api.rs
 WASM_PKG := $(ROOT)/web/pkg
+WASM_OUTPUTS := $(WASM_PKG)/wellen_bridge.js $(WASM_PKG)/wellen_bridge_bg.wasm
 VSIX := $(ROOT)/build/rohd-wave-viewer-$(PKG_VERSION).vsix
 NATIVE_LIB := $(ROOT)/rust/wellen_bridge/target/release/libwellen_bridge.so
 
 .PHONY: all help extension extension-web extension-web-js web web-debug web-release linux linux-debug linux-release \
 	vsix package dart wasm wasm-tools rust-native test \
 	pana \
-	rust-test coverage coverage-view coverage-clean \
+	rust-test browser-test coverage coverage-view coverage-clean \
 	coverity coverity-setup coverity-clean \
         install install-local install-remote \
 	prepare web-run linux-run-debug linux-run-release \
@@ -109,6 +110,7 @@ help:
 	@echo "  wasm-tools       - Install required WASM build tools into the environment"
 	@echo "  rust-native      - Build native Rust library for Linux"
 	@echo "  rust-test        - Run Rust bridge unit tests separately from Dart coverage"
+	@echo "  browser-test     - Run dart_wellen WASM integration tests in Chrome"
 	@echo "  coverity         - Run configured Coverity scan workflow"
 	@echo "  coverage         - Cover root and dart_wellen tests in LCOV/HTML reports"
 	@echo "  coverage-view    - Serve coverage/html locally on port 8000"
@@ -164,7 +166,7 @@ $(FRB_OUTPUTS) &: $(RUST_CARGO) $(FRB_CONFIG) $(FRB_API) scripts/build_dart_well
 dart: $(FRB_OUTPUTS)
 
 # Build WASM bridge
-$(WASM_PKG)/wellen_bridge_bg.wasm: $(FRB_OUTPUTS) $(RUST_CARGO) rust/wellen_bridge/build_wasm.sh
+$(WASM_OUTPUTS) &: $(FRB_OUTPUTS) $(RUST_CARGO) rust/wellen_bridge/build_wasm.sh
 	@echo "Building WASM bridge..."
 	@bash "$(ROOT)/rust/wellen_bridge/build_wasm.sh"
 	@echo "Patching WASM binary for VS Code Remote webview compatibility..."
@@ -172,7 +174,7 @@ $(WASM_PKG)/wellen_bridge_bg.wasm: $(FRB_OUTPUTS) $(RUST_CARGO) rust/wellen_brid
 	@echo "Patching WASM JS for VS Code Remote webview compatibility..."
 	@bash "$(ROOT)/scripts/patch_wasm_js.sh"
 
-wasm: $(WASM_PKG)/wellen_bridge_bg.wasm
+wasm: $(WASM_OUTPUTS)
 
 # Build native Rust library for Linux
 $(NATIVE_LIB): $(FRB_OUTPUTS) $(RUST_CARGO) rust/wellen_bridge/build_native.sh
@@ -197,7 +199,7 @@ prepare: rust-native
 
 # Flutter web: both debug and release write to build/web/ (Flutter default).
 # FLUTTER_WEB_MODE controls the mode; web-debug/web-release force it.
-$(WEB_BUILD)/index.html: web/index.html $(WASM_PKG)/wellen_bridge_bg.wasm pubspec.yaml $(DART_SOURCES) \
+$(WEB_BUILD)/index.html: web/index.html $(WASM_OUTPUTS) pubspec.yaml $(DART_SOURCES) \
 	scripts/fix_bootstrap.py scripts/patch_wasm_binary.sh scripts/patch_wasm_js.sh \
 	scripts/verify_flutter_native_dependencies.sh security/native-dependency-exceptions.json
 	@echo "Building Flutter web ($(FLUTTER_WEB_MODE))..."
@@ -293,8 +295,14 @@ test:
 	@cd "$(ROOT)" && tool/gh_actions/run_tests.sh $(ARGS)
 
 rust-test:
-	@cd "$(ROOT)" && source scripts/setup_rust_env.sh && \
-		"$$RUSTUP_BIN" run "$$RUST_TOOLCHAIN" cargo test --manifest-path rust/wellen_bridge/Cargo.toml --lib
+	@bash -lc 'set -euo pipefail; \
+		cd "$(ROOT)"; \
+		source scripts/setup_rust_env.sh; \
+		"$$RUSTUP_BIN" run "$$RUST_TOOLCHAIN" cargo test \
+			--manifest-path rust/wellen_bridge/Cargo.toml --lib'
+
+browser-test: $(WASM_OUTPUTS)
+	@bash "$(ROOT)/tool/gh_actions/run_browser_tests.sh"
 
 coverage:
 	@bash "$(ROOT)/scripts/generate_coverage.sh"

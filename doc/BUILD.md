@@ -145,6 +145,7 @@ flutter analyze
 tool/gh_actions/generate_documentation.sh
 make test
 make rust-test
+make browser-test
 make coverage
 make pana
 
@@ -162,6 +163,12 @@ make test ARGS=test/services/signal_data_service_test.dart
 `make coverage` runs the root Flutter tests and the `dart_wellen` package tests
 with coverage, then merges both results into `coverage/lcov.info` and the HTML
 report. Rust tests remain a separate `make rust-test` validation gate.
+
+`make browser-test` builds the Wellen WebAssembly bridge and runs the
+`dart_wellen` browser integration test in Chrome. It validates bridge
+initialization and representative waveform values from a tracked fixture. CI
+runs this in a dedicated hosted-Ubuntu job with an explicitly installed Chrome,
+using the generated bindings and WASM assets from the main build job.
 
 ---
 

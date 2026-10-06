@@ -1,0 +1,55 @@
+<!doctype html>
+<!--
+  Copyright (C) 2026 Intel Corporation
+  SPDX-License-Identifier: BSD-3-Clause
+
+  web_wasm_integration_test.html
+  Browser harness for Wellen Dart/JavaScript/WASM integration tests.
+
+  2026 October 05
+  Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
+-->
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>dart_wellen browser WASM integration test</title>
+    <link rel="x-dart-test" href="web_wasm_integration_test.dart">
+    <script src="browser_assets/wellen_bridge.js"></script>
+    <script>
+      window.__wellenWasmReady = false;
+      window.__wellenWasmError = null;
+
+      window._hasWasmBindgen = function() {
+        if (window.__wellenWasmError !== null) {
+          throw window.__wellenWasmError;
+        }
+        return window.__wellenWasmReady;
+      };
+
+      window._injectWasmScript = function(scriptUrl) {
+        const script = document.createElement('script');
+        script.src = scriptUrl;
+        document.head.appendChild(script);
+      };
+
+      window._fetchBytesImpl = async function(url, callback) {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ${url}: HTTP ${response.status}`);
+        }
+        callback(new Uint8Array(await response.arrayBuffer()));
+      };
+
+      wasm_bindgen({
+        module_or_path: 'browser_assets/wellen_bridge_bg.wasm',
+      }).then(function() {
+        window.wasm_bindgen = wasm_bindgen;
+        window.__wellenWasmReady = true;
+      }).catch(function(error) {
+        window.__wellenWasmError = error;
+      });
+    </script>
+    <script src="packages/test/dart.js"></script>
+  </head>
+  <body></body>
+</html>

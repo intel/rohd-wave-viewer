@@ -82,11 +82,24 @@ jobs:
       - name: Run project tests
         run: make test
 
+      - name: Run Rust bridge tests
+        run: make rust-test
+
       - name: Build Linux application
         run: make linux-release
 
       - name: Build web application
         run: make web
+
+      - name: Upload browser/WASM test inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: wellen-browser-test-inputs
+          path: |
+            packages/dart_wellen/lib/src/rust/*.dart
+            web/pkg/wellen_bridge.js
+            web/pkg/wellen_bridge_bg.wasm
+          if-no-files-found: error
 
       - name: Build extension package
         run: make extension
@@ -96,3 +109,40 @@ jobs:
         uses: devcontainers/ci@v0.3
         with:
           runCmd: tool/gh_actions/run_tests.sh
+
+  browser-tests:
+    name: Browser/WASM Tests
+    needs: run-checks
+    permissions: {}
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.2'
+          cache: true
+
+      - name: Setup Chrome
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: stable
+          install-dependencies: true
+
+      - name: Install project dependencies
+        run: tool/gh_actions/install_dependencies.sh
+
+      - name: Download browser/WASM test inputs
+        uses: actions/download-artifact@v4
+        with:
+          name: wellen-browser-test-inputs
+          path: .
+
+      - name: Run browser/WASM integration tests
+        env:
+          CHROME_EXECUTABLE: ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: tool/gh_actions/run_browser_tests.sh
