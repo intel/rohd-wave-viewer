@@ -11,11 +11,14 @@ import 'package:dart_wellen/dart_wellen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:rohd_hierarchy/rohd_hierarchy.dart';
 import 'package:rohd_wave_viewer/rohd_wave_viewer.dart';
 import 'package:rohd_wave_viewer/src/modules/home/view/home.dart';
 import 'package:rohd_wave_viewer/src/modules/rohd_module/bloc/rohd_module_bloc.dart';
 import 'package:rohd_wave_viewer/src/ui/wave_viewer_app.dart';
 import 'package:rohd_wave_viewer/testing.dart';
+
+import '../example/main.dart' as embedding_example;
 
 void main() {
   void useDesktopViewport(WidgetTester tester) {
@@ -62,6 +65,22 @@ void main() {
     expect(find.byType(EmbeddedWaveViewer), findsOneWidget);
   });
 
+  testWidgets('embedding example populates its mock hierarchy', (
+    tester,
+  ) async {
+    useDesktopViewport(tester);
+
+    await embedding_example.main();
+    await tester.pumpAndSettle();
+
+    final moduleBloc = BlocProvider.of<RohdModuleBloc>(
+      tester.element(find.byType(WaveFormViewerPage)),
+    );
+    expect(moduleBloc.state, isA<ModuleSelected>());
+    expect(moduleBloc.state.moduleStructure.modules.single.name, 'Counter');
+    expect(moduleBloc.state.moduleStructure.allSignalIds, isNotEmpty);
+  });
+
   testWidgets('extension mode loads API hierarchy without an external source', (
     tester,
   ) async {
@@ -85,32 +104,81 @@ void main() {
     expect(moduleBloc.state.moduleStructure.modules.single.name, 'Counter');
   });
 
-  testWidgets('recreates internal state when the waveform API changes', (
+  testWidgets('applies the host initial selected module', (
     tester,
   ) async {
     useDesktopViewport(tester);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: EmbeddedWaveViewer(
-          waveformApi: MockSignalWaveformApi(),
-          isExtensionMode: true,
-        ),
-      ),
-    );
-    await tester.pump();
-    final firstKey = tester.widget<App>(find.byType(App)).key;
+    final api = MockSignalWaveformApi();
+    final structure = await api.getModuleStructure();
+    final selectedModule = structure.modules.single.children.single;
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: EmbeddedWaveViewer(
-          waveformApi: MockSignalWaveformApi(),
-          isExtensionMode: true,
+      EmbeddedWaveViewer(
+        waveformApi: api,
+        externalHierarchy: BaseHierarchyAdapter.fromTree(
+          structure.modules.single,
         ),
+        selectedModule: selectedModule,
+        isExtensionMode: true,
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final moduleBloc = BlocProvider.of<RohdModuleBloc>(
+      tester.element(find.byType(WaveFormViewerPage)),
+    );
+    final state = moduleBloc.state;
+    expect(state, isA<ModuleSelected>());
+    expect(
+        (state as ModuleSelected).singleModule.path(), selectedModule.path());
+  });
+
+  testWidgets('retains host selection when the waveform API recreates App', (
+    tester,
+  ) async {
+    useDesktopViewport(tester);
+    final structure = await MockSignalWaveformApi().getModuleStructure();
+    final selectedModule = structure.modules.single.children.single;
+    final hierarchy = BaseHierarchyAdapter.fromTree(structure.modules.single);
+
+    await tester.pumpWidget(
+      EmbeddedWaveViewer(
+        waveformApi: MockSignalWaveformApi(),
+        externalHierarchy: hierarchy,
+        selectedModule: selectedModule,
+        isExtensionMode: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+    final firstKey = tester.widget<App>(find.byType(App)).key;
+    final firstModuleBloc = BlocProvider.of<RohdModuleBloc>(
+      tester.element(find.byType(WaveFormViewerPage)),
+    );
+    expect(
+      (firstModuleBloc.state as ModuleSelected).singleModule.path(),
+      selectedModule.path(),
+    );
+
+    await tester.pumpWidget(
+      EmbeddedWaveViewer(
+        waveformApi: MockSignalWaveformApi(),
+        externalHierarchy: hierarchy,
+        selectedModule: selectedModule,
+        isExtensionMode: true,
+      ),
+    );
+    await tester.pumpAndSettle();
     final secondKey = tester.widget<App>(find.byType(App)).key;
+    final secondModuleBloc = BlocProvider.of<RohdModuleBloc>(
+      tester.element(find.byType(WaveFormViewerPage)),
+    );
 
     expect(secondKey, isNot(firstKey));
+    final secondState = secondModuleBloc.state;
+    expect(secondState, isA<ModuleSelected>());
+    expect(
+      (secondState as ModuleSelected).singleModule.path(),
+      selectedModule.path(),
+    );
   });
 }

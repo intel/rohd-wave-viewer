@@ -332,7 +332,10 @@ class _AppState extends State<App> {
     // If external hierarchy is provided at init, use it
     if (widget._externalHierarchy != null) {
       _rohdModuleBloc.add(
-        RohdModuleSetExternalHierarchy(widget._externalHierarchy!),
+        RohdModuleSetExternalHierarchy(
+          widget._externalHierarchy!,
+          selectedModule: widget._selectedModule,
+        ),
       );
     }
   }
@@ -347,15 +350,20 @@ class _AppState extends State<App> {
     }
 
     // Sync external hierarchy when it changes
-    if (widget._externalHierarchy != oldWidget._externalHierarchy &&
-        widget._externalHierarchy != null) {
+    final externalHierarchyChanged =
+        widget._externalHierarchy != oldWidget._externalHierarchy &&
+            widget._externalHierarchy != null;
+    if (externalHierarchyChanged) {
       debugPrint(
         '[App] didUpdateWidget: externalHierarchy changed, '
         'root=${widget._externalHierarchy!.root.name}, '
         'firing RohdModuleSetExternalHierarchy',
       );
       _rohdModuleBloc.add(
-        RohdModuleSetExternalHierarchy(widget._externalHierarchy!),
+        RohdModuleSetExternalHierarchy(
+          widget._externalHierarchy!,
+          selectedModule: widget._selectedModule,
+        ),
       );
     }
 
@@ -366,7 +374,8 @@ class _AppState extends State<App> {
     }
 
     // Sync selected module when it changes
-    if (widget._selectedModule != oldWidget._selectedModule &&
+    if (!externalHierarchyChanged &&
+        widget._selectedModule != oldWidget._selectedModule &&
         widget._selectedModule != null) {
       _selectModule(widget._selectedModule!);
     }

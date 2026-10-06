@@ -110,7 +110,7 @@ help:
 	@echo "  rust-native      - Build native Rust library for Linux"
 	@echo "  rust-test        - Run Rust bridge unit tests separately from Dart coverage"
 	@echo "  coverity         - Run configured Coverity scan workflow"
-	@echo "  coverage         - Run tests and generate LCOV/HTML coverage reports"
+	@echo "  coverage         - Cover root and dart_wellen tests in LCOV/HTML reports"
 	@echo "  coverage-view    - Serve coverage/html locally on port 8000"
 	@echo ""
 	@echo "Run Targets (Flutter manages Dart rebuilds via hot reload):"

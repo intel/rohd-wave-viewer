@@ -32,15 +32,21 @@ dependencies:
 ```
 
 Then import the viewer and waveform data contracts and provide a
-`SignalWaveformApi`:
+`SignalWaveformApi` together with the hierarchy maintained by the host:
 
 ```dart
+import 'package:rohd_hierarchy/rohd_hierarchy.dart';
 import 'package:rohd_wave_viewer/rohd_wave_viewer.dart';
 import 'package:rohd_waveform/rohd_waveform.dart';
+
+final hierarchy = BaseHierarchyAdapter.fromTree(
+  myModuleStructure.modules.single,
+);
 
 runApp(
   EmbeddedWaveViewer(
     waveformApi: mySignalWaveformApi,
+    externalHierarchy: hierarchy,
     title: 'My Waveform Viewer',
     isExtensionMode: true,
   ),
@@ -48,11 +54,14 @@ runApp(
 ```
 
 `isExtensionMode` hides standalone-only controls. The host supplies a
-`SignalWaveformApi` implementation appropriate for its data source. The
-complete runnable [embedding example](example/main.dart) uses
-`MockSignalWaveformApi` from the explicitly test-only `testing.dart` entry
-point and therefore needs no waveform file, native bridge, or WebAssembly
-setup.
+`SignalWaveformApi` implementation appropriate for its waveform data source
+and a `HierarchyService` through `externalHierarchy`. Waveform APIs do not
+provide generic hierarchy discovery; if the host starts from a
+`ModuleStructure`, it can adapt the structure's root as shown above. The
+complete runnable [embedding example](example/main.dart) obtains the mock
+structure, adapts its hierarchy, and uses `MockSignalWaveformApi` from the
+explicitly test-only `testing.dart` entry point. It therefore needs no waveform
+file, native bridge, or WebAssembly setup.
 
 The main `rohd_wave_viewer.dart` entry point exposes only
 `EmbeddedWaveViewer`, `WaveViewerThemeMode`, and `WaveViewerHelpButton`.

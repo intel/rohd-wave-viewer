@@ -159,6 +159,10 @@ root-package tests, for example:
 make test ARGS=test/services/signal_data_service_test.dart
 ```
 
+`make coverage` runs the root Flutter tests and the `dart_wellen` package tests
+with coverage, then merges both results into `coverage/lcov.info` and the HTML
+report. Rust tests remain a separate `make rust-test` validation gate.
+
 ---
 
 Copyright (C) 2023-2026 Intel Corporation

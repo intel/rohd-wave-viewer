@@ -62,11 +62,18 @@ final class RohdModuleSetExternalHierarchy extends RohdModuleEvent {
   /// whatever metadata it already has.
   final MetaData? metadata;
 
+  /// Module the host wants selected after the hierarchy is installed.
+  final HierarchyOccurrence? selectedModule;
+
   /// Creates an event that swaps in an external hierarchy service.
-  const RohdModuleSetExternalHierarchy(this.hierarchyService, {this.metadata});
+  const RohdModuleSetExternalHierarchy(
+    this.hierarchyService, {
+    this.metadata,
+    this.selectedModule,
+  });
 
   @override
-  List<Object?> get props => [hierarchyService, metadata];
+  List<Object?> get props => [hierarchyService, metadata, selectedModule];
 }
 
 /// Replaces the hierarchy from an already reloaded waveform.

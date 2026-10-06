@@ -11,14 +11,21 @@
 library;
 
 import 'package:material_ui/material_ui.dart';
+import 'package:rohd_hierarchy/rohd_hierarchy.dart';
 import 'package:rohd_wave_viewer/rohd_wave_viewer.dart';
 import 'package:rohd_wave_viewer/testing.dart';
 
 /// Runs the embedding example with deterministic sample waveform data.
-void main() {
+Future<void> main() async {
+  final waveformApi = MockSignalWaveformApi();
+  final structure = await waveformApi.getModuleStructure();
+
   runApp(
     EmbeddedWaveViewer(
-      waveformApi: MockSignalWaveformApi(),
+      waveformApi: waveformApi,
+      externalHierarchy: BaseHierarchyAdapter.fromTree(
+        structure.modules.single,
+      ),
       title: 'Embedded ROHD Wave Viewer',
       isExtensionMode: true,
     ),

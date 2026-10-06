@@ -338,14 +338,19 @@ class RohdModuleBloc extends Bloc<RohdModuleEvent, RohdModuleState> {
       hierarchyService: event.hierarchyService,
     );
 
-    // Preserve current selection when possible instead of forcing root.
+    // Apply the host's requested selection first, then preserve the current
+    // selection when possible instead of forcing root.
     HierarchyOccurrence? desiredSelection;
+    final requestedSelection = event.selectedModule;
+    if (requestedSelection != null) {
+      desiredSelection = _findNodeByPath([root], requestedSelection.path());
+    }
     final currentState = state;
-    if (currentState is ModuleSelected) {
+    if (desiredSelection == null && currentState is ModuleSelected) {
       desiredSelection = _findNodeByPath([
         root,
       ], currentState.singleModule.path());
-    } else if (currentState is WaveformUpdated) {
+    } else if (desiredSelection == null && currentState is WaveformUpdated) {
       final previous = currentState.selectedModule;
       if (previous != null) {
         desiredSelection = _findNodeByPath([root], previous.path());
