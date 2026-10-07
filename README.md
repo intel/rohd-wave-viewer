@@ -94,7 +94,7 @@ ROHD Schematic Viewer.
 
 Use the hosted application without installing an extension:
 
-**[Open ROHD Wave Viewer](https://intel.github.io/rohd-wave-viewer/)**
+**[Open ROHD Wave Viewer](https://intel.github.io/rohd-wave-viewer/?waveFormFile=assets%2Fwaveforms%2Ffilter_bank.fst&signalList=FilterBank%2Fclk&signalList=FilterBank%2Freset&signalList=FilterBank%2Fsample1&signalList=FilterBank%2Fch0%2FdataOut&signalList=FilterBank%2Fstate&signalList=FilterBank%2FvalidIn&signalList=FilterBank%2FsampleIn&signalList=FilterBank%2FdataOut&signalList=FilterBank%2FchannelOut&signalList=FilterBank%2Fcontroller%2FloadingPhase&signalList=FilterBank%2Fcontroller%2FdoneFlag)**
 
 Select a VCD, FST, or GHW file from your computer. The hosted viewer processes
 the file locally in your browser; it does not upload the waveform to an
