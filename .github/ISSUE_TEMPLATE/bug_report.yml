@@ -1,6 +1,7 @@
 name: Bug Report
 description: Report a problem.
-labels: bug
+labels:
+  - bug
 
 body:
   - type: markdown
@@ -8,6 +9,7 @@ body:
       value: Thanks for taking the time to fill out this bug report!
 
   - type: textarea
+    id: describe-bug
     attributes:
       label: Describe the bug
       description: A clear and concise description of what the bug is.
@@ -15,41 +17,75 @@ body:
       required: true
 
   - type: textarea
+    id: reproduce
     attributes:
       label: To Reproduce
       description: If possible, please include code that reproduces the failure.
       placeholder: |
         Steps to reproduce the behavior:
-        1. Use class ... for ...
-        2. Run a simulation with ...
+        1. Open a ... waveform using ...
+        2. Select or navigate to ...
         3. See error
 
   - type: textarea
+    id: expected-behavior
     attributes:
       label: Expected behavior
       description: A clear and concise description of what you expected to happen.
 
   - type: textarea
+    id: actual-behavior
     attributes:
       label: Actual behavior
       description: What you observed instead of the expected behavior?
 
   - type: input
+    id: viewer-version
     attributes:
-      label: "Additional: Dart SDK info"
-      description: Please paste the output of 'dart --version'.
-      placeholder: "> dart --version"
+      label: ROHD Wave Viewer version
+      description: >
+        Provide the package, extension, or hosted-viewer version. If the
+        version is unavailable, provide the hosted-viewer URL or build ID.
+      placeholder: "For example: 0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: platform-browser
+    attributes:
+      label: Platform and browser
+      description: >
+        Provide the operating system or device and, when applicable, the
+        browser or host application and its version.
+      placeholder: "For example: Ubuntu 24.04 with Chrome 140"
+    validations:
+      required: true
 
   - type: textarea
+    id: flutter-version
+    attributes:
+      label: Flutter SDK information
+      description: >
+        For local builds or embedded use, paste the output of
+        'flutter --version'. Hosted-viewer users can leave this blank.
+      placeholder: |
+        $ flutter --version
+        Flutter ...
+      render: shell
+
+  - type: textarea
+    id: pubspec
     attributes:
       label: "Additional: pubspec.yaml"
       description: >
-        Please paste the contents of your 'pubspec.yaml' file and identify the
-        version of ROHD you're using.
+        For local builds or embedded use, paste the relevant dependencies from
+        your 'pubspec.yaml' and identify the versions of ROHD Wave Viewer and
+        related ROHD packages. Hosted-viewer users can leave this blank.
       placeholder: your 'pubspec.yaml' file here...
       render: yaml
 
   - type: textarea
+    id: additional-context
     attributes:
       label: "Additional: Context"
       description: Add any other context about the problem here.

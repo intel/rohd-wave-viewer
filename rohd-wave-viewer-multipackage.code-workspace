@@ -1,0 +1,15 @@
+{
+  "folders": [
+    {
+      "name": "rohd_wave_viewer",
+      "path": "."
+    },
+    {
+      "name": "dart_wellen",
+      "path": "packages/dart_wellen"
+    }
+  ],
+  "settings": {
+    "dart.projectSearchDepth": 8
+  }
+}

@@ -1,0 +1,18 @@
+$date
+    March 19, 2026
+$end
+$version
+    rohd-wave-viewer empty-scope test fixture
+$end
+$timescale 1ns $end
+$scope module top $end
+$scope module empty $end
+$upscope $end
+$var wire 1 ! clk $end
+$upscope $end
+$enddefinitions $end
+
+#0
+0!
+#5
+1!

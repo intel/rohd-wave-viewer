@@ -1,0 +1,16 @@
+$date
+    March 19, 2026
+$end
+$version
+    rohd-wave-viewer non-zero-start test fixture
+$end
+$timescale 1ns $end
+$scope module delayed_test $end
+$var wire 1 ! ready $end
+$upscope $end
+$enddefinitions $end
+
+#100
+0!
+#110
+1!

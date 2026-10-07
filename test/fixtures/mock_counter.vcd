@@ -1,0 +1,80 @@
+$date
+    Today
+$end
+$version
+    rohd-wave-viewer mock data export
+$end
+$timescale 1ns $end
+$scope module Counter $end
+$var wire 5 a Signal1 [4:0] $end
+$var wire 1 b Signal2 $end
+$var wire 8 c Signal3 [7:0] $end
+$var wire 1 d Signal4 $end
+$scope module counter_sub_module $end
+$var wire 24 e SubSignal1 [23:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+
+#1
+bxxxxx a
+1b
+xd
+b000000000000000000000001 e
+
+#2
+0b
+b000000000000000000000000 e
+
+#3
+b101010111100110100000010 e
+
+#4
+1b
+1d
+b000000000000000000000001 e
+
+#5
+b00001 a
+bzzzzzzz c
+1b
+b000000000000000000000001 e
+
+#7
+zd
+b00000001 c
+
+#9
+bxxxxxxx c
+1b
+
+#10
+0b
+0d
+
+#11
+1b
+
+#12
+bzzzzz a
+0b
+
+#13
+1b
+xd
+
+#14
+b00000001 c
+
+#16
+1d
+
+#17
+bzzzzzzz c
+
+#18
+b00001 a
+
+#19
+zd
+

@@ -1,0 +1,16 @@
+# flutter_rust_bridge configuration
+# Run `make dart` from the repository root.
+
+rust_input: crate::api
+dart_output: lib/src/rust/
+rust_root: ../../rust/wellen_bridge/
+dart_root: lib/
+dart_preamble: |
+  // Copyright (C) 2026 Intel Corporation
+  // SPDX-License-Identifier: BSD-3-Clause
+
+# Additional outputs
+rust_output: ../../rust/wellen_bridge/src/frb_generated.rs
+
+# Generate for all platforms
+full_dep: true

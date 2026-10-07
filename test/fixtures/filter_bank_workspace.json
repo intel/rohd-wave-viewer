@@ -1,0 +1,42 @@
+{
+  "version": 6,
+  "signals": [
+    {
+      "id": "FilterBank/sampleIn0",
+      "format": "signedDecimal",
+      "group": "inputs"
+    },
+    {
+      "id": "FilterBank/state",
+      "format": "binary",
+      "group": "control"
+    },
+    {
+      "id": "FilterBank/coefficients0",
+      "format": "hexadecimal",
+      "group": "coefficients"
+    },
+    {
+      "id": "FilterBank/coefficients0#b[47:32]",
+      "width": 16,
+      "displayName": "coefficients0.tap0",
+      "format": "unsignedDecimal",
+      "group": "coefficients"
+    }
+  ],
+  "session": {
+    "showInternalSignals": false,
+    "filterText": "sample",
+    "cursorTimePs": 80,
+    "measurementMarkerTimePs": 60,
+    "rowScale": 1.2,
+    "themeMode": "dark",
+    "hierarchyPinned": true,
+    "appBarPinned": true,
+    "pinnedPanelWidth": 320,
+    "viewport": {
+      "zoomLevel": 2,
+      "scrollFraction": 0.2
+    }
+  }
+}

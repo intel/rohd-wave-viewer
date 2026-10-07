@@ -1,0 +1,76 @@
+name: Coverage
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: Code Coverage
+    permissions:
+      contents: write
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.2'
+          cache: true
+
+      - name: Verify Flutter and Dart on PATH
+        run: bash scripts/verify_flutter_version.sh
+
+      - name: Install native build and coverage tools
+        run: |
+          tool/gh_actions/install_build_tools.sh
+          sudo apt-get update
+          sudo apt-get install --yes lcov
+
+      - name: Install Rust toolchain
+        run: tool/gh_actions/install_rust_1_92.sh
+
+      - name: Install project dependencies
+        run: tool/gh_actions/install_dependencies.sh
+
+      - name: Generate coverage report and badge
+        run: bash scripts/generate_coverage.sh --generate-svg
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: error
+
+      - name: Commit coverage badge
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          # Fetch and checkout badges branch.
+          git fetch origin badges:badges 2>/dev/null || git checkout --orphan badges
+          git checkout badges 2>/dev/null || true
+
+          # Replace the branch contents with the generated badge.
+          git rm -rf . 2>/dev/null || true
+          mkdir -p coverage
+          cp /tmp/coverage-badge.svg "coverage/${BRANCH_NAME}.svg"
+
+          git add "coverage/${BRANCH_NAME}.svg"
+          git diff --staged --quiet || git commit -m "Update coverage badge for ${BRANCH_NAME} [skip ci]"
+          git push origin badges --force

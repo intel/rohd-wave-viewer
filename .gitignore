@@ -3,12 +3,14 @@
 *.log
 *.pyc
 *.swp
+*.vsix
 .DS_Store
 .atom/
 .buildlog/
 .history
 .svn/
 migrate_working_dir/
+*~
 
 # IntelliJ related
 *.iml
@@ -30,6 +32,21 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+coverage/
+node_modules/
+build_logs/
+pubspec_overrides.yaml
+pubspec_overrides.yaml.disabled*
+/packages/*/pubspec.lock
+/packages/dart_wellen/test/browser_assets/
+.wave_dependency_sources
+
+# Coverity local scan output
+build/coverity/
+report.json
+wave_coverity_html.tgz
+web.tgz
+*.sbom.spdx.json
 
 # Symbolication related
 app.*.symbols
@@ -44,3 +61,10 @@ app.*.map.json
 
 # Let individual users select devtools options they like
 devtools_options.yaml
+rust/wellen_bridge/target
+rust/wellen_bridge/src/frb_generated.rs
+# Generated locally but retained in Pub archives for package consumers.
+packages/dart_wellen/lib/src/rust/
+packages/wellen_bridge/**/*generated.*
+
+**/NOTICES

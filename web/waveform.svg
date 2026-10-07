@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="wave-dark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1565C0"/>
+      <stop offset="100%" stop-color="#0D47A1"/>
+    </linearGradient>
+    <linearGradient id="wave-face" x1="0" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#42A5F5"/>
+      <stop offset="100%" stop-color="#1E88E5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Light blue circle background -->
+  <circle cx="16" cy="16" r="15" fill="#B3E5FC"/>
+
+  <!-- Water surface / base -->
+  <path d="M1 25 L31 25 L31 31 L1 31 Z" fill="#1565C0" opacity="0.5"/>
+
+  <!-- Dark barrel interior (behind the curl) -->
+  <path d="M8 10 Q12 6 17 5 Q22 4.5 26 7 Q29 10 28 15
+           Q27 18 24 19 Q20 20 16 21 Q12 22 8 22 Z"
+        fill="url(#wave-dark)"/>
+
+  <!-- Main wave face - rising from left, sweeping up -->
+  <path d="M2 25 Q3 24 4 22 Q5 19 7 16 Q9 12 12 9
+           Q15 6.5 18 6 Q21 5.5 24 7 Q27 9 27.5 13
+           Q28 16 26 18 Q23 20 19 22 Q14 24 8 25 Z"
+        fill="url(#wave-face)"/>
+
+  <!-- Curling lip - the crest that extends forward and curls down -->
+  <path d="M12 9 Q14 6 17 5 Q20 4 23 4.5 Q26 5 28 7.5
+           Q29.5 10 29 13 Q28 11 26.5 9 Q24.5 7 22 6.5
+           Q19 6 16 7 Q14 8 12 9 Z"
+        fill="white"/>
+
+  <!-- Foam fingers / spray at the curl tip -->
+  <path d="M26 5.5 Q28.5 6 29.5 8 Q30 10 29.5 12
+           Q29 10 28 8.5 Q27 7 26 5.5 Z"
+        fill="white"/>
+  <path d="M23 4.5 Q25 4 27 5 Q25.5 4.5 24 5 Q23.5 5 23 4.5 Z"
+        fill="white"/>
+
+  <!-- Spray droplets above the crest -->
+  <circle cx="27" cy="4" r="1" fill="white"/>
+  <circle cx="29.5" cy="5.5" r="0.8" fill="white"/>
+  <circle cx="24.5" cy="3.5" r="0.7" fill="white"/>
+  <circle cx="22" cy="4" r="0.5" fill="white" opacity="0.8"/>
+
+  <!-- Secondary ripple wave in foreground -->
+  <path d="M1 26 Q5 24.5 9 25 Q13 25.5 17 25 Q21 24.5 25 25
+           Q29 25.5 31 25 L31 27 Q27 26.5 23 27 Q19 27.5 15 27
+           Q11 26.5 7 27 Q3 27.5 1 27 Z"
+        fill="#1565C0" opacity="0.6"/>
+
+  <!-- White caps on secondary ripple -->
+  <path d="M3 25.5 Q6 24.5 9 25 Q7 24.5 5 25 Z" fill="white" opacity="0.7"/>
+  <path d="M19 24.5 Q22 24 25 25 Q23 24 20 24.5 Z" fill="white" opacity="0.7"/>
+</svg>

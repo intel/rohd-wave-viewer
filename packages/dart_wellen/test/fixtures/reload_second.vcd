@@ -1,0 +1,15 @@
+$date
+  2026-10-02
+$end
+$version
+  dart_wellen reload regression fixture two
+$end
+$timescale 1ns $end
+$scope module reload_second_root $end
+$var wire 2 " second_signal [1:0] $end
+$upscope $end
+$enddefinitions $end
+#0
+b01 "
+#2
+b10 "

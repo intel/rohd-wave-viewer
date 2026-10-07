@@ -5,7 +5,21 @@
       },
       {
         "pattern":"^https://stackoverflow.com"
+      },
+      {
+        "pattern":"^https://bloclibrary.dev/$"
+      },
+      {
+        "pattern":"^https://raw.githubusercontent.com/intel/rohd-wave-viewer/refs/heads/badges/coverage/main.svg$"
+      },
+      {
+        "pattern":"^https://intel.github.io/rohd-wave-viewer/api/?$"
+      },
+      {
+        "pattern":"^https://intel.github.io/rohd-wave-viewer/?$"
+      },
+      {
+        "pattern":"^https://github.com/intel/rohd-wave-viewer/blob/main/.github/workflows/coverage.yml$"
       }
     ]
   }
-  

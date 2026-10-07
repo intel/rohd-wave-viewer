@@ -1,0 +1,64 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+*.vsix
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+*~
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+coverage/
+node_modules/
+build_logs/
+pubspec_overrides.yaml
+pubspec_overrides.yaml.disabled*
+/packages/*/pubspec.lock
+.wave_dependency_sources
+
+# Coverity local scan output
+build/coverity/
+report.json
+wave_coverity_html.tgz
+web.tgz
+*.sbom.spdx.json
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Let individual users select devtools options they like
+devtools_options.yaml
+rust/wellen_bridge/target
+rust/wellen_bridge/src/frb_generated.rs
+# FRB-generated Dart bindings are intentionally publishable and are therefore
+# not ignored here.
+packages/wellen_bridge/**/*generated.*
+
+**/NOTICES

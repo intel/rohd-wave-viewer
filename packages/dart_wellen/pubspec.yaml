@@ -1,0 +1,28 @@
+name: dart_wellen
+description: "Wellen bindings for ROHD with VCD, FST, and GHW reading and VCD writing."
+homepage: https://intel.github.io/rohd-website/
+repository: https://github.com/intel/rohd-wave-viewer
+issue_tracker: https://github.com/intel/rohd-wave-viewer/issues
+version: 0.1.0
+topics:
+  - waveform
+  - vcd
+  - hardware
+
+resolution: workspace
+
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+
+dependencies:
+  ffi: ^2.1.0
+  flutter_rust_bridge: ^2.7.0
+  meta: ^1.9.0
+  rohd_hierarchy: ^0.1.0
+  rohd_waveform: ^0.1.0
+
+dev_dependencies:
+  ffigen: ^19.0.0
+  lints: ^3.0.0
+  path: ^1.8.0
+  test: ^1.24.9
