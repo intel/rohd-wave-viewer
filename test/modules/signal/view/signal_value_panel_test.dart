@@ -153,6 +153,21 @@ void main() {
     );
 
     expect(find.text('5'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text('5')).style?.fontFamily,
+      'packages/devtools_app_shared/RobotoMono',
+    );
+
+    await tester.pumpApp(
+      signalBloc: signalBloc,
+      waveformModuleBloc: buildCursorBloc(const UpdatedCursor(10)),
+      child: const SignalValuePanel(valueFont: ValueFont.sourceCodePro),
+    );
+
+    expect(
+      tester.widget<Text>(find.text('5')).style?.fontFamily,
+      'SourceCodePro',
+    );
 
     await tester.pumpApp(
       signalBloc: signalBloc,

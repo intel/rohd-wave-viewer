@@ -48,6 +48,7 @@ class App extends StatefulWidget {
     HierarchyOccurrence? selectedModule,
     Stream<WaveformUpdateEvent>? liveUpdates,
     bool isExtensionMode = false,
+    String? initialWaveformSource,
     List<String>? initialMonitoredSignalPaths,
     void Function(int timePs)? onSnapshotRequested,
     ValueChanged<List<String>>? onMonitoredSignalsChanged,
@@ -69,6 +70,7 @@ class App extends StatefulWidget {
         _selectedModule = selectedModule,
         _liveUpdates = liveUpdates,
         _isExtensionMode = isExtensionMode,
+        _initialWaveformSource = initialWaveformSource,
         _initialMonitoredSignalPaths = initialMonitoredSignalPaths,
         _onSnapshotRequested = onSnapshotRequested,
         _onMonitoredSignalsChanged = onMonitoredSignalsChanged,
@@ -112,6 +114,9 @@ class App extends StatefulWidget {
   /// Whether running in extension mode (embedded in another app).
   /// When true, hides file picker and other standalone-only UI elements.
   final bool _isExtensionMode;
+
+  /// URL, native file path, or Flutter asset loaded when the viewer starts.
+  final String? _initialWaveformSource;
 
   /// SignalOccurrence hierarchy paths to restore after the new hierarchy loads.
   ///
@@ -494,6 +499,7 @@ class _AppState extends State<App> {
                   routes: {
                     '/': (_) => WaveFormViewerPage(
                           isExtensionMode: widget._isExtensionMode,
+                          initialWaveformSource: widget._initialWaveformSource,
                           onSnapshotRequested: widget._onSnapshotRequested,
                           canSnapshotNotifier: widget._canSnapshotNotifier,
                           lastSnapshotTimePs: widget._lastSnapshotTimePs,

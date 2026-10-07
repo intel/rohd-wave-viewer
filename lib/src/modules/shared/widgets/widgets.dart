@@ -15,5 +15,6 @@ export 'panel_decoration.dart';
 export 'panel_header.dart';
 export 'platform_icon.dart';
 export 'signal_tab_container.dart';
+export 'value_font_menu.dart';
 export 'wave_viewer_help_button.dart';
 export 'waveform_file_open_icon.dart';

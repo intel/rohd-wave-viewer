@@ -10,6 +10,8 @@
 
 import 'dart:async' show unawaited;
 
+import 'package:flutter/foundation.dart'
+    show DiagnosticPropertiesBuilder, EnumProperty;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -33,12 +35,16 @@ class SignalValuePanel extends StatelessWidget {
   final DragReorderController? _dragController;
   final bool _isVideoMode;
 
+  /// Font used for values displayed in this panel.
+  final ValueFont valueFont;
+
   /// Creates the signal value panel.
   const SignalValuePanel({
     super.key,
     ScrollController? scrollController,
     DragReorderController? dragController,
     bool isVideoMode = false,
+    this.valueFont = ValueFont.robotoMono,
   })  : _scrollController = scrollController,
         _dragController = dragController,
         _isVideoMode = isVideoMode;
@@ -366,9 +372,10 @@ class SignalValuePanel extends StatelessWidget {
                     child: SignalTabContainer(
                       containerBody: Text(
                         value,
-                        style: TextStyle(
+                        style: Waveform.valueTextStyle(
                           fontSize:
                               14.0 * context.read<WaveformScaleCubit>().state,
+                          valueFont: valueFont,
                           // Yellow for computed/synthesized values
                           // (gate evaluation), matching schematic viewer.
                           color: (index < monitorSignalList.length &&
@@ -483,5 +490,11 @@ class SignalValuePanel extends StatelessWidget {
     );
 
     return scaledOffset;
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(EnumProperty<ValueFont>('valueFont', valueFont));
   }
 }

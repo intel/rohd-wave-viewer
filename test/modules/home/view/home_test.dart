@@ -20,6 +20,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:rohd_devtools_widgets/rohd_devtools_widgets.dart';
 import 'package:rohd_hierarchy/rohd_hierarchy.dart';
+import 'package:rohd_wave_viewer/src/const/value_font.dart';
 import 'package:rohd_wave_viewer/src/cubit/wave_viewer_theme_cubit.dart';
 import 'package:rohd_wave_viewer/src/cubit/waveform_scale_cubit.dart';
 import 'package:rohd_wave_viewer/src/modules/hierarchy/hierarchy_overlay.dart';
@@ -27,7 +28,9 @@ import 'package:rohd_wave_viewer/src/modules/home/view/home.dart';
 import 'package:rohd_wave_viewer/src/modules/rohd_module/bloc/rohd_module_bloc.dart';
 import 'package:rohd_wave_viewer/src/modules/shared/widgets/widgets.dart';
 import 'package:rohd_wave_viewer/src/modules/signal/bloc/signal_bloc.dart';
+import 'package:rohd_wave_viewer/src/modules/signal/view/signal_value_panel.dart';
 import 'package:rohd_wave_viewer/src/modules/waveform/bloc/waveform_module_bloc.dart';
+import 'package:rohd_wave_viewer/src/modules/waveform/view/waveform_panel.dart';
 import 'package:rohd_wave_viewer/src/ui/wave_viewer_app.dart';
 import 'package:rohd_wave_viewer/src/viewer_waveform_client.dart';
 import 'package:rohd_wave_viewer/testing.dart';
@@ -227,6 +230,131 @@ void main() {
     if (_scratchDir.existsSync()) {
       _scratchDir.deleteSync(recursive: true);
     }
+  });
+
+  group('value font settings', () {
+    testWidgets('places settings before help and updates both value surfaces',
+        (tester) async {
+      _useDesktopViewport(tester);
+      final repository = await _emptyRepository();
+
+      await tester.pumpWidget(App(signalWaveformRepository: repository));
+      await tester.pumpAndSettle();
+
+      final settings = find.byTooltip('Wave viewer settings');
+      final help = find.byType(WaveViewerHelpButton);
+      final settingsCenter = tester.getCenter(settings);
+      final helpCenter = tester.getCenter(help);
+      expect(settingsCenter.dx, lessThan(helpCenter.dx));
+      final trailingControls = tester
+          .widgetList<Row>(
+            find.ancestor(of: help, matching: find.byType(Row)),
+          )
+          .singleWhere(
+            (row) => row.children.any((child) => child is WaveViewerHelpButton),
+          );
+      final helpIndex = trailingControls.children.indexWhere(
+        (child) => child is WaveViewerHelpButton,
+      );
+      expect(helpIndex, greaterThan(0));
+      expect(trailingControls.children[helpIndex - 1], isA<ValueFontMenu>());
+
+      await tester.tap(settings);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Value Font'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Monospace'), findsOneWidget);
+      expect(find.text('Roboto Mono'), findsOneWidget);
+      expect(find.text('Source Code Pro'), findsOneWidget);
+      expect(find.text('Ubuntu Mono'), findsOneWidget);
+      expect(find.text('Proportional'), findsOneWidget);
+      expect(find.text('Roboto'), findsOneWidget);
+
+      final defaultItem = find.ancestor(
+        of: find.text('Roboto Mono'),
+        matching: find.byType(MenuItemButton),
+      );
+      expect(tester.getSize(defaultItem).height, lessThanOrEqualTo(28));
+      expect(
+        find.descendant(of: defaultItem, matching: find.byIcon(Icons.check)),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Source Code Pro'));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<SignalValuePanel>(find.byType(SignalValuePanel))
+            .valueFont,
+        ValueFont.sourceCodePro,
+      );
+      expect(
+        tester.widget<WaveformPanel>(find.byType(WaveformPanel)).valueFont,
+        ValueFont.sourceCodePro,
+      );
+
+      await tester.tap(settings);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Value Font'));
+      await tester.pumpAndSettle();
+
+      final selectedItem = find.ancestor(
+        of: find.text('Source Code Pro'),
+        matching: find.byType(MenuItemButton),
+      );
+      expect(
+        find.descendant(of: selectedItem, matching: find.byIcon(Icons.check)),
+        findsOneWidget,
+      );
+    });
+  });
+
+  group('startup waveform source', () {
+    testWidgets(
+        'loads the bundled FilterBank asset and restores nested signals',
+        (tester) async {
+      _useDesktopViewport(tester);
+      final repository = await _emptyRepository();
+      const signalPaths = [
+        'FilterBank/sample1',
+        'FilterBank/ch0/dataOut',
+      ];
+
+      await tester.pumpWidget(
+        App(
+          signalWaveformRepository: repository,
+          initialWaveformSource: 'assets/waveforms/filter_bank.fst',
+          initialMonitoredSignalPaths: signalPaths,
+        ),
+      );
+      await _settleWithFileIo(
+        tester,
+        until: () =>
+            find.text('- filter_bank.fst').evaluate().isNotEmpty &&
+            _signalBloc(tester).state.monitorSignalsList.length == 2,
+      );
+
+      expect(find.text('- filter_bank.fst'), findsOneWidget);
+      expect(
+        _signalBloc(tester)
+            .state
+            .monitorSignalsList
+            .map((waveform) => waveform.signalId),
+        signalPaths,
+      );
+      final moduleBloc = BlocProvider.of<RohdModuleBloc>(
+        tester.element(find.byType(WaveFormViewerPage)),
+      );
+      expect(moduleBloc.state.moduleStructure.modules, isNotEmpty);
+
+      await tester.tap(find.byTooltip('Reload waveform'));
+      await _settleWithFileIo(tester);
+
+      expect(find.textContaining('Error refreshing file'), findsNothing);
+      expect(moduleBloc.state.moduleStructure.modules, isNotEmpty);
+    });
   });
 
   group('standalone file workflows', () {

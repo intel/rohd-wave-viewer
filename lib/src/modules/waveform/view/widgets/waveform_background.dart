@@ -1218,6 +1218,8 @@ class _LiveCursorPainter extends CustomPainter {
 
 /// Widget that renders the scrolling waveform background and rows.
 class WaveformBackground extends StatefulWidget {
+  final ValueFont _valueFont;
+
   /// Timescale of the currently loaded waveform.
   final int _timescale;
 
@@ -1253,11 +1255,13 @@ class WaveformBackground extends StatefulWidget {
     required ScrollController horizontalScrollController,
     required double screenWidth,
     super.key,
+    ValueFont valueFont = ValueFont.robotoMono,
     ScrollController? verticalScrollController,
     int? dataEndTime,
     DragReorderController? dragController,
     bool isVideoMode = false,
-  })  : _timescale = timescale,
+  })  : _valueFont = valueFont,
+        _timescale = timescale,
         _zoomLevel = zoomLevel,
         _horizontalScrollController = horizontalScrollController,
         _screenWidth = screenWidth,
@@ -1409,15 +1413,20 @@ class _WaveformBackgroundState extends State<WaveformBackground> {
     final widthChanged = oldWidget._screenWidth != widget._screenWidth;
     final timescaleChanged = oldWidget._timescale != widget._timescale;
     final dataEndTimeChanged = oldWidget._dataEndTime != widget._dataEndTime;
+    final valueFontChanged = oldWidget._valueFont != widget._valueFont;
 
-    // Timescale or dataEndTime change: painters bake these at construction
-    // time, so every cached painter must be discarded and rebuilt.
-    if (timescaleChanged || dataEndTimeChanged) {
+    // These values are baked into painters, so discard every related cache.
+    if (timescaleChanged || dataEndTimeChanged || valueFontChanged) {
       _painterCache.clear();
       _painterDataIdentity.clear();
       _painterFocusState.clear();
       _stripCache.invalidate();
       _labelCache.invalidate();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _repaintNotifier.value++;
+        }
+      });
     }
 
     if (zoomChanged || widthChanged) {
@@ -1783,6 +1792,7 @@ class _WaveformBackgroundState extends State<WaveformBackground> {
                   _painterDataIdentity[sig.monitorId] == dataId &&
                   _painterFocusState[sig.monitorId] == isFocused &&
                   cached.valueFormat == sig.valueFormat &&
+                  cached.valueFont == widget._valueFont &&
                   cached.timescale == widget._timescale &&
                   cached.dataEndTime == widget._dataEndTime &&
                   (needsHex
@@ -1809,6 +1819,7 @@ class _WaveformBackgroundState extends State<WaveformBackground> {
                         xColor: waveformColors.signalX,
                         zColor: waveformColors.signalZ,
                         textColor: waveformColors.text,
+                        valueFont: widget._valueFont,
                         labelBackgroundColor: effectiveLabelBg,
                         useBezierCrossings: true,
                       )
@@ -1828,6 +1839,7 @@ class _WaveformBackgroundState extends State<WaveformBackground> {
                             xColor: waveformColors.signalX,
                             zColor: waveformColors.signalZ,
                             textColor: waveformColors.text,
+                            valueFont: widget._valueFont,
                             labelBackgroundColor: effectiveLabelBg,
                           )
                         : WaveformBinary(
@@ -1845,6 +1857,7 @@ class _WaveformBackgroundState extends State<WaveformBackground> {
                             xColor: waveformColors.signalX,
                             zColor: waveformColors.signalZ,
                             textColor: waveformColors.text,
+                            valueFont: widget._valueFont,
                             labelBackgroundColor: effectiveLabelBg,
                             useBezierCrossings: true,
                           ));
@@ -2094,6 +2107,7 @@ class _WaveformBackgroundState extends State<WaveformBackground> {
             xColor: waveformColors.signalX,
             zColor: waveformColors.signalZ,
             textColor: waveformColors.text,
+            valueFont: widget._valueFont,
             labelBackgroundColor: effectiveLabelBg,
             useBezierCrossings: true,
           )
@@ -2112,6 +2126,7 @@ class _WaveformBackgroundState extends State<WaveformBackground> {
                 xColor: waveformColors.signalX,
                 zColor: waveformColors.signalZ,
                 textColor: waveformColors.text,
+                valueFont: widget._valueFont,
                 labelBackgroundColor: effectiveLabelBg,
               )
             : WaveformBinary(
@@ -2128,6 +2143,7 @@ class _WaveformBackgroundState extends State<WaveformBackground> {
                 xColor: waveformColors.signalX,
                 zColor: waveformColors.signalZ,
                 textColor: waveformColors.text,
+                valueFont: widget._valueFont,
                 labelBackgroundColor: effectiveLabelBg,
                 useBezierCrossings: true,
               ));

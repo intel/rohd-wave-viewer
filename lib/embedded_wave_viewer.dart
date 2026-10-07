@@ -45,6 +45,7 @@ class EmbeddedWaveViewer extends StatefulWidget {
     this.selectedModule,
     this.liveUpdates,
     this.isExtensionMode = false,
+    this.initialWaveformSource,
     this.initialMonitoredSignalPaths,
     this.onSnapshotRequested,
     this.onMonitoredSignalsChanged,
@@ -82,6 +83,9 @@ class EmbeddedWaveViewer extends StatefulWidget {
 
   /// Whether standalone-only controls should be hidden.
   final bool isExtensionMode;
+
+  /// URL, native file path, or Flutter asset loaded when the viewer starts.
+  final String? initialWaveformSource;
 
   /// Signal paths restored when the viewer first loads a hierarchy.
   final List<String>? initialMonitoredSignalPaths;
@@ -150,6 +154,7 @@ class EmbeddedWaveViewer extends StatefulWidget {
         liveUpdates,
       ))
       ..add(FlagProperty('isExtensionMode', value: isExtensionMode))
+      ..add(StringProperty('initialWaveformSource', initialWaveformSource))
       ..add(
         IterableProperty<String>(
           'initialMonitoredSignalPaths',
@@ -269,6 +274,7 @@ class _EmbeddedWaveViewerState extends State<EmbeddedWaveViewer> {
       selectedModule: widget.selectedModule,
       liveUpdates: widget.liveUpdates,
       isExtensionMode: widget.isExtensionMode,
+      initialWaveformSource: widget.initialWaveformSource,
       initialMonitoredSignalPaths: widget.initialMonitoredSignalPaths,
       onSnapshotRequested: widget.onSnapshotRequested,
       onMonitoredSignalsChanged: widget.onMonitoredSignalsChanged,

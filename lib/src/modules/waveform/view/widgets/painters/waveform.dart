@@ -15,6 +15,19 @@ import 'package:rohd_wave_viewer/src/viewer_waveform_client.dart';
 
 /// Base painter for waveform rows.
 abstract class Waveform extends CustomPainter {
+  /// Builds the text style used for values displayed over waveform segments.
+  static TextStyle valueTextStyle({
+    required double fontSize,
+    required Color color,
+    FontWeight? fontWeight,
+    ValueFont valueFont = ValueFont.robotoMono,
+  }) =>
+      valueFont.textStyle(
+        fontSize: fontSize,
+        color: color,
+        fontWeight: fontWeight,
+      );
+
   // --- Debug flag: set to true to completely suppress all label rendering ---
   // This bypasses label computation, text measurement, fitLabelToWidth,
   // AND the scroll-settle repaint that re-enables labels.  Use this to
@@ -188,6 +201,7 @@ abstract class Waveform extends CustomPainter {
     double fontSize,
     Color color, {
     FontWeight? fontWeight,
+    ValueFont valueFont = ValueFont.robotoMono,
   }) {
     // Use a cheap composite key.  The old `Object.hash(text, fontSize,
     // color.toARGB32(), fontWeight)` call triggered the top-1 SDK hotspot
@@ -206,15 +220,17 @@ abstract class Waveform extends CustomPainter {
     // for the upper 32 bits to stay in safe integer range.
     final key = (textHash ^ (colorVal * 0x10001)) +
         ((fontSize * 4).toInt() << 8) +
-        fwIdx;
+        fwIdx +
+        ((valueFont.index + 1) * 0x100000);
     return _labelCache.putIfAbsent(key, () {
       final tp = TextPainter(
         text: TextSpan(
           text: text,
-          style: TextStyle(
+          style: valueTextStyle(
             color: color,
             fontSize: fontSize,
             fontWeight: fontWeight,
+            valueFont: valueFont,
           ),
         ),
         textDirection: TextDirection.ltr,
@@ -258,22 +274,30 @@ abstract class Waveform extends CustomPainter {
     String label,
     double availableWidth,
     double fontSize,
-    Color color,
-  ) {
+    Color color, {
+    ValueFont valueFont = ValueFont.robotoMono,
+  }) {
     // Fast path: check fit-result cache (label + width bucket + color).
     // Width is bucketed to nearest integer so sub-pixel scroll jitter
     // doesn't fragment the cache.
     final widthBucket = availableWidth.toInt();
     final fitKey = label.hashCode ^
         (widthBucket * 0x9E3779B9) ^
-        (color.toARGB32() * 0x10001);
+        (color.toARGB32() * 0x10001) ^
+        ((valueFont.index + 1) * 0x100000);
     final cachedResult = _fitResultCache[fitKey];
     // Use containsKey because the cached value can be null (= doesn't fit).
     if (_fitResultCache.containsKey(fitKey)) {
       return cachedResult;
     }
 
-    final result = _fitLabelToWidthImpl(label, availableWidth, fontSize, color);
+    final result = _fitLabelToWidthImpl(
+      label,
+      availableWidth,
+      fontSize,
+      color,
+      valueFont,
+    );
 
     // Store result (may be null)
     if (_fitResultCache.length >= _maxFitResultCache) {
@@ -289,9 +313,15 @@ abstract class Waveform extends CustomPainter {
     double availableWidth,
     double fontSize,
     Color color,
+    ValueFont valueFont,
   ) {
     // Try full label first.
-    final fullTp = getCachedLabel(label, fontSize, color);
+    final fullTp = getCachedLabel(
+      label,
+      fontSize,
+      color,
+      valueFont: valueFont,
+    );
     if (fullTp.width <= availableWidth) {
       return fullTp;
     }
@@ -331,7 +361,11 @@ abstract class Waveform extends CustomPainter {
     final minAbbrev = '$prefix$minSuffix';
     _measurePainter.text = TextSpan(
       text: minAbbrev,
-      style: TextStyle(color: color, fontSize: fontSize),
+      style: valueTextStyle(
+        color: color,
+        fontSize: fontSize,
+        valueFont: valueFont,
+      ),
     );
     _measurePainter.layout();
     if (_measurePainter.width > availableWidth) {
@@ -354,7 +388,11 @@ abstract class Waveform extends CustomPainter {
       }
       _measurePainter.text = TextSpan(
         text: abbreviated,
-        style: TextStyle(color: color, fontSize: fontSize),
+        style: valueTextStyle(
+          color: color,
+          fontSize: fontSize,
+          valueFont: valueFont,
+        ),
       );
       _measurePainter.layout();
       if (_measurePainter.width <= availableWidth) {
@@ -368,7 +406,12 @@ abstract class Waveform extends CustomPainter {
     // Only cache the winning label string (not intermediates).
     final bestSuffix = hexDigits.substring(hexDigits.length - bestSuffixLen);
     final bestAbbrev = '$prefix$bestSuffix';
-    return getCachedLabel(bestAbbrev, fontSize, color);
+    return getCachedLabel(
+      bestAbbrev,
+      fontSize,
+      color,
+      valueFont: valueFont,
+    );
   }
 
   /// Dispose and clear all static caches.
@@ -561,6 +604,7 @@ abstract class Waveform extends CustomPainter {
       available,
       fs,
       effectiveLabelTextColor,
+      valueFont: valueFont,
     );
     if (tp == null) {
       return;
@@ -725,6 +769,7 @@ abstract class Waveform extends CustomPainter {
           narrowAvail,
           Waveform.scaledFontSize(rowHeight ?? baseSignalRowHeight),
           txtColor,
+          valueFont: valueFont,
         );
       }
       if (activeTp == null) {
@@ -793,6 +838,9 @@ abstract class Waveform extends CustomPainter {
 
   /// Color used for waveform text labels.
   final Color textColor;
+
+  /// Font used for waveform values and overlay labels.
+  final ValueFont valueFont;
 
   /// Opaque background color drawn behind labels to prevent cached-image
   /// blending artefacts (crossing-polygon strokes bleeding into text
@@ -919,6 +967,7 @@ abstract class Waveform extends CustomPainter {
     this.xColor = Colors.red,
     this.zColor = Colors.yellow,
     this.textColor = const Color(0xFFD4D4D4),
+    this.valueFont = ValueFont.robotoMono,
     this.labelBackgroundColor,
     super.repaint,
   }) {
@@ -1235,6 +1284,7 @@ abstract class Waveform extends CustomPainter {
       oldDelegate.xColor != xColor ||
       oldDelegate.zColor != zColor ||
       oldDelegate.textColor != textColor ||
+      oldDelegate.valueFont != valueFont ||
       oldDelegate.labelBackgroundColor != labelBackgroundColor ||
       oldDelegate.timescale != timescale ||
       oldDelegate.dataEndTime != dataEndTime ||
@@ -1266,6 +1316,7 @@ abstract class Waveform extends CustomPainter {
       style.fontSize ?? fs,
       style.color ?? effectiveLabelTextColor,
       fontWeight: style.fontWeight,
+      valueFont: valueFont,
     ).paint(canvas, offset);
   }
 

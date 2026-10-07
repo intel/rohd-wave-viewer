@@ -21,6 +21,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:rohd_devtools_widgets/rohd_devtools_widgets.dart';
 import 'package:rohd_wave_viewer/src/const/app_theme.dart';
 import 'package:rohd_wave_viewer/src/const/layout.dart';
+import 'package:rohd_wave_viewer/src/const/value_font.dart';
 import 'package:rohd_wave_viewer/src/cubit/wave_viewer_theme_cubit.dart';
 import 'package:rohd_wave_viewer/src/cubit/waveform_scale_cubit.dart';
 import 'package:rohd_wave_viewer/src/modules/hierarchy/hierarchy_overlay.dart';
@@ -38,6 +39,7 @@ import 'package:rohd_wave_viewer/src/platform/devtools_shared_ui.dart';
 import 'package:rohd_wave_viewer/src/platform/platform_io.dart'
     if (dart.library.html) 'package:rohd_wave_viewer/src/platform/platform_web.dart'
     as platform;
+import 'package:rohd_wave_viewer/src/services/initial_waveform_source.dart';
 import 'package:rohd_wave_viewer/src/services/vscode_extension_client.dart'
     show RohdExtensionClient, RohdModuleInfo, createVscodeExtensionClient;
 import 'package:rohd_wave_viewer/src/services/vscode_webview_interop_io.dart'
@@ -50,6 +52,9 @@ class WaveFormViewerPage extends StatefulWidget {
   /// Whether running in extension mode (embedded in another app).
   /// When true, hides file picker and other standalone-only UI elements.
   final bool _isExtensionMode;
+
+  /// URL, native file path, or Flutter asset loaded after the first frame.
+  final String? _initialWaveformSource;
 
   /// Callback invoked when the user requests a snapshot of all signal values
   /// at the current marker time. The argument is the marker time in
@@ -113,6 +118,7 @@ class WaveFormViewerPage extends StatefulWidget {
   const WaveFormViewerPage({
     super.key,
     bool isExtensionMode = false,
+    String? initialWaveformSource,
     void Function(int timePs)? onSnapshotRequested,
     int? lastSnapshotTimePs,
     ValueNotifier<bool>? canSnapshotNotifier,
@@ -126,6 +132,7 @@ class WaveFormViewerPage extends StatefulWidget {
     Stream<void>? apiReloads,
     Stream<String>? apiReloadErrors,
   })  : _isExtensionMode = isExtensionMode,
+        _initialWaveformSource = initialWaveformSource,
         _onSnapshotRequested = onSnapshotRequested,
         _lastSnapshotTimePs = lastSnapshotTimePs,
         _canSnapshotNotifier = canSnapshotNotifier,
@@ -201,6 +208,7 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
 
   String? _fileName;
   String? _filePath;
+  String? _fileSource;
   List<int>? _fileBytes;
   bool _isLoadingFile = false;
 
@@ -238,6 +246,9 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
 
   /// Whether the top AppBar remains visible instead of auto-hiding.
   bool _appBarPinned = true;
+
+  /// Font used for values across the waveform and Value column.
+  ValueFont _valueFont = ValueFont.robotoMono;
 
   /// Tracked pixel width of the Selected Signals pane so the hierarchy
   /// overlay/panel can match it.
@@ -305,9 +316,14 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
       _hasColorEmoji = true; // Web always has color emoji
     }
 
-    // Note: Removed auto-init call - user should explicitly load a VCD file.
-    // Previously tried to init in standalone mode, but this caused errors
-    // when no waveform was loaded yet.
+    final initialWaveformSource = widget._initialWaveformSource?.trim();
+    if (initialWaveformSource != null && initialWaveformSource.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(_loadWaveformSource(initialWaveformSource));
+        }
+      });
+    }
 
     // Cross-probing: listen for incoming signal paths from other viewers.
     if (widget._crossProbeService != null) {
@@ -324,7 +340,7 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
     // In VS Code webview mode without an injected extension client, create
     // our own so we can query format availability. Also create local go-to
     // callbacks that talk to the extension host via the rohdEmbed bridge.
-    if (_isVscodeWebview) {
+    if (_isVscodeWebview && initialWaveformSource == null) {
       if (widget._extensionClient == null) {
         _ownedExtensionClient = createVscodeExtensionClient();
       }
@@ -706,9 +722,6 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
   /// native picker which provides a persistent file handle for later refresh.
   /// Otherwise, we fall back to FilePicker which only provides one-time bytes.
   Future<void> _loadVcdFile() async {
-    // Capture repository before async gap
-    final repository = context.read<RohdModuleBloc>().repository;
-
     try {
       String? fileName;
       String? filePath;
@@ -755,57 +768,128 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
       }
 
       if (bytes != null && fileName != null) {
-        setState(() => _isLoadingFile = true);
-
-        // Allow the loading overlay to render before starting heavy processing
-        await Future<void>.delayed(Duration.zero);
-
-        debugPrint('[Home] Loading $fileName (${bytes.length} bytes)');
-        final newApi = WellenSignalWaveformApi();
-        await newApi.loadBytes(bytes, fileName: fileName);
-        final structure = await newApi.getModuleStructureOnly();
-        final resolved = resolveModuleStructure(structure);
-        debugPrint('[Home] File parsed successfully');
-
-        if (!mounted) {
-          return;
-        }
-
-        // Commit the new backend and viewer state only after parsing and
-        // hierarchy validation both succeed.
-        repository.setSignalWaveformApi(newApi);
-        context.read<SignalBloc>().add(SignalResetEvent());
-        context.read<WaveformModuleBloc>().add(const WaveformModuleReset());
-        context.read<RohdModuleBloc>().add(const RohdModuleReset());
-        context.read<RohdModuleBloc>().add(
-              RohdModuleSetExternalHierarchy(
-                resolved.hierarchyService,
-                metadata: resolved.structure.metadata,
-              ),
-            );
-
-        setState(() {
-          _fileName = fileName;
-          _filePath = filePath;
-          _fileBytes = bytes;
-          _fileHandle = fileHandle;
-          _isLoadingFile = false;
-        });
-      }
-    } on Object catch (e, stackTrace) {
-      debugPrint('[Home] Error loading file: $e');
-      debugPrint('[Home] Stack trace: $stackTrace');
-
-      // Show error to user
-      if (mounted) {
-        setState(() => _isLoadingFile = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading file: $e'),
-            backgroundColor: Colors.red,
-          ),
+        await _loadWaveformBytes(
+          bytes: bytes,
+          fileName: fileName,
+          filePath: filePath,
+          fileHandle: fileHandle,
         );
       }
+    } on Object catch (e, stackTrace) {
+      _reportFileLoadError(e, stackTrace);
+    }
+  }
+
+  Future<void> _loadWaveformSource(String source) async {
+    try {
+      final sourceUri = Uri.tryParse(source);
+      if (kIsWeb && sourceUri?.scheme.toLowerCase() == 'file') {
+        throw UnsupportedError(
+          'Browser applications cannot read file:// URLs. '
+          'Use the file picker, a bundled asset, or an HTTP(S) URL.',
+        );
+      }
+
+      if (mounted) {
+        setState(() => _isLoadingFile = true);
+      }
+      final bytes = await _readWaveformSource(source);
+      if (!mounted) {
+        return;
+      }
+
+      final fileName = waveformFileNameFromSource(source);
+      debugPrint(
+        '[Home] Loaded startup source $source '
+        '(${bytes.length} bytes)',
+      );
+      await _loadWaveformBytes(
+        bytes: bytes,
+        fileName: fileName,
+        fileSource: source,
+      );
+    } on Object catch (e, stackTrace) {
+      _reportFileLoadError(e, stackTrace);
+    }
+  }
+
+  Future<List<int>> _readWaveformSource(String source) {
+    if (isFlutterAssetSource(source)) {
+      return _readWaveformAsset(source);
+    }
+    return platform.fetchBytes(source);
+  }
+
+  Future<List<int>> _readWaveformAsset(String source) async {
+    final data = await rootBundle.load(source);
+    return data.buffer.asUint8List(
+      data.offsetInBytes,
+      data.lengthInBytes,
+    );
+  }
+
+  Future<void> _loadWaveformBytes({
+    required List<int> bytes,
+    required String fileName,
+    String? filePath,
+    String? fileSource,
+    platform.FileSystemHandle? fileHandle,
+  }) async {
+    if (!mounted) {
+      return;
+    }
+
+    final repository = context.read<RohdModuleBloc>().repository;
+    setState(() => _isLoadingFile = true);
+
+    // Allow the loading overlay to render before starting heavy processing.
+    await Future<void>.delayed(Duration.zero);
+
+    debugPrint('[Home] Loading $fileName (${bytes.length} bytes)');
+    final newApi = WellenSignalWaveformApi();
+    await newApi.loadBytes(bytes, fileName: fileName);
+    final structure = await newApi.getModuleStructureOnly();
+    final resolved = resolveModuleStructure(structure);
+    debugPrint('[Home] File parsed successfully');
+
+    if (!mounted) {
+      return;
+    }
+
+    // Commit only after parsing and hierarchy validation both succeed.
+    repository.setSignalWaveformApi(newApi);
+    context.read<SignalBloc>().add(SignalResetEvent());
+    context.read<WaveformModuleBloc>().add(const WaveformModuleReset());
+    context.read<RohdModuleBloc>().add(const RohdModuleReset());
+    context.read<RohdModuleBloc>().add(
+          RohdModuleSetExternalHierarchy(
+            resolved.hierarchyService,
+            metadata: resolved.structure.metadata,
+          ),
+        );
+
+    setState(() {
+      _fileName = fileName;
+      _filePath = filePath;
+      _fileSource = fileSource;
+      _fileBytes = bytes;
+      _fileHandle = fileHandle;
+      _isLoadingFile = false;
+    });
+  }
+
+  void _reportFileLoadError(Object error, StackTrace stackTrace) {
+    debugPrint('[Home] Error loading file: $error');
+    debugPrint('[Home] Stack trace: $stackTrace');
+
+    if (mounted) {
+      setState(() => _isLoadingFile = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading file: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -863,8 +947,13 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
     try {
       late List<int> bytes;
 
-      // Priority 1: Use File System Access API handle (true disk reload on web)
-      if (_fileHandle != null) {
+      // Priority 1: Re-read the startup URL, native path, or bundled asset.
+      if (_fileSource != null) {
+        debugPrint('[Home] Reloading startup source: $_fileSource');
+        bytes = await _readWaveformSource(_fileSource!);
+      }
+      // Priority 2: Use File System Access API handle (true disk reload on web)
+      else if (_fileHandle != null) {
         debugPrint(
           '[Home] Reloading from disk via File System Access API: '
           '${_fileHandle!.name}',
@@ -885,7 +974,7 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
           }
         }
       }
-      // Priority 2: Use file path on native platforms
+      // Priority 3: Use file path on native platforms
       else if (_filePath != null && _filePath!.isNotEmpty) {
         debugPrint('[Home] Reloading from disk path: $_filePath');
         try {
@@ -904,7 +993,7 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
           }
         }
       }
-      // Priority 3: Fallback to stored bytes (no disk reload)
+      // Priority 4: Fallback to stored bytes (no disk reload)
       else if (_fileBytes != null) {
         debugPrint(
           '[Home] Reloading from memory (no file handle or path available)',
@@ -1595,6 +1684,14 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
                       return Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          ValueFontMenu(
+                            selectedFont: _valueFont,
+                            onSelected: (valueFont) {
+                              if (valueFont != _valueFont) {
+                                setState(() => _valueFont = valueFont);
+                              }
+                            },
+                          ),
                           // Hide internal help button when embedded in devtools
                           // (the tab navbar provides the help button instead).
                           if (_isVscodeWebview || !_isExtensionMode)
@@ -1831,6 +1928,7 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
         scrollController: _signalValueScrollController,
         dragController: _dragController,
         isVideoMode: widget._isVideoMode,
+        valueFont: _valueFont,
       ),
     );
 
@@ -1842,6 +1940,7 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
             : LightThemeColors.panelBackground,
       ),
       child: WaveformPanel(
+        valueFont: _valueFont,
         verticalScrollController: _waveformVerticalScrollController,
         fitNotifier: _fitCommandNotifier,
         dragController: _dragController,

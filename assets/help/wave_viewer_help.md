@@ -95,6 +95,31 @@ Module Tree
 | 👁  Internals | Toggle visibility of internal signals |
 | ☀️/🌙  Theme | Toggle light / dark theme |
 
+## Load a Waveform from the Page URL
+
+The web application accepts a case-sensitive `waveFormFile` query parameter:
+
+```text
+/?waveFormFile=assets%2Fwaveforms%2Ffilter_bank.fst
+```
+
+The value may be a bundled asset, a same-origin relative URL, or an HTTP(S)
+URL whose server permits browser access with CORS headers. Encode a complete
+external URL before placing it in the query string.
+
+Use repeated `signalList` parameters to display signals after loading. Signal
+values are full hierarchy paths and may refer to nested modules:
+
+```text
+/?waveFormFile=assets%2Fwaveforms%2Ffilter_bank.fst&signalList=FilterBank%2Fsample1&signalList=FilterBank%2Fch0%2FdataOut
+```
+
+The parameters preserve their order. Comma-separated paths in one
+`signalList` value are also accepted.
+
+Web browsers cannot open `file://` URLs or arbitrary local filesystem paths.
+Use the Load file button for a local file, or serve it over HTTP.
+
 ## Integrated Workflows
 
 The following context-menu actions appear only when the embedding host or the

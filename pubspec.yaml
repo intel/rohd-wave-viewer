@@ -56,3 +56,11 @@ flutter:
   assets:
     - assets/help/
     - assets/licenses/
+    - assets/waveforms/
+  fonts:
+    - family: SourceCodePro
+      fonts:
+        - asset: assets/fonts/SourceCodePro.ttf
+    - family: UbuntuMono
+      fonts:
+        - asset: assets/fonts/UbuntuMono-Regular.ttf

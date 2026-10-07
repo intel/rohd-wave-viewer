@@ -25,6 +25,7 @@ import 'package:rohd_devtools_widgets/rohd_devtools_widgets.dart'
 import 'package:rohd_wave_viewer/embedded_wave_viewer.dart';
 import 'package:rohd_wave_viewer/src/const/app_version.dart';
 import 'package:rohd_wave_viewer/src/platform/platform.dart' as plat;
+import 'package:rohd_wave_viewer/src/services/initial_waveform_source.dart';
 import 'package:web/web.dart' as web;
 
 final _apiReloadController = StreamController<void>.broadcast();
@@ -159,6 +160,9 @@ void main() async {
   plat.setUrlStrategySafe(null);
 
   WidgetsFlutterBinding.ensureInitialized();
+  final pageUri = Uri.base;
+  final initialWaveformSource = waveformSourceFromUri(pageUri);
+  final initialSignalPaths = signalPathsFromUri(pageUri);
   await initAppVersion();
   setGlobal(IdeTheme, getIdeTheme());
 
@@ -502,10 +506,14 @@ void main() async {
   runApp(
     EmbeddedWaveViewer(
       waveformApi: webApi.api,
-      apiReady: webApi.loaded.then((_) {
-        // API is ready after VCD loads, but for now just complete
-        // The repository will retry failed calls after this completes
-      }),
+      initialWaveformSource: initialWaveformSource,
+      initialMonitoredSignalPaths:
+          initialSignalPaths.isEmpty ? null : initialSignalPaths,
+      apiReady: initialWaveformSource == null
+          ? webApi.loaded.then((_) {
+              // The repository retries calls after host-provided data loads.
+            })
+          : null,
       crossProbeService: crossProbeService,
       apiReloads: _apiReloadController.stream,
       apiReloadErrors: _apiReloadErrorController.stream,

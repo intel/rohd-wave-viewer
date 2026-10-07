@@ -69,6 +69,9 @@ class WaveformPanel extends StatefulWidget {
   /// When true, marker placement is disabled (video/live-tracking mode).
   final bool _isVideoMode;
 
+  /// Font used for waveform values and overlay labels.
+  final ValueFont valueFont;
+
   /// Synchronizes normalized viewport state with a session owner.
   final ValueNotifier<WaveformViewport>? _viewportNotifier;
 
@@ -82,6 +85,7 @@ class WaveformPanel extends StatefulWidget {
     ValueNotifier<int>? fitNotifier,
     DragReorderController? dragController,
     bool isVideoMode = false,
+    this.valueFont = ValueFont.robotoMono,
     ValueNotifier<WaveformViewport>? viewportNotifier,
     ValueNotifier<int?>? measurementMarkerNotifier,
   })  : _verticalScrollController = verticalScrollController,
@@ -90,6 +94,12 @@ class WaveformPanel extends StatefulWidget {
         _isVideoMode = isVideoMode,
         _viewportNotifier = viewportNotifier,
         _measurementMarkerNotifier = measurementMarkerNotifier;
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(EnumProperty<ValueFont>('valueFont', valueFont));
+  }
 
   @override
   State<WaveformPanel> createState() => _WaveformPanelState();
@@ -1808,6 +1818,7 @@ class _WaveformPanelState extends State<WaveformPanel>
                 },
                 child: WaveformBackground(
                   key: _backgroundKey,
+                  valueFont: widget.valueFont,
                   timescale: timescale,
                   dataEndTime: dataEndTime,
                   verticalScrollController: _verticalScrollController,
@@ -2148,6 +2159,7 @@ class _WaveformPanelState extends State<WaveformPanel>
       formatted,
       12,
       Colors.white,
+      valueFont: widget.valueFont,
     ); // colour doesn't affect width
     final isClipped = available < 10.0 || tp.width > available;
 
@@ -2192,10 +2204,10 @@ class _WaveformPanelState extends State<WaveformPanel>
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Text(
                   hover.text,
-                  style: TextStyle(
+                  style: wfp.Waveform.valueTextStyle(
                     fontSize: 12,
-                    fontFamily: 'monospace',
                     color: isDark ? Colors.white : Colors.black87,
+                    valueFont: widget.valueFont,
                   ),
                 ),
               ),

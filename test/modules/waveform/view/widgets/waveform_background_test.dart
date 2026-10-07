@@ -15,6 +15,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:rohd_wave_viewer/src/const/const.dart';
 import 'package:rohd_wave_viewer/src/cubit/waveform_scale_cubit.dart';
 import 'package:rohd_wave_viewer/src/modules/rohd_module/bloc/rohd_module_bloc.dart';
 import 'package:rohd_wave_viewer/src/modules/signal/bloc/signal_bloc.dart';
@@ -65,6 +66,31 @@ void main() {
   });
 
   group('Waveform Background', () {
+    test('caches waveform labels separately for each value font', () {
+      addTearDown(Waveform.clearCaches);
+
+      final robotoMonoLabel = Waveform.getCachedLabel(
+        "8'h5a",
+        18,
+        Colors.white,
+      );
+      final sourceCodeProLabel = Waveform.getCachedLabel(
+        "8'h5a",
+        18,
+        Colors.white,
+        valueFont: ValueFont.sourceCodePro,
+      );
+      final robotoMonoSpan = robotoMonoLabel.text! as TextSpan;
+      final sourceCodeProSpan = sourceCodeProLabel.text! as TextSpan;
+
+      expect(
+        robotoMonoSpan.style?.fontFamily,
+        'packages/devtools_app_shared/RobotoMono',
+      );
+      expect(sourceCodeProSpan.style?.fontFamily, 'SourceCodePro');
+      expect(sourceCodeProLabel, isNot(same(robotoMonoLabel)));
+    });
+
     test('formats waveform labels using the selected row format', () {
       const sourceValue = "8'hff";
 

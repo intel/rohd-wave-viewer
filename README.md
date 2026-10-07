@@ -100,6 +100,46 @@ Select a VCD, FST, or GHW file from your computer. The hosted viewer processes
 the file locally in your browser; it does not upload the waveform to an
 application server.
 
+The web application can also load a waveform at startup with the case-sensitive
+`waveFormFile` query parameter. This link opens the FilterBank waveform bundled
+with the application:
+
+```text
+https://intel.github.io/rohd-wave-viewer/?waveFormFile=assets%2Fwaveforms%2Ffilter_bank.fst
+```
+
+The value can instead be an HTTP(S) URL. Percent-encode the complete URL when
+placing it inside the query string:
+
+```text
+/?waveFormFile=https%3A%2F%2Fexample.com%2Fwaves%2Fdesign.fst
+```
+
+Cross-origin servers must permit browser access with CORS headers. Browsers
+cannot read a user's `file://` URL or arbitrary local path; use the file picker
+or serve the file over HTTP instead.
+
+Use one or more `signalList` parameters to populate the monitored-signal list
+after the waveform loads. Each value is a full hierarchy path, so signals in
+child modules use `/` between hierarchy components:
+
+```text
+/?waveFormFile=assets%2Fwaveforms%2Ffilter_bank.fst&signalList=FilterBank%2Fsample1&signalList=FilterBank%2Fch0%2FdataOut
+```
+
+Repeated parameters preserve their order. A single parameter may also contain
+comma-separated paths:
+
+```text
+&signalList=FilterBank%2Fsample1%2CFilterBank%2Fch0%2FdataOut
+```
+
+`filter_bank.fst` is declared as a Flutter package asset. The root application
+loads it as `assets/waveforms/filter_bank.fst`; applications consuming
+`rohd_wave_viewer` from pub.dev can reference the same asset as
+`packages/rohd_wave_viewer/assets/waveforms/filter_bank.fst`, including through
+`EmbeddedWaveViewer.initialWaveformSource`.
+
 ### Linux Desktop Application
 
 A native Linux build opens the file picker when started without arguments. To

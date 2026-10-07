@@ -32,6 +32,7 @@ class WaveformBinary extends Waveform {
     super.xColor,
     super.zColor,
     super.textColor,
+    super.valueFont,
     super.labelBackgroundColor,
     this.useBezierCrossings = false,
     super.repaint,
@@ -897,6 +898,7 @@ class WaveformBinary extends Waveform {
         available,
         Waveform.scaledFontSize(size.height),
         effectiveLabelTextColor,
+        valueFont: valueFont,
       );
       if (tp == null) {
         continue;
@@ -929,6 +931,7 @@ class WaveformBinary extends Waveform {
               narrowAvail,
               Waveform.scaledFontSize(size.height),
               effectiveLabelTextColor,
+              valueFont: valueFont,
             );
           }
         }

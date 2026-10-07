@@ -32,6 +32,7 @@ class WaveformHexaValue extends Waveform {
     super.xColor,
     super.zColor,
     super.textColor,
+    super.valueFont,
     super.labelBackgroundColor,
     this.useBezierCrossings = true,
     super.repaint,
@@ -490,6 +491,7 @@ class WaveformHexaValue extends Waveform {
         available,
         Waveform.scaledFontSize(size.height),
         effectiveLabelTextColor,
+        valueFont: valueFont,
       );
       if (tp == null) {
         continue;
@@ -522,6 +524,7 @@ class WaveformHexaValue extends Waveform {
               narrowAvail,
               Waveform.scaledFontSize(size.height),
               effectiveLabelTextColor,
+              valueFont: valueFont,
             );
           }
         }
