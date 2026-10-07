@@ -17,6 +17,7 @@ cd "$(dirname "$0")/../.."
 export PATH="$HOME/flutter/bin:/usr/local/flutter/bin:$PATH"
 
 bash scripts/verify_flutter_version.sh
+bash tool/gh_actions/test_web_build_invalidation.sh
 
 flutter_bin="$(readlink -f "$(command -v flutter)")"
 dart_bin="$(dirname "$flutter_bin")/dart"

@@ -10,10 +10,10 @@
 #
 #   PACKAGE targets  (extension, install-remote)
 #     Must produce build artifacts that reflect the CURRENT Dart sources
-#     before they get zipped into the extension.  The real output files
-#     (build/web/index.html, build/linux/.../wave_viewer) serve as Make
-#     targets and depend on $(DART_SOURCES) so that any source edit
-#     invalidates them and forces a rebuild on the next package.
+#     and bundled assets before they get zipped into the extension.  The real
+#     output files (build/web/index.html, build/linux/.../wave_viewer) serve as
+#     Make targets and depend on the inputs that Flutter packages so edits
+#     invalidate them and force a rebuild on the next package.
 #
 #   BUILD targets  (web, linux, etc.)
 #     Explicit "build me now" commands.  These use the output-file targets
@@ -38,8 +38,9 @@ FLUTTER_WEB_WASM_ENABLED := $(if $(filter 1 true yes,$(FLUTTER_WEB_WASM)),1,0)
 FLUTTER_WEB_WASM_ARGS := $(if $(filter 1,$(FLUTTER_WEB_WASM_ENABLED)),--wasm,)
 ROHD_LOCAL_PATH ?= $(HOME)/release/rohd
 
-# Source file patterns for dependency tracking.
-# Includes the app's own lib/ and the local Wellen dependency package.
+# Source and asset patterns for dependency tracking.
+# Includes the app's own lib/, the local Wellen dependency package, and
+# bundled Flutter assets.
 DART_DEP_DIRS := \
 	$(ROOT)/lib \
 	$(ROOT)/packages/dart_wellen/lib \
@@ -47,6 +48,9 @@ DART_DEP_DIRS := \
 	$(ROHD_LOCAL_PATH)/packages/rohd_hierarchy/lib \
 	$(ROHD_LOCAL_PATH)/packages/rohd_waveform/lib
 DART_SOURCES := $(shell find $(DART_DEP_DIRS) -name '*.dart' 2>/dev/null)
+FLUTTER_ASSET_ROOT := $(ROOT)/assets
+FLUTTER_ASSET_DIRS := $(shell find $(FLUTTER_ASSET_ROOT) -type d 2>/dev/null)
+FLUTTER_ASSETS := $(shell find $(FLUTTER_ASSET_ROOT) -type f 2>/dev/null)
 RUST_SOURCES := $(shell find $(ROOT)/rust/wellen_bridge/src -name '*.rs' ! -name 'frb_generated.rs' 2>/dev/null)
 RUST_CARGO := $(ROOT)/rust/wellen_bridge/Cargo.toml
 TS_SOURCES := $(shell find $(ROOT)/vscode-extension/src -name '*.ts' 2>/dev/null)
@@ -191,8 +195,8 @@ prepare: rust-native
 # ---------------------------------------------------------------------------
 # BUILD / PACKAGE path  (actual output files track Dart source freshness)
 # ---------------------------------------------------------------------------
-# These targets use real build outputs as Make targets.  When any
-# $(DART_SOURCES) file is newer than the output, Make triggers a rebuild.
+# These targets use real build outputs as Make targets.  When a tracked
+# Flutter input is newer than the output, Make triggers a rebuild.
 #
 # `flutter run` (used by RUN targets) also updates these same output files
 # as a side-effect of its own incremental compiler.  So if you iterate
@@ -202,6 +206,7 @@ prepare: rust-native
 # Flutter web: both debug and release write to build/web/ (Flutter default).
 # FLUTTER_WEB_MODE controls the mode; web-debug/web-release force it.
 $(WEB_BUILD)/index.html $(WEB_BUILD_CONFIG) &: web/index.html $(WASM_OUTPUTS) pubspec.yaml $(DART_SOURCES) \
+	$(FLUTTER_ASSET_DIRS) $(FLUTTER_ASSETS) \
 	scripts/fix_bootstrap.py scripts/patch_wasm_binary.sh scripts/patch_wasm_js.sh \
 	scripts/verify_flutter_native_dependencies.sh security/native-dependency-exceptions.json
 	@echo "Building Flutter web ($(FLUTTER_WEB_MODE))..."
