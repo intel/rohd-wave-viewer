@@ -74,6 +74,24 @@ Run platform builds that your change affects. In particular, use `make wasm`
 for bridge changes, `make linux-release` for native application changes, and
 `make extension` for extension or webview changes.
 
+## Publishing
+
+Prepare the independently versioned workspace packages with:
+
+```bash
+tool/prepare_release.sh dart_wellen
+tool/prepare_release.sh rohd_wave_viewer
+```
+
+The helper performs dry runs but never publishes, uploads, commits, tags, or
+pushes. Full local tests and Pana are independent opt-ins through `--run-tests`
+and `--run-pana`.
+
+Publish `dart_wellen` before a `rohd_wave_viewer` version that depends on it,
+and require both General and Release Checks CI for the release commit. See the
+[release inventory](doc/RELEASES.md) for hosted resolution, bridge artifacts,
+and the independent Pages, Linux, and VSIX distributions.
+
 Every authored Dart source file should carry the full repository header:
 
 ```dart

@@ -26,9 +26,23 @@ mkdir -p \
 cp "$repo_root/Makefile" "$work_dir/Makefile"
 printf 'help\n' >"$work_dir/assets/help/wave_viewer_help.md"
 printf 'void main() {}\n' >"$work_dir/lib/main_web.dart"
-printf 'version: 0.1.0\n' >"$work_dir/pubspec.yaml"
-printf '{"name":"rohd-wave-viewer"}\n' \
-  >"$work_dir/vscode-extension/package.json"
+printf 'version: 9.9.9\n' >"$work_dir/pubspec.yaml"
+cat >"$work_dir/vscode-extension/package.json" <<'JSON'
+{
+  "name": "rohd-wave-viewer",
+  "version": "0.1.0"
+}
+JSON
+
+extension_version="$(
+  make --no-print-directory -C "$work_dir" -pn 2>/dev/null |
+    sed -n 's/^PKG_VERSION := //p' |
+    head -n 1
+)"
+if [[ "$extension_version" != '0.1.0' ]]; then
+  echo "error: extension version should come from package.json; found $extension_version." >&2
+  exit 1
+fi
 
 touch \
   "$work_dir/scripts/fix_bootstrap.py" \
@@ -53,11 +67,24 @@ touch \
 # Establish deterministic ordering without sleeping or touching the checkout.
 find "$work_dir" -exec touch -t 200001010000 {} +
 touch "$work_dir/build/web/index.html"
-printf 'mode=release\nwasm=1\n' \
-  >"$work_dir/build/.rohd-wave-web-build-config"
+web_build_config() {
+  local build_args="$1"
+  local key
+  key="$(
+    printf '%s\n' release 1 "$build_args" |
+      sha256sum |
+      cut -c1-16
+  )"
+  printf '%s/build/.rohd-wave-web-build-config-%s' "$work_dir" "$key"
+}
+
+local_config="$(web_build_config '')"
+pages_args='--base-href=/rohd-wave-viewer/'
+pages_config="$(web_build_config "$pages_args")"
+printf 'mode=release\nwasm=1\nargs=\n' >"$local_config"
 touch -t 200001010001 \
   "$work_dir/build/web/index.html" \
-  "$work_dir/build/.rohd-wave-web-build-config"
+  "$local_config"
 
 if ! make --no-print-directory -C "$work_dir" -q web; then
   echo "error: unchanged Flutter web inputs should reuse existing output." >&2
@@ -73,7 +100,43 @@ if [[ "$reuse_output" != *"Reusing existing Flutter release/WASM web build..."* 
   exit 1
 fi
 
-touch -t 200001010002 "$work_dir/assets/help/wave_viewer_help.md"
+set +e
+make --no-print-directory -C "$work_dir" -q web \
+  FLUTTER_WEB_BUILD_ARGS="$pages_args"
+status=$?
+set -e
+if [[ "$status" -ne 1 ]]; then
+  echo "error: changing to the Pages base href should invalidate output." >&2
+  exit 1
+fi
+
+rm -f "$local_config"
+printf 'mode=release\nwasm=1\nargs=%s\n' "$pages_args" >"$pages_config"
+touch -t 200001010002 \
+  "$work_dir/build/web/index.html" \
+  "$pages_config"
+if ! make --no-print-directory -C "$work_dir" -q web \
+  FLUTTER_WEB_BUILD_ARGS="$pages_args"; then
+  echo "error: unchanged Pages build arguments should reuse output." >&2
+  exit 1
+fi
+
+set +e
+make --no-print-directory -C "$work_dir" -q web
+status=$?
+set -e
+if [[ "$status" -ne 1 ]]; then
+  echo "error: changing from the Pages base href should invalidate output." >&2
+  exit 1
+fi
+
+rm -f "$pages_config"
+printf 'mode=release\nwasm=1\nargs=\n' >"$local_config"
+touch -t 200001010003 \
+  "$work_dir/build/web/index.html" \
+  "$local_config"
+
+touch -t 200001010004 "$work_dir/assets/help/wave_viewer_help.md"
 set +e
 make --no-print-directory -C "$work_dir" -q web
 status=$?
@@ -83,9 +146,9 @@ if [[ "$status" -ne 1 ]]; then
   exit 1
 fi
 
-touch -t 200001010003 \
+touch -t 200001010005 \
   "$work_dir/build/web/index.html" \
-  "$work_dir/build/.rohd-wave-web-build-config"
+  "$local_config"
 if ! make --no-print-directory -C "$work_dir" -q web; then
   echo "error: refreshed Flutter web output should be reusable." >&2
   exit 1

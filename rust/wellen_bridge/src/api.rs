@@ -235,7 +235,7 @@ fn scope_type_to_string(scope_type: wellen::ScopeType) -> &'static str {
 ///
 /// Note: This function is only available on native platforms (not WASM).
 /// For web/WASM, use `load_waveform_from_bytes` instead.
-#[flutter_rust_bridge::frb(sync)]
+#[flutter_rust_bridge::frb(sync, serialize)]
 pub fn load_waveform(_file_path: String) -> Result<WaveformMetadata, String> {
     #[cfg(target_family = "wasm")]
     {
@@ -321,7 +321,7 @@ fn load_waveform_native(file_path: String) -> Result<WaveformMetadata, String> {
 /// # Arguments
 /// * `bytes` - The waveform file contents as bytes
 /// * `file_name` - Optional filename hint for format detection and metadata
-#[flutter_rust_bridge::frb(sync)]
+#[flutter_rust_bridge::frb(sync, serialize)]
 pub fn load_waveform_from_bytes(bytes: Vec<u8>, file_name: Option<String>) -> Result<WaveformMetadata, String> {
     use std::io::Cursor;
     use wellen::viewers::{read_body, read_header};
@@ -393,7 +393,7 @@ pub fn load_waveform_from_bytes(bytes: Vec<u8>, file_name: Option<String>) -> Re
 /// Get the waveform structure (hierarchy of modules and signals)
 ///
 /// This returns the complete hierarchy without waveform data.
-#[flutter_rust_bridge::frb(sync)]
+#[flutter_rust_bridge::frb(sync, serialize)]
 pub fn get_waveform_structure() -> Result<WaveformStructure, String> {
     let state_guard = WAVEFORM_STATE.lock().unwrap();
     let state = state_guard.as_ref().ok_or("Waveform not loaded")?;
@@ -472,7 +472,7 @@ pub fn get_waveform_structure() -> Result<WaveformStructure, String> {
 ///
 /// This loads the actual waveform values for the specified signal IDs.
 /// Signal IDs are the full hierarchical paths (e.g., "top.counter.clk").
-#[flutter_rust_bridge::frb(sync)]
+#[flutter_rust_bridge::frb(sync, serialize)]
 pub fn get_waveform_data(
     signal_ids: Vec<String>,
     start_time: Option<u64>,
@@ -603,7 +603,7 @@ fn format_signal_value(value: &wellen::SignalValue) -> String {
 }
 
 /// Get the maximum timestamp in the waveform
-#[flutter_rust_bridge::frb(sync)]
+#[flutter_rust_bridge::frb(sync, serialize)]
 pub fn get_max_timestamp() -> Result<Option<u64>, String> {
     let state_guard = WAVEFORM_STATE.lock().unwrap();
     let state = state_guard.as_ref().ok_or("Waveform not loaded")?;
@@ -611,7 +611,7 @@ pub fn get_max_timestamp() -> Result<Option<u64>, String> {
 }
 
 /// Get all timestamps in the waveform
-#[flutter_rust_bridge::frb(sync)]
+#[flutter_rust_bridge::frb(sync, serialize)]
 pub fn get_all_timestamps() -> Result<Vec<u64>, String> {
     let state_guard = WAVEFORM_STATE.lock().unwrap();
     let state = state_guard.as_ref().ok_or("Waveform not loaded")?;
@@ -619,13 +619,13 @@ pub fn get_all_timestamps() -> Result<Vec<u64>, String> {
 }
 
 /// Check if a waveform is currently loaded
-#[flutter_rust_bridge::frb(sync)]
+#[flutter_rust_bridge::frb(sync, serialize)]
 pub fn is_waveform_loaded() -> bool {
     WAVEFORM_STATE.lock().unwrap().is_some()
 }
 
 /// Unload the current waveform and free resources
-#[flutter_rust_bridge::frb(sync)]
+#[flutter_rust_bridge::frb(sync, serialize)]
 pub fn unload_waveform() {
     *WAVEFORM_STATE.lock().unwrap() = None;
 }

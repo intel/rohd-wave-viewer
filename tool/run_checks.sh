@@ -42,6 +42,10 @@ tool/gh_actions/verify_formatting.sh
 print_step 'Analyze project source'
 tool/gh_actions/analyze_source.sh
 
+# Test dependency resolution without the repository lockfile
+print_step 'Test unlocked dart_wellen consumer'
+tool/gh_actions/test_unlocked_dart_wellen_consumer.sh
+
 # Verify Dart source headers after analysis generates the FRB bindings
 print_step 'Verify Dart source headers'
 dart run tool/gh_actions/verify_dart_headers.dart

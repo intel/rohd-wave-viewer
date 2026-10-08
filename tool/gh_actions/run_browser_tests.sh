@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 #
 # run_browser_tests.sh
-# Runs dart_wellen's Dart/JavaScript/WASM integration test in Chrome.
+# Runs dart_wellen's Rust/WASM integration test through both Dart web compilers.
 #
 # 2026 October 05
 # Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
@@ -63,7 +63,11 @@ flutter_bin="$(readlink -f "$(command -v flutter)")"
 dart_bin="$(dirname "$flutter_bin")/dart"
 
 cd "$package_root"
-"$dart_bin" run test:test \
-  --platform "$browser_platform" \
-  --concurrency 1 \
-  test/web_wasm_integration_test.dart
+for compiler in dart2js dart2wasm; do
+  echo "Running browser/WASM integration test with $compiler..."
+  "$dart_bin" run test:test \
+    --platform "$browser_platform" \
+    --compiler "$compiler" \
+    --concurrency 1 \
+    test/web_wasm_integration_test.dart
+done

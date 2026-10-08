@@ -165,10 +165,11 @@ with coverage, then merges both results into `coverage/lcov.info` and the HTML
 report. Rust tests remain a separate `make rust-test` validation gate.
 
 `make browser-test` builds the Wellen WebAssembly bridge and runs the
-`dart_wellen` browser integration test in Chrome. It validates bridge
-initialization and representative waveform values from a tracked fixture. CI
-runs this in a dedicated hosted-Ubuntu job with an explicitly installed Chrome,
-using the generated bindings and WASM assets from the main build job.
+`dart_wellen` browser integration test in Chrome through both Dart2Js and
+Dart2Wasm. It validates bridge initialization and representative waveform
+values from a tracked fixture. CI runs this in a dedicated hosted-Ubuntu job
+with an explicitly installed Chrome, using the generated bindings and WASM
+assets from the main build job.
 
 ---
 

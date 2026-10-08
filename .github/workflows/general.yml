@@ -32,6 +32,9 @@ jobs:
           use-quiet-mode: yes # output is too noisy, see https://github.com/gaurav-nelson/github-action-markdown-link-check/issues/121
           config-file: .github/configs/mlc_config.json
 
+      - name: Test release preparation helper
+        run: tool/test/prepare_release_test.sh
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -64,6 +67,9 @@ jobs:
       - name: Analyze project source
         run: tool/gh_actions/analyze_source.sh
 
+      - name: Test unlocked dart_wellen consumer
+        run: tool/gh_actions/test_unlocked_dart_wellen_consumer.sh
+
       - name: Verify Dart source headers
         run: dart run tool/gh_actions/verify_dart_headers.dart
 
@@ -90,6 +96,9 @@ jobs:
 
       - name: Build web application
         run: make web
+
+      - name: Verify matching bridge release set
+        run: tool/verify_bridge_release.sh
 
       - name: Upload browser/WASM test inputs
         uses: actions/upload-artifact@v4

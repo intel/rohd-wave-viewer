@@ -20,7 +20,7 @@ if (! -x ${HOME}/.cargo/bin/flutter_rust_bridge_codegen) then
         # Ensure per-user cargo/rustup locations
         setenv CARGO_HOME ${HOME}/.cargo
         setenv RUSTUP_HOME ${HOME}/.rustup
-        $RUST_180_CARGO install flutter_rust_bridge_codegen --version 2.6.0 --locked
+        $RUST_180_CARGO install flutter_rust_bridge_codegen --version 2.7.0 --locked
         if ($status != 0) then
             echo "ERROR: Failed to install code generator"
             exit 1
