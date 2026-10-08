@@ -18,6 +18,19 @@ trap 'rm -rf "$temp_dir"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+for generated_file in \
+  api.dart \
+  frb_generated.dart \
+  frb_generated.io.dart \
+  frb_generated.web.dart; do
+  generated_path="$repo_root/packages/dart_wellen/lib/src/rust/$generated_file"
+  if [[ ! -s "$generated_path" ]]; then
+    echo "error: missing generated dart_wellen binding: $generated_path" >&2
+    echo 'Run `make dart` before the unlocked-consumer check.' >&2
+    exit 2
+  fi
+done
+
 mkdir -p "$temp_dir/dart_wellen" "$temp_dir/consumer/bin"
 tar -C "$repo_root/packages/dart_wellen" \
   --exclude=.dart_tool --exclude=build --exclude=pubspec.lock \
