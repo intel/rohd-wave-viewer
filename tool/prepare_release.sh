@@ -22,8 +22,9 @@ Packages:
   dart_wellen
   rohd_wave_viewer
 
-No package names selects both packages. Each package keeps the version declared
-in its own manifest.
+No package names selects `dart_wellen`, the first package in publication order.
+Select `rohd_wave_viewer` explicitly after its hosted `dart_wellen` dependency
+is available. Each package keeps the version declared in its own manifest.
 
 Options:
   --validate-only  Validate selection, metadata, and source provenance only.
@@ -45,11 +46,18 @@ fail() {
 run_stage() {
   local label="$1"
   shift
+  local status
   printf '\n=== %s ===\n' "$label"
-  if "$@"; then
+  set +e
+  (
+    set -euo pipefail
+    "$@"
+  )
+  status=$?
+  set -e
+  if [[ "$status" -eq 0 ]]; then
     echo "PASSED: $label"
   else
-    local status=$?
     echo "FAILED: $label (exit $status)" >&2
     exit "$status"
   fi
@@ -122,7 +130,6 @@ validate_package_metadata() {
   grep -Eq "^##[[:space:]]+$version([[:space:]]*)$" "$directory/CHANGELOG.md" ||
     fail "$directory/CHANGELOG.md has no release heading for $version"
 
-  package_versions+=("$package=$version")
   echo "$package: version $version metadata validated"
 }
 
@@ -277,7 +284,7 @@ for argument in "$@"; do
 done
 
 if [[ "${#packages[@]}" -eq 0 ]]; then
-  packages=(dart_wellen rohd_wave_viewer)
+  packages=(dart_wellen)
 fi
 
 selected_packages=()
@@ -314,8 +321,13 @@ for package in "${selected_packages[@]}"; do
 done
 
 run_stage 'Source provenance' validate_source_provenance
+source_commit="$(git -C "$repo_root" rev-parse HEAD)"
+main_commit="$(git -C "$repo_root" rev-parse FETCH_HEAD)"
 for package in "${selected_packages[@]}"; do
   run_stage "$package metadata" validate_package_metadata "$package"
+  package_versions+=(
+    "$package=$(manifest_value "$(package_directory "$package")/pubspec.yaml" version)"
+  )
 done
 
 printf '\nSelected package inventory:\n'

@@ -21,10 +21,10 @@ Run preparation from a clean release commit that contains current canonical
 `main`:
 
 ```bash
-# Both Pub packages, using their independent manifest versions.
+# The first package in dependency order (dart_wellen).
 tool/prepare_release.sh
 
-# One selected package.
+# Explicit package selection.
 tool/prepare_release.sh dart_wellen
 tool/prepare_release.sh rohd_wave_viewer
 
@@ -49,6 +49,10 @@ It never uploads packages or artifacts and never commits, tags, pushes, merges,
 rebases, or rewrites package versions. Full tests and Pana remain independent
 local opt-ins. The manually dispatched **Release Checks** workflow runs the
 same preparation in CI with independent test and Pana inputs.
+
+The no-argument default prepares only `dart_wellen`. This avoids implying that
+the root package is release-ready before its first hosted dependency exists.
+After `dart_wellen` is published, select `rohd_wave_viewer` explicitly.
 
 ## Pub.dev Order
 

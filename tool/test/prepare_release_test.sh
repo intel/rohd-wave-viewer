@@ -104,6 +104,12 @@ cat >"$fake_bin/flutter" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
 printf 'flutter|%s|%s\n' "$PWD" "$*" >>"$SDK_LOG"
+if [[ "${HOSTED_GET_MODE:-}" == fail ]] &&
+  [[ "$PWD" == */rohd_wave_viewer_hosted ]] &&
+  [[ "$*" == 'pub get' ]]; then
+  echo 'hosted dependency unavailable' >&2
+  exit 1
+fi
 if [[ "$*" == 'pub publish --dry-run' ]]; then
   case "${DRY_RUN_MODE:-success}" in
     known)
@@ -177,15 +183,22 @@ grep -Fq 'Validation-only preparation completed' <<<"$validation_output"
 : >"$sdk_log"
 DRY_RUN_MODE=known run_helper >"$fixture/default.txt"
 grep -Fq 'dart_wellen=0.4.5' "$fixture/default.txt"
-grep -Fq 'rohd_wave_viewer=1.2.3' "$fixture/default.txt"
 grep -Fq 'KNOWN EXCEPTION: dart_wellen' "$fixture/default.txt"
-grep -Fq 'KNOWN EXCEPTION: rohd_wave_viewer' "$fixture/default.txt"
+! grep -Fq 'rohd_wave_viewer=1.2.3' "$fixture/default.txt"
 grep -Fq 'make|' "$sdk_log"
 grep -Fq ' dart' "$sdk_log" || grep -Fq '|dart' "$sdk_log"
 grep -Fq 'pub publish --dry-run' "$sdk_log"
 grep -Fq 'bridge-verify' "$sdk_log"
 ! grep -Fq ' test' "$sdk_log"
 ! grep -Fq ' pana' "$sdk_log"
+
+: >"$sdk_log"
+DRY_RUN_MODE=known run_helper dart_wellen rohd_wave_viewer \
+  >"$fixture/both.txt"
+grep -Fq 'dart_wellen=0.4.5' "$fixture/both.txt"
+grep -Fq 'rohd_wave_viewer=1.2.3' "$fixture/both.txt"
+grep -Fq 'KNOWN EXCEPTION: dart_wellen' "$fixture/both.txt"
+grep -Fq 'KNOWN EXCEPTION: rohd_wave_viewer' "$fixture/both.txt"
 
 : >"$sdk_log"
 run_helper --run-tests --run-pana dart_wellen >"$fixture/options.txt"
@@ -203,6 +216,12 @@ grep -Fq 'FAILED: dart_wellen publication dry run' "$fixture/failure.txt"
 DRY_RUN_MODE=payload assert_fails rohd_wave_viewer
 grep -Fq 'archive contains independent extension or demo-video payload' \
   "$fixture/failure.txt"
+
+: >"$sdk_log"
+HOSTED_GET_MODE=fail assert_fails rohd_wave_viewer
+grep -Fq 'FAILED: rohd_wave_viewer hosted dependency resolution' \
+  "$fixture/failure.txt"
+! grep -F 'rohd_wave_viewer_hosted|analyze --fatal-infos --no-pub' "$sdk_log"
 
 touch "$source_repo/untracked.txt"
 assert_fails --validate-only dart_wellen
