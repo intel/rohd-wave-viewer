@@ -55,15 +55,17 @@ RUST_SOURCES := $(shell find $(ROOT)/rust/wellen_bridge/src -name '*.rs' ! -name
 RUST_CARGO := $(ROOT)/rust/wellen_bridge/Cargo.toml
 TS_SOURCES := $(shell find $(ROOT)/vscode-extension/src -name '*.ts' 2>/dev/null)
 
-# Source of truth: extract version from pubspec.yaml
-PUBSPEC_VERSION := $(shell grep '^version:' $(ROOT)/pubspec.yaml | head -1 | sed 's/version: *//')
-
 PKG_NAME := $(shell command -v $(NODE) >/dev/null 2>&1 && $(NODE) -p "require('$(ROOT)/vscode-extension/package.json').name" || echo rohd-wave-viewer-vscode)
-PKG_VERSION := $(PUBSPEC_VERSION)
+PKG_VERSION := $(shell sed -n 's/^[[:space:]]*"version":[[:space:]]*"\([^"]*\)".*/\1/p' $(ROOT)/vscode-extension/package.json | head -1)
 EXT_STAGE := $(ROOT)/build/extension/$(PKG_NAME)-$(PKG_VERSION)
 SLIM_ZIP := $(ROOT)/build/$(PKG_NAME)-$(PKG_VERSION)-slim.zip
 WEB_BUILD := $(ROOT)/build/web
-WEB_BUILD_CONFIG := $(ROOT)/build/.rohd-wave-web-build-config
+WEB_BUILD_CONFIG_KEY := $(shell printf '%s\n' \
+	'$(FLUTTER_WEB_MODE)' \
+	'$(FLUTTER_WEB_WASM_ENABLED)' \
+	'$(FLUTTER_WEB_BUILD_ARGS)' | sha256sum | cut -c1-16)
+WEB_BUILD_CONFIG_PREFIX := $(ROOT)/build/.rohd-wave-web-build-config-
+WEB_BUILD_CONFIG := $(WEB_BUILD_CONFIG_PREFIX)$(WEB_BUILD_CONFIG_KEY)
 LINUX_BUNDLE := $(ROOT)/build/linux/x64/release/bundle
 LINUX_BUNDLE_DEBUG := $(ROOT)/build/linux/x64/debug/bundle
 DART_FRB_DIR := $(ROOT)/packages/dart_wellen/lib/src/rust
@@ -89,7 +91,7 @@ NATIVE_LIB := $(ROOT)/rust/wellen_bridge/target/release/libwellen_bridge.so
         install install-local install-remote \
 	prepare web-run linux-run-debug linux-run-release \
         clean clean-extension clean-web clean-linux force real-clean \
-        sync-version
+        verify-extension-version
 
 help:
 	@echo "ROHD Wave Viewer Extension - Build Targets"
@@ -212,7 +214,7 @@ $(WEB_BUILD)/index.html $(WEB_BUILD_CONFIG) &: web/index.html $(WASM_OUTPUTS) pu
 	@echo "Building Flutter web ($(FLUTTER_WEB_MODE))..."
 	# Flutter can retain a previous dual JS/WASM build in build/web, so always
 	# remove the output before producing a package.
-	@rm -f "$(WEB_BUILD_CONFIG)"
+	@rm -f "$(WEB_BUILD_CONFIG_PREFIX)"*
 	@rm -rf "$(WEB_BUILD)"
 	@cd "$(ROOT)" && $(FLUTTER) pub get
 	# The separately built Rust WASM bridge is copied below.
@@ -228,8 +230,9 @@ $(WEB_BUILD)/index.html $(WEB_BUILD_CONFIG) &: web/index.html $(WASM_OUTPUTS) pu
 	@bash "$(ROOT)/scripts/patch_wasm_js.sh"
 	@bash "$(ROOT)/scripts/verify_flutter_native_dependencies.sh" \
 		"$(WEB_BUILD)/canvaskit/canvaskit.wasm"
-	@printf 'mode=%s\nwasm=%s\n' \
+	@printf 'mode=%s\nwasm=%s\nargs=%s\n' \
 		"$(FLUTTER_WEB_MODE)" "$(FLUTTER_WEB_WASM_ENABLED)" \
+		"$(FLUTTER_WEB_BUILD_ARGS)" \
 		> "$(WEB_BUILD_CONFIG)"
 
 # Convenience aliases
@@ -238,11 +241,11 @@ web: $(WEB_BUILD)/index.html $(WEB_BUILD_CONFIG)
 # web-debug / web-release: force the correct mode by cleaning + rebuilding.
 # Both land in build/web/ so we must remove the stale output first.
 web-debug:
-	@rm -f "$(WEB_BUILD)/index.html" "$(WEB_BUILD_CONFIG)"
+	@rm -f "$(WEB_BUILD)/index.html" "$(WEB_BUILD_CONFIG_PREFIX)"*
 	@$(MAKE) web FLUTTER_WEB_MODE=debug FLUTTER_WEB_WASM=0
 
 web-release:
-	@rm -f "$(WEB_BUILD)/index.html" "$(WEB_BUILD_CONFIG)"
+	@rm -f "$(WEB_BUILD)/index.html" "$(WEB_BUILD_CONFIG_PREFIX)"*
 	@$(MAKE) web FLUTTER_WEB_MODE=release FLUTTER_WEB_WASM=$(FLUTTER_WEB_RELEASE_WASM)
 
 # Flutter Linux release
@@ -334,35 +337,22 @@ coverity-clean:
 	@bash "$(ROOT)/scripts/run_coverity.sh" clean
 
 # ---------------------------------------------------------------------------
-# Version sync  (pubspec.yaml → package.json files)
+# Extension version validation
 # ---------------------------------------------------------------------------
-# Ensures the VS Code extension manifests and lockfiles match the single source
-# of truth in pubspec.yaml. Uses Node.js, which is required for extension builds.
 
-sync-version:
-	@echo "Syncing version $(PUBSPEC_VERSION) from pubspec.yaml → package.json files..."
-	@if command -v $(NODE) >/dev/null 2>&1; then \
-		for f in "$(ROOT)/vscode-extension/package.json"; do \
-			$(NODE) -e " \
-				const fs = require('fs'); \
-				const pkg = JSON.parse(fs.readFileSync('$$f','utf8')); \
-				pkg.version = '$(PUBSPEC_VERSION)'; \
-				fs.writeFileSync('$$f', JSON.stringify(pkg, null, 2) + '\n');" ; \
-			echo "  $$f → $(PUBSPEC_VERSION)"; \
-		done; \
-		for f in "$(ROOT)/vscode-extension/package-lock.json"; do \
-			$(NODE) -e " \
-				const fs = require('fs'); \
-				const lock = JSON.parse(fs.readFileSync('$$f','utf8')); \
-				lock.version = '$(PUBSPEC_VERSION)'; \
-				if (lock.packages && lock.packages['']) lock.packages[''].version = '$(PUBSPEC_VERSION)'; \
-				fs.writeFileSync('$$f', JSON.stringify(lock, null, 2) + '\n');" ; \
-			echo "  $$f → $(PUBSPEC_VERSION)"; \
-		done; \
-	else \
-		echo "error: Node.js is required to synchronize extension versions."; \
+verify-extension-version:
+	@manifest_version="$$($(NODE) -p "require('$(ROOT)/vscode-extension/package.json').version")"; \
+	lock_version="$$($(NODE) -p "require('$(ROOT)/vscode-extension/package-lock.json').version")"; \
+	lock_root_version="$$($(NODE) -p "require('$(ROOT)/vscode-extension/package-lock.json').packages[''].version")"; \
+	if [ "$$manifest_version" != "$$lock_version" ] || \
+	   [ "$$manifest_version" != "$$lock_root_version" ]; then \
+		echo "error: VS Code extension versions do not match."; \
+		echo "  package.json:              $$manifest_version"; \
+		echo "  package-lock.json:         $$lock_version"; \
+		echo "  package-lock.json root:    $$lock_root_version"; \
 		exit 1; \
-	fi
+	fi; \
+	echo "VS Code extension version $$manifest_version verified."
 
 # ---------------------------------------------------------------------------
 # Extension packaging  (TypeScript + Flutter web + asset staging)
@@ -419,7 +409,7 @@ extension-web:
 extension-web-js: extension-web
 
 $(SLIM_ZIP): vscode-extension/out/extension.js extension-web \
-	scripts/copy_devtools_extension_assets.cjs | sync-version
+	scripts/copy_devtools_extension_assets.cjs | verify-extension-version
 	@echo "Staging extension (with Flutter web)..."
 	@rm -rf "$(EXT_STAGE)"
 	@mkdir -p "$(EXT_STAGE)"
@@ -486,7 +476,7 @@ clean-extension:
 clean-web:
 	@echo "Cleaning Flutter web build..."
 	-@rm -rf "$(WEB_BUILD)"
-	-@rm -f "$(WEB_BUILD_CONFIG)"
+	-@rm -f "$(WEB_BUILD_CONFIG_PREFIX)"*
 
 clean-linux:
 	@echo "Cleaning Flutter Linux build..."

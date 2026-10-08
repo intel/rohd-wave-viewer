@@ -6,6 +6,7 @@
 - **[HIERARCHY.md](HIERARCHY.md)** - Shared hierarchy and waveform contracts and their viewer integration
 - **[BUILD.md](BUILD.md)** - Environment setup plus current build, run, test, and extension-install commands
 - **[DEVELOPER.md](DEVELOPER.md)** - Dependency sources, code generation, and release checks
+- **[RELEASES.md](RELEASES.md)** - Independent release inventory, package order, preparation, and required CI
 
 ## Reference
 

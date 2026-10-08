@@ -35,6 +35,10 @@ pubspec_overrides.yaml.disabled*
 /packages/*/pubspec.lock
 .wave_dependency_sources
 
+# Independently distributed VS Code extension and large documentation media
+/vscode-extension/
+/doc/media/*.mp4
+
 # Coverity local scan output
 build/coverity/
 report.json

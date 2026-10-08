@@ -11,6 +11,9 @@
 library;
 
 // Web/WASM integration tests for Wellen via WellenSignalWaveformApi
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:test/test.dart';
 import 'package:dart_wellen/dart_wellen.dart';
 import 'package:dart_wellen/src/external_library_io.dart'
@@ -23,12 +26,42 @@ void main() {
     await WellenSignalWaveformApi.init();
   });
 
-  test('loads tracked VCD values through the browser WASM bridge', () async {
-    final bytes = await platform.fetchBytes('fixtures/xz_transitions.vcd');
+  test('loads inline VCD bytes through the browser bridge', () async {
+    const vcd = r'''
+$date today $end
+$version dart_wellen test $end
+$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! clk $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+#1
+1!
+''';
     final api = WellenSignalWaveformApi();
-    await api.loadBytes(bytes.toList(), fileName: 'xz_transitions.vcd');
+    await api.loadBytes(utf8.encode(vcd), fileName: 'inline.vcd');
 
-    final structure = await api.getModuleStructureOnly();
+    expect((await api.getModuleStructureOnly()).modules.single.name, 'top');
+  });
+
+  test('loads tracked VCD values through the browser WASM bridge', () async {
+    final bytes =
+        await platform.fetchBytes('fixtures/xz_transitions.vcd').timeout(
+              const Duration(seconds: 10),
+              onTimeout: () => throw TimeoutException('fetching VCD fixture'),
+            );
+    final api = WellenSignalWaveformApi();
+    await api.loadBytes(bytes.toList(), fileName: 'xz_transitions.vcd').timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw TimeoutException('loading VCD bytes'),
+        );
+
+    final structure = await api.getModuleStructureOnly().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw TimeoutException('reading VCD hierarchy'),
+        );
     expect(structure.modules.single.name, 'test');
 
     final binXzId = structure.allSignalIds.singleWhere(
@@ -39,6 +72,9 @@ void main() {
     );
     final waveforms = await api.getWaveformData(
       signalIds: [binXzId, data8Id],
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw TimeoutException('reading VCD values'),
     );
     final valuesById = {
       for (final waveform in waveforms)

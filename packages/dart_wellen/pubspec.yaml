@@ -16,7 +16,8 @@ environment:
 
 dependencies:
   ffi: ^2.1.0
-  flutter_rust_bridge: ^2.7.0
+  # Must match lib/src/rust/ and rust/wellen_bridge/Cargo.toml.
+  flutter_rust_bridge: 2.7.0
   meta: ^1.9.0
   rohd_hierarchy: ^0.1.0
   rohd_waveform: ^0.1.0

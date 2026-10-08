@@ -187,25 +187,30 @@ the version declared by the root manifest before running the root analysis.
 
 ## Publishing
 
-The release set contains two pub.dev packages. Publish them in dependency
-order:
+The release set contains two independently versioned pub.dev packages. Prepare
+and publish them in dependency order:
 
 1. `packages/dart_wellen`
 2. the root `rohd_wave_viewer` package
 
-Regenerate the distributable Flutter Rust Bridge bindings before publishing:
+Use the non-publishing release helper from a clean release commit:
 
 ```bash
-make dart
-
-(cd packages/dart_wellen && dart pub publish --dry-run)
-dart pub publish --dry-run
+tool/prepare_release.sh dart_wellen
+tool/prepare_release.sh rohd_wave_viewer
 ```
 
-After the dry-runs pass and `dart_wellen` is available from pub.dev,
-run `make pana` from the repository root to obtain the root package's Pana
-score. Publish with `dart pub publish` only after reviewing the dry-run archive
-and using the authorized pub.dev publisher account.
+Full local tests and Pana are independent opt-ins:
+
+```bash
+tool/prepare_release.sh --run-tests dart_wellen
+tool/prepare_release.sh --run-pana rohd_wave_viewer
+```
+
+The root preparation must wait until its declared `dart_wellen` version is
+available from pub.dev. Publish manually only after required General and Release
+Checks CI pass for the release commit. See [RELEASES.md](RELEASES.md) for the
+complete inventory, bridge-artifact requirements, and manual order.
 
 ---
 

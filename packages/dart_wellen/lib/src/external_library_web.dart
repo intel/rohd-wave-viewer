@@ -13,6 +13,7 @@
 // ignore_for_file: invalid_runtime_check_with_js_interop_types
 
 import 'dart:async';
+
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
 
 /// On web, returns an ExternalLibrary to indicate WASM is already loaded via wasm_bindgen().
@@ -57,8 +58,8 @@ Future<void> loadWasmScript(String scriptUrl) async {
 Future<Uint8List> fetchBytes(String url) async {
   final completer = Completer<Uint8List>();
 
-  void handleFetchResult(JSObject data) {
-    completer.complete(data as Uint8List);
+  void handleFetchResult(JSUint8Array data) {
+    completer.complete(data.toDart);
   }
 
   _fetchBytesImpl(url, handleFetchResult.toJS);

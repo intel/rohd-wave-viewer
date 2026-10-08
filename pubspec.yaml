@@ -30,7 +30,8 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_bloc: ^9.0.0
-  flutter_rust_bridge: ^2.7.0
+  # Must match dart_wellen's generated bindings and Rust bridge dependencies.
+  flutter_rust_bridge: 2.7.0
   flutter_simple_treeview: ^3.0.2
   flutter_web_plugins:
     sdk: flutter

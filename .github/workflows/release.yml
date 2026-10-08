@@ -1,0 +1,107 @@
+name: Release Checks
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Package or dependency-ordered package set to validate
+        required: true
+        type: choice
+        default: dart_wellen
+        options:
+          - dart_wellen
+          - rohd_wave_viewer
+          - both
+      run_tests:
+        description: Repeat the complete local-equivalent test suites
+        required: true
+        type: boolean
+        default: false
+      run_pana:
+        description: Run the isolated hosted-dependency and Pana gate
+        required: true
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  release-checks:
+    name: Prepare ${{ inputs.package }}
+    permissions:
+      contents: read
+    timeout-minutes: 120
+    runs-on: ${{ github.repository_owner == 'intel' && 'intel-ubuntu-latest' || 'ubuntu-latest' }}
+    steps:
+      - name: Checkout complete source history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.2'
+          cache: true
+
+      - name: Verify Flutter and Dart on PATH
+        run: bash scripts/verify_flutter_version.sh
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install native build tools
+        run: tool/gh_actions/install_build_tools.sh
+
+      - name: Install Rust toolchain
+        run: tool/gh_actions/install_rust_1_92.sh
+
+      - name: Install WASM tools
+        run: tool/gh_actions/install_wasm_tools.sh
+
+      - name: Install project dependencies
+        run: tool/gh_actions/install_dependencies.sh
+
+      - name: Setup Chrome for optional browser tests
+        if: ${{ inputs.run_tests }}
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: stable
+          install-dependencies: true
+
+      - name: Install optional Pana gate
+        if: ${{ inputs.run_pana }}
+        run: tool/gh_actions/install_pana.sh
+
+      - name: Prepare selected release packages
+        env:
+          BROWSER_TEST_PLATFORM: chrome_ci
+          CHROME_EXECUTABLE: ${{ steps.setup-chrome.outputs.chrome-path }}
+          RELEASE_PACKAGE: ${{ inputs.package }}
+          RUN_TESTS: ${{ inputs.run_tests }}
+          RUN_PANA: ${{ inputs.run_pana }}
+        run: |
+          set -euo pipefail
+          arguments=()
+          if [[ "$RUN_TESTS" == 'true' ]]; then
+            arguments+=(--run-tests)
+          fi
+          if [[ "$RUN_PANA" == 'true' ]]; then
+            arguments+=(--run-pana)
+          fi
+          case "$RELEASE_PACKAGE" in
+            dart_wellen|rohd_wave_viewer)
+              arguments+=("$RELEASE_PACKAGE")
+              ;;
+            both)
+              arguments+=(dart_wellen rohd_wave_viewer)
+              ;;
+            *)
+              echo "Unsupported release package selection: $RELEASE_PACKAGE" >&2
+              exit 2
+              ;;
+          esac
+          tool/prepare_release.sh "${arguments[@]}"

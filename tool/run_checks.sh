@@ -34,6 +34,10 @@ printf '\n%s\n' "${form_bold}${color_yellow}Running local checks...${text_reset}
 print_step 'Install project dependencies'
 tool/gh_actions/install_dependencies.sh
 
+# Test dependency resolution without the repository lockfile
+print_step 'Test unlocked dart_wellen consumer'
+tool/gh_actions/test_unlocked_dart_wellen_consumer.sh
+
 # Verify project formatting
 print_step 'Verify project formatting'
 tool/gh_actions/verify_formatting.sh
