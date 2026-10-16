@@ -35,6 +35,9 @@ jobs:
       - name: Test release preparation helper
         run: tool/test/prepare_release_test.sh
 
+      - name: Test coverage badge publication
+        run: bash tool/test/publish_coverage_badge_test.sh
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:

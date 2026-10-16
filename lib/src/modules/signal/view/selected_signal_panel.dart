@@ -316,11 +316,13 @@ class _SelectedSignalsPanelState extends State<SelectedSignalsPanel> {
                       (signal.signal!.isStruct || signal.signal!.isArray))
                     _ExpandCollapseIcon(
                       isExpanded: state.expandedMonitorSignals.contains(
-                        signal.id,
+                        signal.monitorId,
                       ),
                       onToggle: (globalPosition) {
                         // Collapse if already expanded.
-                        if (state.expandedMonitorSignals.contains(signal.id)) {
+                        if (state.expandedMonitorSignals.contains(
+                          signal.monitorId,
+                        )) {
                           context.read<SignalBloc>().add(
                                 SignalCollapseMonitorEvent(waveform: signal),
                               );

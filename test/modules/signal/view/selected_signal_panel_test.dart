@@ -892,6 +892,80 @@ void main() {
     });
 
     testWidgets(
+      'selected structure chevron toggles fields independently '
+      'for duplicate rows',
+      (tester) async {
+        await WellenSignalWaveformApi.init();
+        final api = WellenSignalWaveformApi();
+        await api.loadFile(
+          'packages/dart_wellen/test/fixtures/filter_bank.fst',
+        );
+        final structure = await api.getModuleStructureOnly();
+        final filterBank = structure.modules.firstWhere(
+          (module) => module.name == 'FilterBank',
+        );
+        final sample = filterBank.signals.firstWhere(
+          (signal) => signal.name == 'sample1',
+        );
+        final repository = SignalWaveformRepository(signalWaveformApi: api)
+          ..buildSignalCacheFromHierarchy(structure.modules);
+        final bloc = SignalBloc(repository);
+        addTearDown(bloc.close);
+
+        bloc.add(SignalUpdateEvent(filterBank));
+        await bloc.stream.firstWhere((state) => state is SignalLoaded);
+        for (var count = 1; count <= 2; count++) {
+          bloc.add(SignalSelectedEvent(sample));
+          await bloc.stream.firstWhere(
+            (state) => state.monitorSignalsList.length == count,
+          );
+        }
+        final parents =
+            List<SignalWaveform>.from(bloc.state.monitorSignalsList);
+        expect(parents[0].monitorId, isNot(parents[1].monitorId));
+
+        await tester.pumpApp(
+          signalBloc: bloc,
+          child: const SelectedSignalsPanel(),
+        );
+        await tester.pumpAndSettle();
+
+        Finder chevronFor(SignalWaveform parent, IconData icon) {
+          final index = bloc.state.monitorSignalsList.indexWhere(
+            (waveform) => waveform.monitorId == parent.monitorId,
+          );
+          return find.descendant(
+            of: find.byType(SignalTabContainer).at(index),
+            matching: find.byIcon(icon),
+          );
+        }
+
+        for (var cycle = 0; cycle < 2; cycle++) {
+          for (final parent in parents) {
+            await tester.tap(chevronFor(parent, Icons.chevron_right));
+            await tester.pumpAndSettle();
+
+            expect(chevronFor(parent, Icons.expand_more), findsOneWidget);
+            expect(bloc.state.expandedMonitorSignals, {parent.monitorId});
+            expect(bloc.state.monitorSignalsList, hasLength(4));
+            final children = bloc.state.monitorSignalsList
+                .where(
+                    (waveform) => waveform.monitorParentId == parent.monitorId)
+                .toList();
+            expect(children, hasLength(2));
+
+            await tester.tap(chevronFor(parent, Icons.expand_more));
+            await tester.pumpAndSettle();
+
+            expect(chevronFor(parent, Icons.chevron_right), findsOneWidget);
+            expect(bloc.state.expandedMonitorSignals, isEmpty);
+            expect(bloc.state.monitorSignalsList, orderedEquals(parents));
+          }
+        }
+      },
+    );
+
+    testWidgets(
       'FST structure field has waveform data, width, and bit expansion menu',
       (tester) async {
         await WellenSignalWaveformApi.init();
@@ -954,6 +1028,7 @@ void main() {
     Future<SignalWaveform> pumpExpandablePanel(
       WidgetTester tester,
       SignalOccurrence occurrence, {
+      String? monitorId,
       Set<String> expandedMonitorSignals = const {},
     }) async {
       tester.platformDispatcher.textScaleFactorTestValue = 0.7;
@@ -962,7 +1037,10 @@ void main() {
       );
       SignalWaveform.signalLookup =
           (id) => id == occurrence.name ? occurrence : null;
-      final waveform = SignalWaveform(signalId: occurrence.name);
+      final waveform = SignalWaveform(
+        signalId: occurrence.name,
+        monitorId: monitorId,
+      );
       when(() => signalBloc.state).thenReturn(
         SignalLoaded(
           [occurrence],
@@ -1024,6 +1102,26 @@ void main() {
         tester,
         buildStruct(3),
         expandedMonitorSignals: const {'sample'},
+      );
+
+      expect(find.byIcon(Icons.expand_more), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.expand_more));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => signalBloc.add(SignalCollapseMonitorEvent(waveform: waveform)),
+      ).called(1);
+    });
+
+    testWidgets('chevron collapses a duplicate expanded struct row', (
+      tester,
+    ) async {
+      const monitorId = 'sample#1';
+      final waveform = await pumpExpandablePanel(
+        tester,
+        buildStruct(3),
+        monitorId: monitorId,
+        expandedMonitorSignals: const {monitorId},
       );
 
       expect(find.byIcon(Icons.expand_more), findsOneWidget);

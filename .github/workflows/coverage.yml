@@ -61,19 +61,30 @@ jobs:
         env:
           BRANCH_NAME: ${{ github.ref_name }}
         run: |
+          set -euo pipefail
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-          # Fetch and checkout badges branch.
-          git fetch origin badges:badges 2>/dev/null || git checkout --orphan badges
-          git checkout badges 2>/dev/null || true
+          # Keep generated build changes out of the badge checkout.
+          badge_dir="$(mktemp -d "${RUNNER_TEMP}/coverage-badges.XXXXXXXX")"
+          badge_ref="$(git ls-remote --heads origin refs/heads/badges)"
+          if [[ -n "$badge_ref" ]]; then
+            git fetch origin refs/heads/badges
+            git worktree add --detach "$badge_dir" FETCH_HEAD
+          else
+            git worktree add --detach "$badge_dir" HEAD
+            git -C "$badge_dir" checkout --orphan coverage-badges
+          fi
+          trap 'git worktree remove --force "$badge_dir"' EXIT
 
-          # Replace the branch contents with the generated badge.
-          git rm -rf . 2>/dev/null || true
+          cd "$badge_dir"
+          git ls-files -z | xargs -0 --no-run-if-empty git rm -f --
           mkdir -p coverage
           cp /tmp/coverage-badge.svg "coverage/${BRANCH_NAME}.svg"
           cp /tmp/coverage-badge.png "coverage/${BRANCH_NAME}.png"
 
           git add "coverage/${BRANCH_NAME}.svg" "coverage/${BRANCH_NAME}.png"
-          git diff --staged --quiet || git commit -m "Update coverage badge for ${BRANCH_NAME} [skip ci]"
-          git push origin badges --force
+          if ! git diff --staged --quiet; then
+            git commit -m "Update coverage badge for ${BRANCH_NAME} [skip ci]"
+          fi
+          git push origin HEAD:refs/heads/badges
