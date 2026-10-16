@@ -9,4 +9,4 @@
 // Author(s): Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
 //            Max Korbel <max.korbel@intel.com>
 
-export 'platform_io.dart' if (dart.library.html) 'platform_web.dart';
+export 'platform_io.dart' if (dart.library.js_interop) 'platform_web.dart';

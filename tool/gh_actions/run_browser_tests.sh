@@ -4,7 +4,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 #
 # run_browser_tests.sh
-# Runs dart_wellen's Rust/WASM integration test through both Dart web compilers.
+# Runs the viewer startup regression and dart_wellen integration tests through
+# the relevant Flutter and Dart web compilers.
 #
 # 2026 October 05
 # Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
@@ -71,3 +72,7 @@ for compiler in dart2js dart2wasm; do
     --concurrency 1 \
     test/web_wasm_integration_test.dart
 done
+
+cd "$repo_root"
+echo 'Running viewer URL strategy regression with WebAssembly...'
+flutter test --platform chrome --wasm test/platform/url_strategy_web_test.dart

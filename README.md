@@ -18,7 +18,7 @@ waveforms, schematics, and source code.
 
 **[Open the hosted ROHD Wave Viewer](https://intel.github.io/rohd-wave-viewer/)**
 
-[![Watch the ROHD Wave Viewer demo](doc/media/waves.png)](https://github.com/intel/rohd-wave-viewer/blob/main/doc/media/Waveform.mp4)
+[![Watch the ROHD Wave Viewer demo](doc/media/waves.png)](https://github.com/user-attachments/assets/2bae2684-2940-4f7b-98de-a53b6d4d9c01)
 
 *Click the image to watch the ROHD Wave Viewer demo.*
 

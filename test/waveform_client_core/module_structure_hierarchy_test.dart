@@ -9,7 +9,7 @@
 
 import 'package:rohd_hierarchy/rohd_hierarchy.dart';
 import 'package:rohd_wave_viewer/src/waveform_client_core/waveform_client_core.dart';
-import 'package:rohd_waveform/rohd_waveform.dart';
+import 'package:rohd_waveform/rohd_waveform.dart' hide resolveModuleStructure;
 import 'package:test/test.dart';
 
 void main() {

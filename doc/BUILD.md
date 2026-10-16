@@ -138,7 +138,9 @@ Once its workflow file is available on the repository's default branch, the
 `Extension release artifact` workflow runs on a matching `v<version>` tag or
 manual dispatch (select `publish` as the branch). It checks the extension
 version, tests the Rust WebAssembly bridge in Chrome under both Dart web
-compilers, builds and verifies the VSIX, then uploads that archive and its
+compilers, and checks the viewer's URL-strategy behavior in a WebAssembly
+browser test to prevent VS Code webview history-origin failures. It then builds
+and verifies the VSIX, then uploads that archive and its
 SHA-256 checksum as a GitHub Actions artifact retained for 90 days. It
 intentionally does not publish to the Marketplace.
 

@@ -119,7 +119,7 @@ help:
 	@echo "  wasm-tools       - Install required WASM build tools into the environment"
 	@echo "  rust-native      - Build native Rust library for Linux"
 	@echo "  rust-test        - Run Rust bridge unit tests separately from Dart coverage"
-	@echo "  browser-test     - Run dart_wellen WASM integration tests in Chrome"
+	@echo "  browser-test     - Run viewer Wasm startup and dart_wellen tests in Chrome"
 	@echo "  coverity         - Run configured Coverity scan workflow"
 	@echo "  coverage         - Cover root and dart_wellen tests in LCOV/HTML reports"
 	@echo "  coverage-view    - Serve coverage/html locally on port 8000"
