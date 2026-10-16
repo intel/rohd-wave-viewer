@@ -14,6 +14,7 @@ fi
 
 stage_dir="$1"
 output_vsix="$2"
+root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 if [[ ! -f "$stage_dir/package.json" ]]; then
   printf 'error: staged extension manifest not found: %s/package.json\n' \
@@ -21,20 +22,16 @@ if [[ ! -f "$stage_dir/package.json" ]]; then
   exit 1
 fi
 
-package_dir="$(mktemp -d)"
-cleanup() {
-  rm -rf "$package_dir"
-}
-trap cleanup EXIT
+vsce="$root_dir/vscode-extension/node_modules/.bin/vsce"
+if [[ ! -x "$vsce" ]]; then
+  printf 'error: pinned @vscode/vsce is not installed; run npm ci in vscode-extension\n' >&2
+  exit 1
+fi
 
-mkdir -p "$package_dir/extension"
-cp -a "$stage_dir/." "$package_dir/extension/"
 mkdir -p "$(dirname "$output_vsix")"
-rm -f "$output_vsix"
-
 (
-  cd "$package_dir"
-  zip -qr "$output_vsix" extension
+  cd "$stage_dir"
+  "$vsce" package --no-dependencies --out "$output_vsix"
 )
 
 printf 'Created %s\n' "$output_vsix"

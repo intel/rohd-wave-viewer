@@ -24,6 +24,7 @@ export CARGO_HOME RUSTUP_HOME
 export PATH="$CARGO_HOME/bin:$PATH"
 
 RUST_VERSION="1.92.0"
+FRB_CODEGEN_VERSION="2.7.0"
 
 echo "[install-rust] CARGO_HOME=$CARGO_HOME"
 echo "[install-rust] RUSTUP_HOME=$RUSTUP_HOME"
@@ -86,9 +87,11 @@ fi
 "$CARGO_HOME/bin/cargo" --version
 "$CARGO_HOME/bin/rustup" show
 
-if ! command -v flutter_rust_bridge_codegen >/dev/null 2>&1; then
-  echo "[install-rust] Installing flutter_rust_bridge_codegen via cargo..."
-  "$CARGO_HOME/bin/cargo" install flutter_rust_bridge_codegen --version 2.7.0 --locked
+if ! command -v flutter_rust_bridge_codegen >/dev/null 2>&1 ||
+  [ "$(flutter_rust_bridge_codegen --version | awk '{print $2}')" != "$FRB_CODEGEN_VERSION" ]; then
+  echo "[install-rust] Installing flutter_rust_bridge_codegen $FRB_CODEGEN_VERSION via cargo..."
+  "$CARGO_HOME/bin/cargo" install flutter_rust_bridge_codegen \
+    --version "$FRB_CODEGEN_VERSION" --locked --force
 fi
 
 echo "[install-rust] Rust $RUST_VERSION installation complete."

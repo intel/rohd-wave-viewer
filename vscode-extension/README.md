@@ -118,13 +118,23 @@ make vsix
 Do not run `vsce package` directly in `vscode-extension/`. The source
 directory intentionally does not contain the generated Flutter web and
 WebAssembly assets. `make vsix` packages the staged output created by the
-supported build pipeline.
+supported build pipeline with the pinned `@vscode/vsce` tool.
+
+Once its workflow file is available on the repository's default branch, the
+`Extension release artifact` GitHub Actions workflow can be run manually with
+`publish` selected or triggered by a matching `v<version>` tag. It verifies
+the extension version, tests the Rust WebAssembly bridge in both web compilers,
+builds and verifies the VSIX, then uploads the VSIX and SHA-256 checksum as a
+90-day GitHub artifact. It does not publish to the Marketplace.
+An authorized `intel-corporation` publisher admin downloads and verifies the
+artifact, then uploads the contained `.vsix` through
+[Marketplace publisher management](https://marketplace.visualstudio.com/manage/publishers).
 
 To compile only the TypeScript host while editing it:
 
 ```bash
 cd vscode-extension
-npm install
+npm ci
 npm run compile
 ```
 

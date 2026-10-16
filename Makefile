@@ -91,7 +91,7 @@ NATIVE_LIB := $(ROOT)/rust/wellen_bridge/target/release/libwellen_bridge.so
         install install-local install-remote \
 	prepare web-run linux-run-debug linux-run-release \
         clean clean-extension clean-web clean-linux force real-clean \
-        verify-extension-version
+	verify-extension-version verify-vsix
 
 help:
 	@echo "ROHD Wave Viewer Extension - Build Targets"
@@ -100,6 +100,7 @@ help:
 	@echo "  all              - Build the extension (default target)"
 	@echo "  extension        - Build VS Code extension (TS + Flutter web)"
 	@echo "  vsix             - Package extension as VSIX file"
+	@echo "  verify-vsix       - Verify the existing Marketplace VSIX"
 	@echo "  package          - Package extension as slim zip"
 	@echo ""
 	@echo "Web Build Targets:"
@@ -386,7 +387,7 @@ vscode-extension/out/extension.js: $(TS_SOURCES) vscode-extension/package.json
 		else \
 			echo "Using Node $$(node -v)"; \
 		fi; \
-		npm install; \
+		npm ci; \
 		npm run compile'
 
 # Stage extension: compiled TS output + Flutter web build + package metadata.
@@ -409,12 +410,19 @@ extension-web:
 extension-web-js: extension-web
 
 $(SLIM_ZIP): vscode-extension/out/extension.js extension-web \
-	scripts/copy_devtools_extension_assets.cjs | verify-extension-version
+	vscode-extension/package.json vscode-extension/.vscodeignore \
+	vscode-extension/README.md vscode-extension/icon.png \
+	vscode-extension/filter_bank_waves.png vscode-extension/waveform-demo.mp4 \
+	$(shell find vscode-extension/images -type f 2>/dev/null) \
+	LICENSE CHANGELOG.md scripts/copy_devtools_extension_assets.cjs | verify-extension-version
 	@echo "Staging extension (with Flutter web)..."
 	@rm -rf "$(EXT_STAGE)"
 	@mkdir -p "$(EXT_STAGE)"
 	@cp "$(ROOT)/vscode-extension/package.json" "$(EXT_STAGE)/package.json"
+	@cp "$(ROOT)/vscode-extension/.vscodeignore" "$(EXT_STAGE)/.vscodeignore"
 	@cp "$(ROOT)/vscode-extension/README.md" "$(EXT_STAGE)/README.md"
+	@cp "$(ROOT)/LICENSE" "$(EXT_STAGE)/LICENSE"
+	@cp "$(ROOT)/CHANGELOG.md" "$(EXT_STAGE)/CHANGELOG.md"
 	@cp "$(ROOT)/vscode-extension/icon.png" "$(EXT_STAGE)/icon.png"
 	@cp "$(ROOT)/vscode-extension/filter_bank_waves.png" "$(EXT_STAGE)/filter_bank_waves.png"
 	@cp "$(ROOT)/vscode-extension/waveform-demo.mp4" "$(EXT_STAGE)/waveform-demo.mp4"
@@ -441,6 +449,9 @@ vsix: $(SLIM_ZIP)
 	@echo "Packaging VSIX..."
 	@bash "$(ROOT)/scripts/build_vsix.sh" "$(EXT_STAGE)" "$(VSIX)"
 	@echo "VSIX available at $(VSIX)"
+
+verify-vsix:
+	@bash "$(ROOT)/scripts/verify_extension_vsix.sh" "$(VSIX)"
 
 # ---------------------------------------------------------------------------
 # Install targets

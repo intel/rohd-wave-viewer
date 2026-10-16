@@ -92,8 +92,11 @@ make package
 `vscode-extension/` is the sole extension source tree. `make extension`
 compiles its TypeScript host, builds the Flutter web application, and stages
 the runtime package under `build/extension/<name>-<version>/`. It then creates
-the slim extension archive. `make vsix` packages that same staged directory as
-`build/<name>-<version>.vsix`.
+the slim extension archive. `make vsix` packages that same staged directory
+with pinned `@vscode/vsce` as the standard Marketplace package
+`build/rohd-wave-viewer-<version>.vsix`. `make verify-vsix` checks the existing
+archive's VSIX metadata, publisher/version, and required Flutter/Rust WASM
+assets without rebuilding it.
 
 ## Running Locally
 
@@ -128,6 +131,21 @@ make install-local
 # Package and install to a remote VS Code Server.
 make install-remote
 ```
+
+## Marketplace VSIX Artifact
+
+Once its workflow file is available on the repository's default branch, the
+`Extension release artifact` workflow runs on a matching `v<version>` tag or
+manual dispatch (select `publish` as the branch). It checks the extension
+version, tests the Rust WebAssembly bridge in Chrome under both Dart web
+compilers, builds and verifies the VSIX, then uploads that archive and its
+SHA-256 checksum as a GitHub Actions artifact retained for 90 days. It
+intentionally does not publish to the Marketplace.
+
+An authorized admin for the `intel-corporation` Marketplace publisher can
+download the artifact ZIP from the successful workflow run, extract it, verify
+the checksum, and upload the contained `.vsix` (not the GitHub ZIP) through the
+[Marketplace publisher management page](https://marketplace.visualstudio.com/manage/publishers).
 
 `make install` is an alias for `make install-remote`.
 

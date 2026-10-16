@@ -17,6 +17,9 @@
       },
       {
         "pattern":"^https://github.com/intel/rohd-wave-viewer/blob/main/.github/workflows/coverage.yml$"
+      },
+      {
+        "pattern":"^https://marketplace\\.visualstudio\\.com/manage/publishers/?$"
       }
     ]
   }

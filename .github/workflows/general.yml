@@ -110,8 +110,8 @@ jobs:
             web/pkg/wellen_bridge_bg.wasm
           if-no-files-found: error
 
-      - name: Build extension package
-        run: make extension
+      - name: Build and verify Marketplace VSIX
+        run: make vsix verify-vsix
 
       # https://github.com/devcontainers/ci/blob/main/docs/github-action.md
       - name: Build dev container and run tests in it

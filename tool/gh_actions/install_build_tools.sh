@@ -18,10 +18,17 @@ has_cxx() {
   command -v g++ >/dev/null 2>&1 || command -v clang++ >/dev/null 2>&1
 }
 
-# Check if all required tools are already present
+has_gtk3() {
+  if [[ "$(uname -s)" != Linux* ]]; then
+    return 0
+  fi
+  pkg-config --exists gtk+-3.0
+}
+
+# Check if the build tools and Linux Flutter GTK development files are present.
 if has_cxx && command -v make >/dev/null 2>&1 && \
    command -v cmake >/dev/null 2>&1 && command -v ninja >/dev/null 2>&1 && \
-   command -v pkg-config >/dev/null 2>&1 && has_cmd clang; then
+   command -v pkg-config >/dev/null 2>&1 && has_cmd clang && has_gtk3; then
   log "All build tools found; skipping install."
   exit 0
 fi
@@ -128,7 +135,7 @@ fi
 
 if has_cxx && command -v make >/dev/null 2>&1 && \
    command -v cmake >/dev/null 2>&1 && command -v ninja >/dev/null 2>&1 && \
-   command -v pkg-config >/dev/null 2>&1 && has_cmd clang; then
+   command -v pkg-config >/dev/null 2>&1 && has_cmd clang && has_gtk3; then
   log "Build environment installed successfully."
 else
   log "Build tools installation did not fully succeed. Some tools may be missing."
