@@ -3,7 +3,8 @@
   "displayName": "ROHD Wave Viewer",
   "description": "Interactive waveform viewer for VCD, FST, and GHW files — pan, zoom, search signals, place markers, and cross-probe to source in VS Code.",
   "version": "0.1.0",
-  "publisher": "rohd",
+  "publisher": "intel-corporation",
+  "license": "BSD-3-Clause",
   "repository": {
     "type": "git",
     "url": "https://github.com/intel/rohd-wave-viewer.git"
@@ -11,6 +12,10 @@
   "icon": "icon.png",
   "extensionKind": [
     "workspace"
+  ],
+  "activationEvents": [
+    "onCommand:rohd-wave-viewer.open",
+    "onCustomEditor:rohdWaveViewer.vcd"
   ],
   "engines": {
     "vscode": "^1.60.0"
@@ -144,6 +149,7 @@
     "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
+    "@vscode/vsce": "4.0.0",
     "@types/node": "^24.0.0",
     "@types/vscode": "^1.79.0",
     "typescript": "^5.8.0"

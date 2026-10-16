@@ -37,7 +37,7 @@ import 'package:rohd_wave_viewer/src/modules/waveform/bloc/waveform_module_bloc.
 import 'package:rohd_wave_viewer/src/modules/waveform/view/waveform_panel.dart';
 import 'package:rohd_wave_viewer/src/platform/devtools_shared_ui.dart';
 import 'package:rohd_wave_viewer/src/platform/platform_io.dart'
-    if (dart.library.html) 'package:rohd_wave_viewer/src/platform/platform_web.dart'
+    if (dart.library.js_interop) 'package:rohd_wave_viewer/src/platform/platform_web.dart'
     as platform;
 import 'package:rohd_wave_viewer/src/services/initial_waveform_source.dart';
 import 'package:rohd_wave_viewer/src/services/vscode_extension_client.dart'

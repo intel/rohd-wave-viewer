@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- Extension compatible with Microsoft MarketPlace.
+
 ## 0.1.0
 
 This release advances the mock-backed `0.0.1` Flutter prototype into a fully-featured file-backed waveform analysis application, VS Code extension, and reusable Flutter package.

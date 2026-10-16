@@ -55,6 +55,16 @@ if ! command -v flutter_rust_bridge_codegen >/dev/null 2>&1; then
     echo "Please install: cargo install flutter_rust_bridge_codegen --version 2.7.0 --locked"
     exit 1
 fi
+expected_codegen_version="$(
+    sed -n 's/^flutter_rust_bridge_codegen = "=\([^"]*\)"$/\1/p' \
+        "$ROOT_DIR/rust/wellen_bridge/Cargo.toml"
+)"
+actual_codegen_version="$(flutter_rust_bridge_codegen --version | awk '{print $2}')"
+if [ "$actual_codegen_version" != "$expected_codegen_version" ]; then
+    echo "[build-dart-wellen] ERROR: codegen version $actual_codegen_version does not match Cargo.toml $expected_codegen_version." >&2
+    echo "Run tool/gh_actions/install_rust_1_92.sh to install the pinned generator." >&2
+    exit 1
+fi
 
 ORIG_CFG="$ROOT_DIR/packages/dart_wellen/flutter_rust_bridge.yaml"
 ORIG_DIR="$(dirname "$ORIG_CFG")"

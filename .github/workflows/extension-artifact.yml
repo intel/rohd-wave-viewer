@@ -1,0 +1,115 @@
+name: Extension release artifact
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build-vsix:
+    name: Build Marketplace VSIX
+    permissions:
+      contents: read
+    timeout-minutes: 90
+    runs-on: ${{ github.repository_owner == 'intel' && 'intel-ubuntu-latest' || 'ubuntu-latest' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.2'
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Verify extension version
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          make verify-extension-version
+          version="$(node -p "require('./vscode-extension/package.json').version")"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            test "${GITHUB_REF_NAME#v}" = "$version"
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "vsix=build/rohd-wave-viewer-${version}.vsix" >> "$GITHUB_OUTPUT"
+
+      - name: Install native build tools
+        run: tool/gh_actions/install_build_tools.sh
+
+      - name: Install Rust toolchain
+        run: tool/gh_actions/install_rust_1_92.sh
+
+      - name: Install WebAssembly tools
+        run: tool/gh_actions/install_wasm_tools.sh
+
+      - name: Install project dependencies
+        run: tool/gh_actions/install_dependencies.sh
+
+      - name: Setup Chrome
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: stable
+          install-dependencies: true
+
+      - name: Test Rust WebAssembly bridge in browsers
+        env:
+          BROWSER_TEST_PLATFORM: chrome_ci
+          CHROME_EXECUTABLE: ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: |
+          make wasm
+          tool/gh_actions/run_browser_tests.sh
+
+      - name: Build Marketplace VSIX
+        run: make vsix
+
+      - name: Verify Marketplace VSIX
+        run: make verify-vsix
+
+      - name: Checksum verified VSIX
+        env:
+          VSIX: ${{ steps.package.outputs.vsix }}
+        run: |
+          cd build
+          sha256sum "${VSIX#build/}" > "${VSIX#build/}.sha256"
+
+      - name: Upload Marketplace VSIX
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: intel-corporation-rohd-wave-viewer-${{ steps.package.outputs.version }}-${{ github.sha }}
+          path: |
+            ${{ steps.package.outputs.vsix }}
+            ${{ steps.package.outputs.vsix }}.sha256
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Add admin publication instructions
+        env:
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
+          VSIX: ${{ steps.package.outputs.vsix }}
+        run: |
+          {
+            echo '## Verified Intel ROHD Wave Viewer VSIX'
+            echo
+            echo "Download the [tested VSIX artifact](${ARTIFACT_URL}) and extract the GitHub artifact ZIP."
+            echo 'Verify the included checksum, install and review the VSIX in the target VS Code environment, then upload the contained VSIX to the intel-corporation publisher.'
+            echo 'Do not upload the GitHub ZIP or rebuild the package before publication.'
+            echo
+            echo 'Marketplace signing happens after publication. This workflow does not publish or require Marketplace credentials.'
+            echo
+            echo "\`sha256sum -c ${VSIX#build/}.sha256\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Intentionally no `vsce publish` step. Publishing remains an authorized
+      # manual action in the Marketplace publisher management page.

@@ -8,7 +8,8 @@
 // Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
 
 import 'package:rohd_hierarchy/rohd_hierarchy.dart';
-import 'package:rohd_wave_viewer/src/waveform_client_core/waveform_client_core.dart';
+import 'package:rohd_wave_viewer/src/waveform_client_core/waveform_client_core.dart'
+    as viewer;
 import 'package:rohd_waveform/rohd_waveform.dart';
 import 'package:test/test.dart';
 
@@ -20,7 +21,7 @@ void main() {
         signals: [SignalOccurrence(name: 'clock', width: 1)],
       );
 
-      final resolved = resolveModuleStructure(
+      final resolved = viewer.resolveModuleStructure(
         ModuleStructure(
           metadata: MetaData.empty(),
           modules: [top],
@@ -42,7 +43,7 @@ void main() {
         signals: [SignalOccurrence(name: 'b', width: 1)],
       );
 
-      final resolved = resolveModuleStructure(
+      final resolved = viewer.resolveModuleStructure(
         ModuleStructure(
           metadata: MetaData.empty(),
           modules: [alpha, beta],
@@ -67,7 +68,7 @@ void main() {
 
     test('rejects a waveform without module scopes', () {
       expect(
-        () => resolveModuleStructure(
+        () => viewer.resolveModuleStructure(
           ModuleStructure(
             metadata: MetaData.empty(),
             modules: const [],
