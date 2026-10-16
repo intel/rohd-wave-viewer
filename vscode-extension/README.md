@@ -4,6 +4,8 @@ An interactive waveform viewer for **VCD**, **FST**, and **GHW** files, running
 directly inside VS Code.  Part of the [ROHD](https://intel.github.io/rohd-website)
 hardware design ecosystem.
 
+[![Coverage](https://raw.githubusercontent.com/intel/rohd-wave-viewer/refs/heads/badges/coverage/main.png)](https://github.com/intel/rohd-wave-viewer/blob/main/.github/workflows/coverage.yml)
+
 [![Watch the ROHD Wave Viewer demo](filter_bank_waves.png)](waveform-demo.mp4)
 
 *Click the image to watch the viewer load a filter bank waveform and explore its signals.*
