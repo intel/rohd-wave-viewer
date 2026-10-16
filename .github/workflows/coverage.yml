@@ -36,7 +36,7 @@ jobs:
         run: |
           tool/gh_actions/install_build_tools.sh
           sudo apt-get update
-          sudo apt-get install --yes lcov
+          sudo apt-get install --yes lcov librsvg2-bin
 
       - name: Install Rust toolchain
         run: tool/gh_actions/install_rust_1_92.sh
@@ -45,7 +45,9 @@ jobs:
         run: tool/gh_actions/install_dependencies.sh
 
       - name: Generate coverage report and badge
-        run: bash scripts/generate_coverage.sh --generate-svg
+        run: |
+          bash scripts/generate_coverage.sh --generate-svg
+          rsvg-convert --format=png --output=/tmp/coverage-badge.png /tmp/coverage-badge.svg
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -70,7 +72,8 @@ jobs:
           git rm -rf . 2>/dev/null || true
           mkdir -p coverage
           cp /tmp/coverage-badge.svg "coverage/${BRANCH_NAME}.svg"
+          cp /tmp/coverage-badge.png "coverage/${BRANCH_NAME}.png"
 
-          git add "coverage/${BRANCH_NAME}.svg"
+          git add "coverage/${BRANCH_NAME}.svg" "coverage/${BRANCH_NAME}.png"
           git diff --staged --quiet || git commit -m "Update coverage badge for ${BRANCH_NAME} [skip ci]"
           git push origin badges --force

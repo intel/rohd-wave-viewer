@@ -10,7 +10,7 @@
         "pattern":"^https://bloclibrary.dev/$"
       },
       {
-        "pattern":"^https://raw.githubusercontent.com/intel/rohd-wave-viewer/refs/heads/badges/coverage/main.svg$"
+        "pattern":"^https://raw.githubusercontent.com/intel/rohd-wave-viewer/refs/heads/badges/coverage/main.png$"
       },
       {
         "pattern":"^https://intel\\.github\\.io/rohd-wave-viewer(?:/.*)?$"

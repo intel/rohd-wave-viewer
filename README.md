@@ -5,7 +5,7 @@
 [![Chat](https://img.shields.io/discord/1001179329411166267?label=Chat)](https://discord.gg/jubxF84yGw)
 [![License](https://img.shields.io/badge/License-BSD--3-blue)](LICENSE)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
-[![Coverage](https://raw.githubusercontent.com/intel/rohd-wave-viewer/refs/heads/badges/coverage/main.svg)](https://github.com/intel/rohd-wave-viewer/blob/main/.github/workflows/coverage.yml)
+[![Coverage](https://raw.githubusercontent.com/intel/rohd-wave-viewer/refs/heads/badges/coverage/main.png)](https://github.com/intel/rohd-wave-viewer/blob/main/.github/workflows/coverage.yml)
 
 ROHD Wave Viewer is an interactive viewer for **VCD**, **FST**, and **GHW**
 waveform files. It is designed for everyday waveform inspection in Visual
