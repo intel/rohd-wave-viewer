@@ -3,6 +3,8 @@
 ## 0.1.1
 
 - Extension compatible with Microsoft MarketPlace.
+- Publish coverage badges from an isolated checkout so generated build changes cannot prevent updates to the badges branch.
+- Fix structure and array chevrons in Selected Signals to track expansion per monitor row and collapse their generated fields.
 
 ## 0.1.0
 
