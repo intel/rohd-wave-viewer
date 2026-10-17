@@ -52,7 +52,7 @@ fi
 # Ensure flutter_rust_bridge_codegen is installed
 if ! command -v flutter_rust_bridge_codegen >/dev/null 2>&1; then
     echo "[build-dart-wellen] ERROR: flutter_rust_bridge_codegen not found."
-    echo "Please install: cargo install flutter_rust_bridge_codegen --version 2.7.0 --locked"
+    echo "Please install: cargo install flutter_rust_bridge_codegen --version 2.7.1 --locked"
     exit 1
 fi
 expected_codegen_version="$(
