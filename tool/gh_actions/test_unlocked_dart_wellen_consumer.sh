@@ -31,6 +31,15 @@ for generated_file in \
   fi
 done
 
+package_version="$(
+  sed -n 's/^version: *\([^[:space:]]*\)[[:space:]]*$/\1/p' \
+    "$repo_root/packages/dart_wellen/pubspec.yaml"
+)"
+if [[ -z "$package_version" || "$package_version" == *$'\n'* ]]; then
+  echo 'error: could not determine the dart_wellen version from its pubspec.' >&2
+  exit 1
+fi
+
 mkdir -p "$temp_dir/dart_wellen" "$temp_dir/consumer/bin"
 tar -C "$repo_root/packages/dart_wellen" \
   --exclude=.dart_tool --exclude=build --exclude=pubspec.lock \
@@ -46,14 +55,14 @@ workspace:
   - consumer
 YAML
 
-cat > "$temp_dir/consumer/pubspec.yaml" <<'YAML'
+cat > "$temp_dir/consumer/pubspec.yaml" <<YAML
 name: dart_wellen_unlocked_consumer
 publish_to: none
 resolution: workspace
 environment:
   sdk: '>=3.6.0 <4.0.0'
 dependencies:
-  dart_wellen: 0.1.0
+  dart_wellen: $package_version
 YAML
 
 cat > "$temp_dir/consumer/bin/initialize.dart" <<'DART'
