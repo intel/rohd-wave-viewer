@@ -34,6 +34,14 @@ tool/prepare_release.sh --run-pana dart_wellen
 tool/prepare_release.sh --run-tests --run-pana rohd_wave_viewer
 ```
 
+Keep the checked-in workspace `pubspec.lock` resolved against hosted external
+dependencies. Local development overrides are ignored by Git, but Pub records
+their absolute paths in that tracked lockfile; do not commit those paths.
+Before signing a release-preparation commit, resolve in a disposable checkout
+without local overrides and include its hosted lockfile. CI dependency
+installation must leave the committed lockfile unchanged, otherwise the
+clean-source provenance check stops preparation before building a bundle.
+
 The helper:
 
 - validates package metadata and changelog headings;
@@ -125,7 +133,9 @@ Preparation preserves the committed manifest's download URL (including fork
 and development-release URLs) only for the same package version.
 Set `BRIDGE_RELEASE_URL` explicitly when changing the package version; it also
 overrides the saved URL when selecting a different release for that version.
-Release Checks retains the bundle and manifest as CI artifacts. Enable its
+After successful preparation, Release Checks retains the bundle and manifest
+as CI artifacts. A failed preparation does not upload a manifest-only artifact
+that could be mistaken for a usable bundle. Enable its
 `publish_bundle` input to have CI publish the exact verified bundle at the
 manifest's URL; no manual file upload is needed. The publication job runs only
 after all selected checks succeed, compares the prepared manifest to the
@@ -175,8 +185,9 @@ needs a local viewer checkout or a Pub release:
    ```
 
 2. Review, sign, commit, and push the installer, manifest, packaging rules,
-   tests, and documentation to `shared-packages-020`. Do not commit
-   `pubspec.lock` changes, generated bindings, `web/pkg`, or the bundle.
+   tests, documentation, and hosted workspace lockfile to `shared-packages-020`.
+   Do not commit local-path lockfile entries, generated bindings, `web/pkg`,
+   or the bundle.
    This procedure does not perform commits or pushes automatically.
 3. In `desmonddak/rohd-wave-viewer`, dispatch **Release Checks** on the pushed
    branch, select `dart_wellen`, and enable **Publish the verified bridge bundle
