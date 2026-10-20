@@ -1,9 +1,6 @@
 name: Release Checks
 
 on:
-  push:
-    branches:
-      - shared-packages-020
   workflow_dispatch:
     inputs:
       package:

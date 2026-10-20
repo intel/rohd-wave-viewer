@@ -6,6 +6,7 @@ import importlib.util
 import io
 import json
 from pathlib import Path
+import subprocess
 import tarfile
 import tempfile
 import unittest
@@ -82,6 +83,99 @@ class BridgeArtifactsTest(unittest.TestCase):
     def test_archive_is_reproducible(self):
         with patch.object(bridge.subprocess, "run"):
             bridge.prepare(self.repository, self.url)
+        self.assertEqual(
+            self.archive,
+            (self.repository / "build/dart_wellen-0.1.1-web.tar.gz").read_bytes(),
+        )
+
+    def enable_git_artifacts(self):
+        self.manifest["archive_url"] = (
+            "https://github.com/example/viewer/releases/download/"
+            "dart-wellen-0.1.1/dart_wellen-0.1.1-web.tar.gz"
+        )
+        self.manifest["git_archive_url_template"] = bridge.git_archive_template(
+            self.manifest["archive_url"], self.manifest["version"],
+        )
+        (self.package / bridge.MANIFEST).write_text(json.dumps(self.manifest))
+
+    def test_git_download_selects_exact_commit_and_second_install_is_offline(self):
+        self.enable_git_artifacts()
+        (self.repository / ".git").mkdir()
+        self.remove_artifact()
+        commit = "a" * 40
+        expected = self.manifest["git_archive_url_template"].replace("{commit}", commit)
+        result = subprocess.CompletedProcess([], 0, stdout=commit + "\n")
+        with patch.object(bridge.subprocess, "run", return_value=result) as git:
+            with patch.object(bridge.urllib.request, "urlopen", return_value=self.response()) as download:
+                bridge.install(self.package)
+                download.assert_called_once_with(expected, timeout=60)
+            git.assert_called_once_with(
+                ["git", "-C", str(self.package), "rev-parse", "HEAD"],
+                check=True, capture_output=True, text=True,
+            )
+        with patch.object(bridge.subprocess, "run") as git:
+            with patch.object(bridge.urllib.request, "urlopen") as download:
+                bridge.install(self.package)
+                git.assert_not_called()
+                download.assert_not_called()
+
+    def test_hosted_files_with_git_metadata_need_neither_git_nor_download(self):
+        self.enable_git_artifacts()
+        with patch.object(bridge.subprocess, "run") as git:
+            with patch.object(bridge.urllib.request, "urlopen") as download:
+                bridge.install(self.package)
+                git.assert_not_called()
+                download.assert_not_called()
+
+    def test_missing_commit_bundle_explains_the_producer_ci_requirement(self):
+        self.enable_git_artifacts()
+        (self.repository / ".git").write_text("gitdir: fixture\n")
+        self.remove_artifact()
+        result = subprocess.CompletedProcess([], 0, stdout="b" * 40)
+        with patch.object(bridge.subprocess, "run", return_value=result):
+            with patch.object(
+                bridge.urllib.request, "urlopen",
+                side_effect=urllib.error.HTTPError(self.url, 404, "Not Found", {}, None),
+            ):
+                with self.assertRaisesRegex(ValueError, "including Distribute commit-keyed bridge bundle"):
+                    bridge.install(self.package)
+
+    def test_git_revision_failure_does_not_fall_back_to_another_bundle(self):
+        self.enable_git_artifacts()
+        (self.repository / ".git").mkdir()
+        self.remove_artifact()
+        with patch.object(
+            bridge.subprocess, "run", side_effect=subprocess.CalledProcessError(1, "git"),
+        ):
+            with patch.object(bridge.urllib.request, "urlopen") as download:
+                with self.assertRaises(subprocess.CalledProcessError):
+                    bridge.install(self.package)
+                download.assert_not_called()
+
+    def test_invalid_git_template_never_downloads(self):
+        self.enable_git_artifacts()
+        self.manifest["git_archive_url_template"] = (
+            self.manifest["git_archive_url_template"].replace("example/viewer", "another/viewer")
+        )
+        (self.package / bridge.MANIFEST).write_text(json.dumps(self.manifest))
+        with patch.object(bridge.urllib.request, "urlopen") as download:
+            with self.assertRaisesRegex(ValueError, "Git artifact URL template"):
+                bridge.install(self.package)
+            download.assert_not_called()
+
+    def test_producer_records_commit_template_without_changing_archive_bytes(self):
+        url = (
+            "https://github.com/example/viewer/releases/download/"
+            "dart-wellen-0.1.1/dart_wellen-0.1.1-web.tar.gz"
+        )
+        with patch.object(bridge.subprocess, "run"):
+            bridge.prepare(self.repository, url)
+        manifest = json.loads((self.package / bridge.MANIFEST).read_text())
+        self.assertEqual(
+            manifest["git_archive_url_template"],
+            "https://github.com/example/viewer/releases/download/"
+            "dart-wellen-{commit}/dart_wellen-0.1.1-web.tar.gz",
+        )
         self.assertEqual(
             self.archive,
             (self.repository / "build/dart_wellen-0.1.1-web.tar.gz").read_bytes(),

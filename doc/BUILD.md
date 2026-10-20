@@ -1,5 +1,8 @@
 # Building ROHD Wave Viewer
 
+See the [script inventory](../scripts/README.md) for each script's purpose,
+whether it is intended for direct use, and its preferred Makefile entry point.
+
 ## Prerequisites
 
 - Flutter with its bundled Dart SDK. The root `pubspec.yaml` declares package

@@ -56,10 +56,8 @@ The helper:
 It never uploads packages or artifacts and never commits, tags, pushes, merges,
 rebases, or rewrites package versions. Full tests and Pana remain independent
 local opt-ins. The manually dispatched **Release Checks** workflow runs the
-same preparation in CI with independent test and Pana inputs. Pushes to the
-development branch `shared-packages-020` also run preparation for `dart_wellen`
-with publication disabled, allowing branch CI testing before a production
-release or default-branch workflow update. Its optional manual-dispatch
+same preparation in CI with independent test and Pana inputs. Release Checks
+is not triggered by branch pushes. Its optional manual-dispatch
 `publish_bundle` input enables a separate CI job that publishes only the
 verified bridge bundle to the pinned GitHub release URL. It defaults to off;
 it does not publish Pub packages, Pages, Linux archives, or VSIX packages.
@@ -120,7 +118,8 @@ Use the selected package's version in the URL; it is not the bridge version.
 The target validates generated Dart, Rust, native, and WASM versions/content
 hashes before preparing the reproducible bundle. It writes
 `packages/dart_wellen/tool/bridge_artifacts.json` with the exact package/bridge
-versions, file checksums, immutable HTTPS download URL, and archive checksum.
+versions, file checksums, an explicit release URL, a commit-keyed Git download
+URL template, and archive checksum.
 The manifest explicitly identifies the WASM profile as `release`; Flutter
 debug and release hosts both consume this prebuilt runtime. Debugger build
 mode never changes the Rust profile or triggers a Cargo build.
@@ -133,7 +132,29 @@ Preparation preserves the committed manifest's download URL (including fork
 and development-release URLs) only for the same package version.
 Set `BRIDGE_RELEASE_URL` explicitly when changing the package version; it also
 overrides the saved URL when selecting a different release for that version.
-After successful preparation, Release Checks retains the bundle and manifest
+The **General** workflow runs for pushes to every branch, including `main`,
+with identical bundle behavior regardless of branch name. It packages the
+already-built bridge, requires the generated manifest to match the source pin,
+and retains the bundle. After both Run Checks and Browser/WASM Tests succeed,
+the separate **Distribute commit-keyed bridge bundle** job uploads that exact
+archive without rebuilding. No package is published to pub.dev.
+
+GitHub prereleases are used only as durable, public file storage: the tag is
+`dart-wellen-<full-source-commit>`, not a branch or package release version.
+No manual release creation, version bump, GitHub login for consumers, or
+artifact-expiration workaround is required. Every new commit needs its own
+successful producer-CI distribution; moving a branch does not reuse an older
+commit's bundle. Pull-request checks do not have write permissions and do not
+distribute bundles; the source repository's branch-push CI does.
+
+The manifest's Git download template identifies the distribution repository.
+For a fork experiment, use that fork's URL when preparing the manifest, and
+let that fork's push workflow distribute it. CI rejects distribution to a
+different repository. Before upstream adoption, prepare the manifest with the
+upstream URL. A fork pull-request run in the upstream repository does not
+publish assets back to the fork.
+
+Separately, after successful preparation, Release Checks retains the bundle and manifest
 as CI artifacts. A failed preparation does not upload a manifest-only artifact
 that could be mistaken for a usable bundle. Enable its
 `publish_bundle` input to have CI publish the exact verified bundle at the
@@ -142,8 +163,8 @@ after all selected checks succeed, compares the prepared manifest to the
 checked-out commit, and rechecks the archive SHA-256 before contacting GitHub.
 The URL must belong to the repository running the workflow, including forks.
 
-Only that publication job receives `contents: write`. It creates a missing
-release at the checked commit and never moves an existing tag. Development or
+Only the distribution/publication jobs receive `contents: write`. Each creates
+a missing storage release at the checked commit and never moves an existing tag. Development or
 custom tags create prereleases; a stable `dart-wellen-<package-version>` tag
 creates a regular release without changing the repository's latest release.
 An existing identical asset is verified and reused. Different bytes cause an
@@ -160,10 +181,12 @@ python3 <resolved-dart_wellen-root>/tool/bridge_artifacts.py install
 - Prepared local checkouts and hosted Pub archives already contain the files;
   installation verifies them without network access.
 - Git dependencies contain the installer and manifest, not compiled objects.
-  Installation downloads the pinned bundle and validates both archive and file
+  The installer reads the selected checkout's exact Git commit and downloads
+  that commit's CI bundle using `git_archive_url_template`. Branches, tags,
+  and `main` use the same algorithm. Installation validates archive and file
   checksums before installing generated bindings and runtime into the resolved
   package directory. It never invokes Cargo or code generation.
-- Missing manifests, stale versions, unavailable releases, and checksum failures
+- Missing manifests, stale versions, unavailable commit bundles, and checksum failures
   fail explicitly. There is no fallback to an older runtime or a source build.
 
 Hosts stage `web/pkg` from that resolved package, including notices, into their
@@ -172,8 +195,8 @@ or versions, not maintain an independent bridge pin or vendored WASM copy.
 
 ### First GitHub Branch Test
 
-For development, the artifact can be a prerelease on a fork. Neither consumer
-needs a local viewer checkout or a Pub release:
+Neither consumer needs a local viewer checkout or a package release.
+There are no special branch names in the distribution contract:
 
 1. In this repository, prepare the existing validated bridge outputs with a
    prerelease URL belonging to the fork. This command packages existing files;
@@ -185,33 +208,30 @@ needs a local viewer checkout or a Pub release:
    ```
 
 2. Review, sign, commit, and push the installer, manifest, packaging rules,
-   tests, documentation, and hosted workspace lockfile to `shared-packages-020`.
+   tests, documentation, and hosted workspace lockfile to any branch in the
+   chosen repository.
    Do not commit local-path lockfile entries, generated bindings, `web/pkg`,
    or the bundle.
    This procedure does not perform commits or pushes automatically.
-3. In `desmonddak/rohd-wave-viewer`, dispatch **Release Checks** on the pushed
-   branch, select `dart_wellen`, and enable **Publish the verified bridge bundle
-   at its pinned GitHub release URL** (`publish_bundle`). After preparation
-   succeeds, CI creates the `dart-wellen-0.1.1-dev` prerelease and uploads the
-   matching archive. A branch push alone does not start publication.
+3. Wait for that repository's **General** push workflow to succeed, including
+   **Distribute commit-keyed bridge bundle**. CI creates the commit-keyed
+   storage prerelease and uploads the matching archive automatically.
+   No Release Checks dispatch or pub.dev publication is needed.
    The built manifest must match the signed commit; if a clean CI build
-   produces different bytes, publication fails rather than changing the pin.
-   The workflow must exist on the repository's default branch for GitHub to
-   expose its manual dispatch UI; once available, select the development
-   branch to run its version of the workflow. The non-publishing branch-push
-   checks do not have that restriction and run before manual dispatch is
-   available.
+   produces different bytes, distribution fails rather than changing the pin.
 4. In the embedding app, select **both** `rohd_wave_viewer` at repository
    root and `dart_wellen` at `packages/dart_wellen` from the same repository
    URL and Git ref. A package's own `dependency_overrides` do not propagate
    to its consumers, so overriding only the root viewer is insufficient
    while its hosted `dart_wellen` dependency is unpublished.
 5. Run Pub, then the resolved `dart_wellen` installer. A clean Git checkout
-   lacks generated bindings and WASM; the installer must download the bundle
-   and validate the archive/file hashes before the host compiles.
+   lacks generated bindings and WASM; the installer downloads the bundle for
+   the exact resolved commit and validates its hashes before the host compiles.
+   If Pub still locks the previous commit after a push, explicitly upgrade
+   `rohd_wave_viewer` and `dart_wellen` together, then check `resolved-ref`.
 
 Success requires Pub's package configuration to identify Git-cache locations
-for both packages, a real release download on the first installation, verified
+for both packages, a real commit-bundle download on the first installation, verified
 runtime checksums, and successful host startup. A subsequent install should
 verify the cached files without downloading or compiling anything.
 
@@ -235,9 +255,10 @@ Before either manual publication:
 
 Pub publication, commits, pushes, Pages deployments, Linux archives, and VSIX
 publication remain explicit maintainer actions outside the helper. GitHub
-bridge release creation and asset upload are CI-managed only when a maintainer
-explicitly enables `publish_bundle` on Release Checks; ordinary checks do not
-publish or move tags.
+commit-bundle storage and upload are automatic after successful General
+branch-push CI. Optional versioned bridge release assets remain controlled by
+`publish_bundle` on Release Checks. Neither workflow publishes to pub.dev,
+and neither moves existing tags.
 
 ---
 

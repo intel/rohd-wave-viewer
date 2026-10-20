@@ -30,14 +30,19 @@ dependencies:
 The package owns its bridge version and matching artifacts. Prepared local
 packages and hosted archives include generated Dart bindings and the browser
 runtime under `web/pkg`. Git dependencies retrieve those same files from a
-pinned release bundle, without compiling dependencies:
+checksummed CI bundle for the exact selected Git commit, without compiling dependencies:
 
 ```bash
 python3 <resolved-dart_wellen-root>/tool/bridge_artifacts.py install
 ```
 
 Python 3 is required. The installer verifies package/bridge versions and SHA-256
-checksums; missing metadata or an unavailable release fails explicitly. Hosts
+checksums; missing metadata or an unavailable commit bundle fails explicitly.
+The same commit-based lookup applies to every branch, tag, and `main`.
+The producer's General workflow distributes bundles automatically after its
+build and browser tests succeed. No pub.dev publication or manual release
+is needed; GitHub prereleases are only the public file storage for CI output.
+Hosts
 copy `web/pkg`, including license notices, into ignored web staging output and
 load its JavaScript/WASM pair. They must not pin a separate bridge version or
 retain an older runtime when changing dependency sources.

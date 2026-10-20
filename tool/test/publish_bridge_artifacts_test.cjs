@@ -20,6 +20,7 @@ async function fixture(t) {
     version: '0.1.1',
     profile: 'release',
     archive_url: 'https://github.com/example/viewer/releases/download/dart-wellen-0.1.1-dev/dart_wellen-0.1.1-web.tar.gz',
+    git_archive_url_template: 'https://github.com/example/viewer/releases/download/dart-wellen-{commit}/dart_wellen-0.1.1-web.tar.gz',
     archive_sha256: createHash('sha256').update(archive).digest('hex'),
   };
   const calls = [];
@@ -108,6 +109,38 @@ test('canonical stable artifact tags create non-prereleases', async (t) => {
   await f.writeManifest();
   await publish(f.options);
   assert.equal(f.calls.find(([name]) => name === 'create')[1].prerelease, false);
+});
+
+test('automatic publication uses the exact commit instead of the versioned release tag', async (t) => {
+  const f = await fixture(t);
+  f.asset.browser_download_url = f.manifest.git_archive_url_template.replace(
+    '{commit}', f.options.context.sha,
+  );
+  const result = await publish({ ...f.options, development: true });
+  const created = f.calls.find(([name]) => name === 'create')[1];
+  assert.equal(created.tag_name, `dart-wellen-${f.options.context.sha}`);
+  assert.equal(created.target_commitish, f.options.context.sha);
+  assert.equal(created.prerelease, true);
+  assert.equal(created.make_latest, 'false');
+  assert.equal(result.assetUrl, f.asset.browser_download_url);
+  assert.deepEqual(f.calls.find(([name]) => name === 'upload')[1].data, f.archive);
+});
+
+test('development publication rejects missing templates and invalid commits before GitHub access', async (t) => {
+  for (const mode of ['missing', 'different-repository', 'invalid-commit']) {
+    await t.test(mode, async (child) => {
+      const f = await fixture(child);
+      if (mode === 'missing') delete f.manifest.git_archive_url_template;
+      if (mode === 'different-repository') f.manifest.git_archive_url_template = 'https://example.invalid/{commit}';
+      if (mode === 'invalid-commit') f.options.context.sha = 'branch-name';
+      await f.writeManifest();
+      await assert.rejects(
+        publish({ ...f.options, development: true }),
+        /valid source commit and matching Git artifact URL template/,
+      );
+      assert.deepEqual(f.calls, []);
+    });
+  }
 });
 
 test('an existing identical asset is verified without uploading or moving its tag', async (t) => {
