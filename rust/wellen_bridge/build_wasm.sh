@@ -51,6 +51,6 @@ export HTTPS_PROXY="${HTTPS_PROXY:-}"
 export NO_PROXY="${NO_PROXY:-}"
 export no_proxy="${no_proxy:-}"
 
-"$RUSTUP_BIN" run "$RUST_TOOLCHAIN" wasm-pack build --target no-modules --out-dir ../../web/pkg
+"$RUSTUP_BIN" run "$RUST_TOOLCHAIN" wasm-pack build --release --target no-modules --out-dir ../../web/pkg
 
 echo "[rust-wasm] wasm-pack build finished"

@@ -24,11 +24,29 @@ Add the package to a Dart or Flutter package:
 
 ```yaml
 dependencies:
-  dart_wellen: ^0.1.0
+  dart_wellen: ^0.1.1
 ```
 
-Applications also need the matching native or WebAssembly bridge artifact. The
-ROHD Wave Viewer build system prepares those artifacts automatically.
+The package owns its bridge version and matching artifacts. Prepared local
+packages and hosted archives include generated Dart bindings and the browser
+runtime under `web/pkg`. Git dependencies retrieve those same files from a
+pinned release bundle, without compiling dependencies:
+
+```bash
+python3 <resolved-dart_wellen-root>/tool/bridge_artifacts.py install
+```
+
+Python 3 is required. The installer verifies package/bridge versions and SHA-256
+checksums; missing metadata or an unavailable release fails explicitly. Hosts
+copy `web/pkg`, including license notices, into ignored web staging output and
+load its JavaScript/WASM pair. They must not pin a separate bridge version or
+retain an older runtime when changing dependency sources.
+The packaged WASM profile is explicitly `release`, independent of whether the
+embedding Flutter application runs in debug or release mode.
+
+Native applications additionally need a matching native library. Artifact
+production belongs to this repository, never an embedding application's build.
+See the [consumer artifact release procedure](../../doc/RELEASES.md#consumer-web-artifacts-local-git-and-hosted).
 
 ## Reading a Waveform
 

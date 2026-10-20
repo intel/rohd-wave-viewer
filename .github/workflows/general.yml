@@ -52,6 +52,11 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      - name: Test bridge artifact installation and publication
+        run: |
+          python3 tool/test/bridge_artifacts_test.py
+          node --test tool/test/publish_bridge_artifacts_test.cjs
+
       - name: Install native build tools
         run: tool/gh_actions/install_build_tools.sh
 

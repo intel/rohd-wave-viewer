@@ -35,7 +35,8 @@ pubspec_overrides.yaml.disabled*
 /packages/*/pubspec.lock
 .wave_dependency_sources
 
-# Independently distributed VS Code extension and large documentation media
+# Standalone runtime, extension, and large media
+/web/pkg/
 /vscode-extension/
 /doc/media/*.mp4
 
@@ -61,8 +62,7 @@ app.*.map.json
 devtools_options.yaml
 rust/wellen_bridge/target
 rust/wellen_bridge/src/frb_generated.rs
-# FRB-generated Dart bindings are intentionally publishable and are therefore
-# not ignored here.
+# The nested dart_wellen package has its own .pubignore for bridge artifacts.
 packages/wellen_bridge/**/*generated.*
 
 **/NOTICES

@@ -1,0 +1,17 @@
+{
+  "version": "0.1.1",
+  "bridge_version": "2.7.1",
+  "profile": "release",
+  "archive_url": "https://github.com/desmonddak/rohd-wave-viewer/releases/download/dart-wellen-0.1.1-dev/dart_wellen-0.1.1-web.tar.gz",
+  "files": {
+    "lib/src/rust/api.dart": "4617f31445c06eeae009e50c2937578a1317139d89fc793f38b8edbd97550145",
+    "lib/src/rust/frb_generated.dart": "a4ce817838c8fb8b8df22515fc18d31d22e4ace4d5286cdbd27bd17ec10a6da5",
+    "lib/src/rust/frb_generated.io.dart": "db754441ad666939a6e261fa29c735e419b5ae1e5b250cb99256572c3791d26f",
+    "lib/src/rust/frb_generated.web.dart": "6ddcdd7121e106cebc9ee8ada8c94c886570541f6cb28657fac320ea63f5c434",
+    "web/pkg/wellen_bridge.js": "0b59fbdc5bb37838fddb17a55c3dc6a077736eedbed0c18d3f8331500657a1ca",
+    "web/pkg/wellen_bridge_bg.wasm": "3a562ed87bc2ae0b590d665aefd398c793310844807ed144bd53ef293231d994",
+    "web/pkg/LICENSE": "83489be07bc27aec19cc60d6b99206536c398ec4097a78e27c3ecbfe63688301",
+    "web/pkg/wellen_bridge_LICENSES.txt": "c2c541c51cba7d6b66cbaef14310efffbf649e17ac650765792aa3f3b9c90aae"
+  },
+  "archive_sha256": "8d2e1cb3433422c30a3a054d2fba407a235d7f31d36b540626e74ba377f75ae2"
+}

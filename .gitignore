@@ -65,6 +65,8 @@ rust/wellen_bridge/target
 rust/wellen_bridge/src/frb_generated.rs
 # Generated locally but retained in Pub archives for package consumers.
 packages/dart_wellen/lib/src/rust/
+packages/dart_wellen/web/pkg/
+__pycache__/
 packages/wellen_bridge/**/*generated.*
 
 **/NOTICES

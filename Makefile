@@ -185,6 +185,12 @@ $(WASM_OUTPUTS) &: $(FRB_OUTPUTS) $(RUST_CARGO) rust/wellen_bridge/build_wasm.sh
 
 wasm: $(WASM_OUTPUTS)
 
+# Producer-only packaging. Consumers install the pinned files, never this target.
+.PHONY: consumer-artifacts
+consumer-artifacts: dart wasm rust-native
+	@python3 packages/dart_wellen/tool/bridge_artifacts.py prepare \
+		--release-url "$(BRIDGE_RELEASE_URL)"
+
 # Build native Rust library for Linux
 $(NATIVE_LIB): $(FRB_OUTPUTS) $(RUST_CARGO) rust/wellen_bridge/build_native.sh
 	@echo "Building native Rust library..."
