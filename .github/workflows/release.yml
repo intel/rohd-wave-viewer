@@ -122,7 +122,7 @@ jobs:
           name: dart-wellen-consumer-artifacts
           path: |
             build/dart_wellen-*-web.tar.gz
-            packages/dart_wellen/tool/bridge_artifacts.json
+            packages/dart_wellen/tool/bridge_artifacts.build.json
           if-no-files-found: error
 
   publish-bridge-bundle:
@@ -167,7 +167,7 @@ jobs:
               artifactDirectory: process.env.BRIDGE_ARTIFACT_DIRECTORY,
             });
             core.info(result.alreadyPresent
-              ? 'Existing release asset matches the committed pin; no upload needed.'
+              ? 'Existing archive and checksum metadata match this tested build; no upload needed.'
               : 'Uploaded the verified bundle without rebuilding.');
             await core.summary
               .addHeading('Pinned dart_wellen bridge bundle')

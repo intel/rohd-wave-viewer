@@ -14,14 +14,18 @@ async function fixture(t) {
   t.after(() => fs.rm(directory, { recursive: true, force: true }));
   const workspace = path.join(directory, 'source');
   const artifactDirectory = path.join(directory, 'artifact');
-  const manifestPath = 'packages/dart_wellen/tool/bridge_artifacts.json';
+  const contractPath = 'packages/dart_wellen/tool/bridge_artifacts.json';
+  const manifestPath = 'packages/dart_wellen/tool/bridge_artifacts.build.json';
   const archive = Buffer.from('fixture compressed bundle');
   const manifest = {
     version: '0.1.1',
+    bridge_version: '2.7.1',
     profile: 'release',
     archive_url: 'https://github.com/example/viewer/releases/download/dart-wellen-0.1.1-dev/dart_wellen-0.1.1-web.tar.gz',
     git_archive_url_template: 'https://github.com/example/viewer/releases/download/dart-wellen-{commit}/dart_wellen-0.1.1-web.tar.gz',
     archive_sha256: createHash('sha256').update(archive).digest('hex'),
+    source_commit: 'a'.repeat(40),
+    files: { 'web/pkg/wellen_bridge_bg.wasm': createHash('sha256').update(archive).digest('hex') },
   };
   const calls = [];
   const state = {
@@ -34,6 +38,11 @@ async function fixture(t) {
     id: 2,
     name: 'dart_wellen-0.1.1-web.tar.gz',
     browser_download_url: manifest.archive_url,
+  };
+  const metadataAsset = {
+    id: 3,
+    name: `${asset.name}.json`,
+    browser_download_url: `${asset.browser_download_url}.json`,
   };
   const github = {
     rest: {
@@ -51,11 +60,15 @@ async function fixture(t) {
         listReleaseAssets() {},
         async getReleaseAsset(options) {
           calls.push(['download', options]);
-          return { data: state.existingBytes };
+          return {
+            data: options.asset_id === metadataAsset.id
+              ? (state.existingMetadata ?? Buffer.from(JSON.stringify(manifest)))
+              : state.existingBytes,
+          };
         },
         async uploadReleaseAsset(options) {
           calls.push(['upload', options]);
-          return { data: asset };
+          return { data: options.name === metadataAsset.name ? metadataAsset : asset };
         },
       },
     },
@@ -66,10 +79,15 @@ async function fixture(t) {
     },
   };
   async function writeManifest() {
-    for (const root of [workspace, artifactDirectory]) {
-      const filename = path.join(root, manifestPath);
-      await fs.mkdir(path.dirname(filename), { recursive: true });
-      await fs.writeFile(filename, JSON.stringify(manifest));
+    const { archive_sha256, source_commit, files, ...contract } = manifest;
+    contract.files = Object.keys(files);
+    for (const [root, filename, data] of [
+      [workspace, contractPath, contract],
+      [artifactDirectory, manifestPath, manifest],
+    ]) {
+      const target = path.join(root, filename);
+      await fs.mkdir(path.dirname(target), { recursive: true });
+      await fs.writeFile(target, JSON.stringify(data));
     }
   }
   await writeManifest();
@@ -83,7 +101,7 @@ async function fixture(t) {
     artifactDirectory,
   };
   return {
-    options, calls, manifest, writeManifest, state, asset, archive, archivePath, manifestPath,
+    options, calls, manifest, writeManifest, state, asset, metadataAsset, archive, archivePath, manifestPath,
   };
 }
 
@@ -101,6 +119,10 @@ test('creates the pinned development release and uploads the exact verified bund
   assert.equal(uploaded.name, f.asset.name);
   assert.equal(result.assetUrl, f.manifest.archive_url);
   assert.equal(result.alreadyPresent, false);
+  const uploads = f.calls.filter(([name]) => name === 'upload').map(([, options]) => options);
+  assert.equal(uploads.length, 2);
+  assert.equal(uploads[1].name, `${f.asset.name}.json`);
+  assert.deepEqual(JSON.parse(uploads[1].data), f.manifest);
 });
 
 test('canonical stable artifact tags create non-prereleases', async (t) => {
@@ -136,7 +158,7 @@ test('development publication rejects missing templates and invalid commits befo
       await f.writeManifest();
       await assert.rejects(
         publish({ ...f.options, development: true }),
-        /valid source commit and matching Git artifact URL template/,
+        /valid source commit and matching Git artifact URL template|tested source commit/,
       );
       assert.deepEqual(f.calls, []);
     });
@@ -146,11 +168,11 @@ test('development publication rejects missing templates and invalid commits befo
 test('an existing identical asset is verified without uploading or moving its tag', async (t) => {
   const f = await fixture(t);
   f.state.release = { id: 1, html_url: 'existing-release' };
-  f.state.assets = [f.asset];
+  f.state.assets = [f.asset, f.metadataAsset];
   f.state.existingBytes = Uint8Array.from(f.archive).buffer;
   const result = await publish(f.options);
   assert.equal(result.alreadyPresent, true);
-  assert.deepEqual(f.calls.map(([name]) => name), ['lookup', 'list', 'download']);
+  assert.deepEqual(f.calls.map(([name]) => name), ['lookup', 'list', 'download', 'download']);
 });
 
 test('an existing different asset is never replaced', async (t) => {
@@ -165,7 +187,7 @@ test('an existing different asset is never replaced', async (t) => {
 test('changed build metadata fails before contacting GitHub', async (t) => {
   const f = await fixture(t);
   await fs.writeFile(path.join(f.options.artifactDirectory, f.manifestPath), '{}');
-  await assert.rejects(publish(f.options), /differs from the selected source commit/);
+  await assert.rejects(publish(f.options), /differs from the source contract/);
   assert.deepEqual(f.calls, []);
 });
 
@@ -174,6 +196,40 @@ test('a corrupt archive fails before contacting GitHub', async (t) => {
   await fs.writeFile(f.archivePath, 'corrupt');
   await assert.rejects(publish(f.options), /SHA-256 differs/);
   assert.deepEqual(f.calls, []);
+});
+
+test('runner-specific bytes use CI checksums without changing the committed contract', async (t) => {
+  const f = await fixture(t);
+  const bytes = Buffer.from('valid CI build with different machine-specific bytes');
+  f.manifest.archive_sha256 = createHash('sha256').update(bytes).digest('hex');
+  f.manifest.files['web/pkg/wellen_bridge_bg.wasm'] = f.manifest.archive_sha256;
+  await fs.writeFile(f.archivePath, bytes);
+  await fs.writeFile(
+    path.join(f.options.artifactDirectory, f.manifestPath), JSON.stringify(f.manifest),
+  );
+  await publish({ ...f.options, development: true });
+  const uploads = f.calls.filter(([name]) => name === 'upload');
+  assert.deepEqual(uploads[0][1].data, bytes);
+  assert.equal(JSON.parse(uploads[1][1].data).archive_sha256, f.manifest.archive_sha256);
+});
+
+test('metadata for another commit is rejected before GitHub access', async (t) => {
+  const f = await fixture(t);
+  f.manifest.source_commit = 'b'.repeat(40);
+  await fs.writeFile(
+    path.join(f.options.artifactDirectory, f.manifestPath), JSON.stringify(f.manifest),
+  );
+  await assert.rejects(publish(f.options), /tested source commit/);
+  assert.deepEqual(f.calls, []);
+});
+
+test('an existing different metadata asset is rejected before uploading a missing archive', async (t) => {
+  const f = await fixture(t);
+  f.state.release = { id: 1 };
+  f.state.assets = [f.metadataAsset];
+  f.state.existingMetadata = Buffer.from('different metadata');
+  await assert.rejects(publish(f.options), /different bytes/);
+  assert.deepEqual(f.calls.map(([name]) => name), ['lookup', 'list', 'download']);
 });
 
 test('publication rejects invalid metadata and URLs before contacting GitHub', async (t) => {

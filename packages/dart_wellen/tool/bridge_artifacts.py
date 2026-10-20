@@ -21,6 +21,7 @@ from urllib.parse import urlparse
 
 PACKAGE = Path(__file__).resolve().parents[1]
 MANIFEST = Path("tool/bridge_artifacts.json")
+BUILD_MANIFEST = Path("tool/bridge_artifacts.build.json")
 FILES = (
     "lib/src/rust/api.dart",
     "lib/src/rust/frb_generated.dart",
@@ -63,11 +64,21 @@ def manifest_versions(package):
 
 
 def validate_manifest(package, manifest):
+    if not isinstance(manifest, dict):
+        raise ValueError("Artifact metadata must be a JSON object")
     version, bridge = manifest_versions(package)
     if (manifest["version"], manifest["bridge_version"]) != (version, bridge):
         raise ValueError("Artifact manifest does not match the selected dart_wellen version")
-    if set(manifest["files"]) != set(FILES):
+    inventory = manifest.get("files")
+    if (
+        not isinstance(inventory, (list, dict))
+        or not all(isinstance(name, str) for name in inventory)
+        or len(inventory) != len(FILES)
+        or set(inventory) != set(FILES)
+    ):
         raise ValueError("Artifact manifest has an unexpected file inventory")
+    if not isinstance(manifest.get("archive_url"), str):
+        raise ValueError("Artifact manifest requires a download URL")
     if manifest.get("profile") != "release":
         raise ValueError("This web artifact contract requires an explicit release profile")
     if "git_archive_url_template" in manifest:
@@ -76,21 +87,44 @@ def validate_manifest(package, manifest):
             raise ValueError("Git artifact URL template does not match the pinned repository/version")
 
 
-def download_url(package, manifest):
+def validate_build_manifest(package, contract, manifest, commit=None):
+    validate_manifest(package, manifest)
+    for key in ("version", "bridge_version", "profile", "archive_url", "git_archive_url_template"):
+        if manifest.get(key) != contract.get(key):
+            raise ValueError(f"Build metadata does not match the source contract: {key}")
+    if not isinstance(manifest["files"], dict) or not all(
+        isinstance(value, str) and re.fullmatch(r"[a-f0-9]{64}", value)
+        for value in (*manifest["files"].values(), manifest.get("archive_sha256"))
+    ):
+        raise ValueError("Build metadata requires valid file and archive SHA-256 checksums")
+    if commit and manifest.get("source_commit") != commit:
+        raise ValueError("Build metadata does not match the selected Git commit")
+
+
+def source_commit(repository):
+    if not (repository / ".git").exists():
+        return None
+    commit = subprocess.run(
+        ["git", "-C", str(repository), "rev-parse", "HEAD"],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    if not re.fullmatch(r"[a-f0-9]{40}", commit):
+        raise ValueError("Could not determine the selected Git commit for artifact installation")
+    return commit
+
+
+def download_target(package, manifest):
     template = manifest.get("git_archive_url_template")
-    if template and (package.parents[1] / ".git").exists():
-        commit = subprocess.run(
-            ["git", "-C", str(package), "rev-parse", "HEAD"],
-            check=True, capture_output=True, text=True,
-        ).stdout.strip()
-        if not re.fullmatch(r"[a-f0-9]{40}", commit):
-            raise ValueError("Could not determine the selected Git commit for artifact installation")
-        return template.replace("{commit}", commit)
-    return manifest["archive_url"]
+    commit = source_commit(package.parents[1]) if template else None
+    if commit:
+        return template.replace("{commit}", commit), commit
+    return manifest["archive_url"], None
 
 
 def verify(package, manifest):
     validate_manifest(package, manifest)
+    if not isinstance(manifest["files"], dict):
+        raise ValueError("Prepared artifact checksum metadata is missing")
     _, bridge = manifest_versions(package)
     for name, expected in manifest["files"].items():
         path = package / name
@@ -103,40 +137,72 @@ def verify(package, manifest):
         raise ValueError("Packaged runtime is not WebAssembly")
 
 
-def install(package):
-    path = package / MANIFEST
-    if not path.is_file():
+def read_contract(package):
+    if not (package / MANIFEST).is_file():
         raise ValueError(
-            f"Missing artifact manifest: {path}. Prepare/release the selected "
+            f"Missing artifact manifest: {package / MANIFEST}. Prepare/release the selected "
             "dart_wellen package in rohd-wave-viewer; consumers never build it."
         )
-    manifest = json.loads(path.read_text())
-    # Reject stale metadata before attempting any network access.
-    validate_manifest(package, manifest)
-    try:
-        verify(package, manifest)
-        return
-    except ValueError as error:
-        print(f"Packaged artifacts need installation: {error}", flush=True)
-    url = download_url(package, manifest)
+    contract = json.loads((package / MANIFEST).read_text())
+    validate_manifest(package, contract)
+    return contract
+
+
+def verify_prepared(package, contract):
+    if not (package / BUILD_MANIFEST).is_file():
+        raise ValueError(f"Prepared artifact checksum metadata is missing: {package / BUILD_MANIFEST}")
+    manifest = json.loads((package / BUILD_MANIFEST).read_text())
+    validate_build_manifest(package, contract, manifest)
+    verify(package, manifest)
+
+
+def download(url):
     if urlparse(url).scheme != "https":
         raise ValueError("Artifact downloads require a pinned HTTPS release URL")
-    print(f"Downloading prebuilt dart_wellen artifacts: {url}", flush=True)
+    print(f"Downloading prebuilt dart_wellen artifact: {url}", flush=True)
     try:
         with urllib.request.urlopen(url, timeout=60) as response:
             if urlparse(response.url).scheme != "https":
                 raise ValueError("Artifact download redirected away from HTTPS")
-            archive = response.read()
+            return response.read()
     except urllib.error.HTTPError as error:
-        if error.code == 404 and "git_archive_url_template" in manifest:
+        if error.code == 404:
             raise ValueError(
                 f"No prebuilt bundle at {url}. Wait for the producer's General workflow, "
                 "including Distribute commit-keyed bridge bundle, for this exact commit "
                 "to succeed. Pull-request checks do not distribute bundles."
             ) from error
         raise
+
+
+def atomic_write(target, data):
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        dir=target.parent, prefix=f".{target.name}.", delete=False,
+    ) as temporary_file:
+        temporary_target = Path(temporary_file.name)
+        try:
+            temporary_file.write(data)
+            temporary_file.flush()
+            temporary_target.replace(target)
+        finally:
+            temporary_target.unlink(missing_ok=True)
+
+
+def install(package):
+    contract = read_contract(package)
+    try:
+        verify_prepared(package, contract)
+        return
+    except ValueError as error:
+        print(f"Packaged artifacts need installation: {error}", flush=True)
+    url, commit = download_target(package, contract)
+    metadata = download(url + ".json")
+    manifest = json.loads(metadata)
+    validate_build_manifest(package, contract, manifest, commit)
+    archive = download(url)
     if digest(archive) != manifest["archive_sha256"]:
-        raise ValueError("Downloaded artifact archive SHA-256 does not match the package manifest")
+        raise ValueError("Downloaded artifact archive SHA-256 does not match the build metadata")
     # Extract only the fixed inventory; reject links, duplicates and traversal.
     with tempfile.TemporaryDirectory(prefix="dart-wellen-artifacts-") as temporary:
         staging = Path(temporary)
@@ -154,19 +220,9 @@ def install(package):
         shutil.copyfile(package / "pubspec.yaml", staging / "pubspec.yaml")
         verify(staging, manifest)
         for name in FILES:
-            target = package / name
-            target.parent.mkdir(parents=True, exist_ok=True)
-            with tempfile.NamedTemporaryFile(
-                dir=target.parent, prefix=f".{target.name}.", delete=False,
-            ) as temporary_file:
-                temporary_target = Path(temporary_file.name)
-                try:
-                    temporary_file.write((staging / name).read_bytes())
-                    temporary_file.flush()
-                    temporary_target.replace(target)
-                finally:
-                    temporary_target.unlink(missing_ok=True)
-    verify(package, manifest)
+            atomic_write(package / name, (staging / name).read_bytes())
+    atomic_write(package / BUILD_MANIFEST, metadata)
+    verify_prepared(package, contract)
 
 
 def prepare(repository, release_url):
@@ -183,7 +239,7 @@ def prepare(repository, release_url):
         repository / "assets/licenses/wellen_bridge_LICENSES.txt",
         runtime / "wellen_bridge_LICENSES.txt",
     )
-    manifest = {
+    contract = {
         "version": version,
         "bridge_version": bridge,
         "profile": "release",
@@ -191,8 +247,12 @@ def prepare(repository, release_url):
     }
     template = git_archive_template(release_url, version)
     if template:
-        manifest["git_archive_url_template"] = template
-    manifest["files"] = {name: digest((package / name).read_bytes()) for name in FILES}
+        contract["git_archive_url_template"] = template
+    contract["files"] = list(FILES)
+    manifest = {**contract, "files": {name: digest((package / name).read_bytes()) for name in FILES}}
+    commit = source_commit(repository)
+    if commit:
+        manifest["source_commit"] = commit
     verify(package, manifest)
     # Reproducible bytes keep the pinned archive hash stable across machines.
     output = io.BytesIO()
@@ -208,7 +268,8 @@ def prepare(repository, release_url):
     archive.parent.mkdir(parents=True, exist_ok=True)
     archive.write_bytes(output.getvalue())
     manifest["archive_sha256"] = digest(output.getvalue())
-    (package / MANIFEST).write_text(json.dumps(manifest, indent=2) + "\n")
+    (package / MANIFEST).write_text(json.dumps(contract, indent=2) + "\n")
+    (package / BUILD_MANIFEST).write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"Prepared {archive}")
     print(f"Commit {package / MANIFEST}; General CI distributes the bundle for each pushed commit.")
     print(f"Explicit release publication remains available at {release_url}.")
@@ -231,7 +292,7 @@ def main():
         elif args.command == "install":
             install(PACKAGE)
         else:
-            verify(PACKAGE, json.loads((PACKAGE / MANIFEST).read_text()))
+            verify_prepared(PACKAGE, read_contract(PACKAGE))
     except (OSError, ValueError, KeyError, tarfile.TarError,
             urllib.error.URLError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"dart_wellen artifact error: {error}\n")

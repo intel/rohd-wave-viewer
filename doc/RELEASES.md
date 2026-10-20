@@ -116,28 +116,39 @@ make consumer-artifacts \
 
 Use the selected package's version in the URL; it is not the bridge version.
 The target validates generated Dart, Rust, native, and WASM versions/content
-hashes before preparing the reproducible bundle. It writes
-`packages/dart_wellen/tool/bridge_artifacts.json` with the exact package/bridge
-versions, file checksums, an explicit release URL, a commit-keyed Git download
-URL template, and archive checksum.
-The manifest explicitly identifies the WASM profile as `release`; Flutter
+hashes before packaging the existing files. The checked-in
+`packages/dart_wellen/tool/bridge_artifacts.json` is the source contract:
+package/bridge versions, file inventory, explicit release URL, and commit-keyed
+Git download URL template. It does not contain compiled-binary checksums.
+The contract explicitly identifies the WASM profile as `release`; Flutter
 debug and release hosts both consume this prebuilt runtime. Debugger build
 mode never changes the Rust profile or triggers a Cargo build.
-Commit this small manifest and the installer, **not** the generated artifacts.
-Regenerate and review the manifest whenever bridge inputs or version change.
+Commit this small contract and the installer, **not** generated artifacts.
+Review the contract whenever versions, inventory, or distribution URLs change.
+
+Preparation writes actual archive/file SHA-256 checksums and the producer
+checkout's commit to ignored `tool/bridge_artifacts.build.json` inside
+`dart_wellen`. That generated metadata belongs to the built package, not the
+source commit. Equal bridge API/content hashes do not guarantee byte-identical
+WASM from different runners or toolchains. Repackaging the same input files is
+deterministic; recompiling them is not assumed to be.
 
 Release preparation performs this packaging step too. Its final clean-source
-check requires the prepared manifest to already match the release commit.
-Preparation preserves the committed manifest's download URL (including fork
+check requires the source contract to remain unchanged; generated checksums
+are not compared with a local developer's build. Preparation preserves the
+committed contract's download URL (including fork
 and development-release URLs) only for the same package version.
 Set `BRIDGE_RELEASE_URL` explicitly when changing the package version; it also
 overrides the saved URL when selecting a different release for that version.
 The **General** workflow runs for pushes to every branch, including `main`,
 with identical bundle behavior regardless of branch name. It packages the
-already-built bridge, requires the generated manifest to match the source pin,
-and retains the bundle. After both Run Checks and Browser/WASM Tests succeed,
+already-built bridge, requires the regenerated source contract to stay unchanged,
+and retains the archive and its generated checksum metadata.
+After both Run Checks and Browser/WASM Tests succeed,
 the separate **Distribute commit-keyed bridge bundle** job uploads that exact
-archive without rebuilding. No package is published to pub.dev.
+archive and a JSON sidecar named `<archive-filename>.json` without rebuilding.
+It verifies package/bridge versions, profile, inventory, source commit, and
+archive hash against that CI build. No package is published to pub.dev.
 
 GitHub prereleases are used only as durable, public file storage: the tag is
 `dart-wellen-<full-source-commit>`, not a branch or package release version.
@@ -154,22 +165,24 @@ different repository. Before upstream adoption, prepare the manifest with the
 upstream URL. A fork pull-request run in the upstream repository does not
 publish assets back to the fork.
 
-Separately, after successful preparation, Release Checks retains the bundle and manifest
+Separately, after successful preparation, Release Checks retains the bundle and build metadata
 as CI artifacts. A failed preparation does not upload a manifest-only artifact
 that could be mistaken for a usable bundle. Enable its
 `publish_bundle` input to have CI publish the exact verified bundle at the
 manifest's URL; no manual file upload is needed. The publication job runs only
-after all selected checks succeed, compares the prepared manifest to the
-checked-out commit, and rechecks the archive SHA-256 before contacting GitHub.
+after all selected checks succeed, matches the build metadata to the source
+contract and checked-out commit, and rechecks the archive SHA-256 before contacting GitHub.
 The URL must belong to the repository running the workflow, including forks.
 
 Only the distribution/publication jobs receive `contents: write`. Each creates
 a missing storage release at the checked commit and never moves an existing tag. Development or
 custom tags create prereleases; a stable `dart-wellen-<package-version>` tag
 creates a regular release without changing the repository's latest release.
-An existing identical asset is verified and reused. Different bytes cause an
-explicit failure: choose a new URL and commit the regenerated manifest rather
-than replacing an immutable asset. Existing draft releases also fail because
+Both the archive and its checksum sidecar are immutable. Existing identical
+assets are verified and reused. Different bytes at an already distributed URL
+cause an explicit failure: use a new source commit or explicit release URL,
+rather than replacing existing files. All existing assets are checked before
+uploading missing ones. Existing draft releases also fail because
 anonymous consumers cannot install from them.
 
 Consumer installation, after Pub selects the package, is:
@@ -179,12 +192,18 @@ python3 <resolved-dart_wellen-root>/tool/bridge_artifacts.py install
 ```
 
 - Prepared local checkouts and hosted Pub archives already contain the files;
-  installation verifies them without network access.
+  installation verifies them against their included
+  `tool/bridge_artifacts.build.json` without network access.
 - Git dependencies contain the installer and manifest, not compiled objects.
   The installer reads the selected checkout's exact Git commit and downloads
   that commit's CI bundle using `git_archive_url_template`. Branches, tags,
-  and `main` use the same algorithm. Installation validates archive and file
-  checksums before installing generated bindings and runtime into the resolved
+  and `main` use the same algorithm. It first retrieves that URL's `.json`
+  sidecar over HTTPS, validates the source commit and package contract, then
+  validates the archive and every extracted file against the CI-produced hashes.
+  It caches the verified build metadata for offline reinstallation.
+  This trusts the configured producer repository and its CI distribution;
+  it does not pretend that a local binary checksum pins a different runner's
+  output. Installation places generated bindings and runtime into the resolved
   package directory. It never invokes Cargo or code generation.
 - Missing manifests, stale versions, unavailable commit bundles, and checksum failures
   fail explicitly. There is no fallback to an older runtime or a source build.
@@ -211,14 +230,15 @@ There are no special branch names in the distribution contract:
    tests, documentation, and hosted workspace lockfile to any branch in the
    chosen repository.
    Do not commit local-path lockfile entries, generated bindings, `web/pkg`,
-   or the bundle.
+   generated `bridge_artifacts.build.json`, or the bundle.
    This procedure does not perform commits or pushes automatically.
 3. Wait for that repository's **General** push workflow to succeed, including
    **Distribute commit-keyed bridge bundle**. CI creates the commit-keyed
    storage prerelease and uploads the matching archive automatically.
    No Release Checks dispatch or pub.dev publication is needed.
-   The built manifest must match the signed commit; if a clean CI build
-   produces different bytes, distribution fails rather than changing the pin.
+   The package contract must match the signed commit. CI-generated checksums
+   describe the tested runner's output; different local WASM bytes do not fail
+   this check.
 4. In the embedding app, select **both** `rohd_wave_viewer` at repository
    root and `dart_wellen` at `packages/dart_wellen` from the same repository
    URL and Git ref. A package's own `dependency_overrides` do not propagate
@@ -235,7 +255,8 @@ for both packages, a real commit-bundle download on the first installation, veri
 runtime checksums, and successful host startup. A subsequent install should
 verify the cached files without downloading or compiling anything.
 
-For pub.dev, publish `dart_wellen` **with** the generated files and `web/pkg`
+For pub.dev, publish `dart_wellen` **with** the generated files, `web/pkg`,
+and `tool/bridge_artifacts.build.json`
 included by its `.pubignore`, then publish `rohd_wave_viewer` against that
 hosted version. The root viewer archive should not carry another copy of the
 bridge. Hosts use the same package-relative artifact location and installation

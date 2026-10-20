@@ -66,6 +66,7 @@ rust/wellen_bridge/src/frb_generated.rs
 # Generated locally but retained in Pub archives for package consumers.
 packages/dart_wellen/lib/src/rust/
 packages/dart_wellen/web/pkg/
+packages/dart_wellen/tool/bridge_artifacts.build.json
 __pycache__/
 packages/wellen_bridge/**/*generated.*
 

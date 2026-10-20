@@ -1,5 +1,6 @@
 # Hosted packages contain generated bindings and their matching web runtime.
 # Git consumers obtain the same files through tool/bridge_artifacts.json.
+# Include tool/bridge_artifacts.build.json for offline hosted verification.
 .dart_tool/
 pubspec.lock
 pubspec_overrides.yaml
