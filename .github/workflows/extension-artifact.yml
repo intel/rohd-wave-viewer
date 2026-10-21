@@ -36,7 +36,7 @@ jobs:
         run: |
           set -euo pipefail
           make verify-extension-version
-          version="$(node -p "require('./vscode-extension/package.json').version")"
+          version="$(awk '/^version:/ { print $2; exit }' pubspec.yaml)"
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             test "${GITHUB_REF_NAME#v}" = "$version"
           fi

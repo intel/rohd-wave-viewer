@@ -131,7 +131,7 @@ JSAny? jsify(dynamic value) {
 }
 
 /// Convert JavaScript values to Dart values.
-dynamic dartify(JSAny? value) => _convertFromJS(value);
+dynamic dartify(JSAny? value) => value.dartify();
 
 /// Internal: Convert JS values to Dart.
 dynamic _convertFromJS(JSAny? value) {

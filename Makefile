@@ -26,6 +26,7 @@
 ROOT := $(abspath $(CURDIR))
 FLUTTER ?= flutter
 NODE ?= node
+NPM ?= npm
 
 FLUTTER_WEB_MODE ?= release
 FLUTTER_WEB_BUILD_ARGS ?=
@@ -55,8 +56,10 @@ RUST_SOURCES := $(shell find $(ROOT)/rust/wellen_bridge/src -name '*.rs' ! -name
 RUST_CARGO := $(ROOT)/rust/wellen_bridge/Cargo.toml
 TS_SOURCES := $(shell find $(ROOT)/vscode-extension/src -name '*.ts' 2>/dev/null)
 
+# The root Pub package and VSIX share one release version.
+PUBSPEC_VERSION := $(shell awk '$$1 == "version:" { print $$2; exit }' "$(ROOT)/pubspec.yaml")
 PKG_NAME := $(shell command -v $(NODE) >/dev/null 2>&1 && $(NODE) -p "require('$(ROOT)/vscode-extension/package.json').name" || echo rohd-wave-viewer-vscode)
-PKG_VERSION := $(shell sed -n 's/^[[:space:]]*"version":[[:space:]]*"\([^"]*\)".*/\1/p' $(ROOT)/vscode-extension/package.json | head -1)
+PKG_VERSION := $(PUBSPEC_VERSION)
 EXT_STAGE := $(ROOT)/build/extension/$(PKG_NAME)-$(PKG_VERSION)
 SLIM_ZIP := $(ROOT)/build/$(PKG_NAME)-$(PKG_VERSION)-slim.zip
 WEB_BUILD := $(ROOT)/build/web
@@ -91,7 +94,7 @@ NATIVE_LIB := $(ROOT)/rust/wellen_bridge/target/release/libwellen_bridge.so
         install install-local install-remote \
 	prepare web-run linux-run-debug linux-run-release \
         clean clean-extension clean-web clean-linux force real-clean \
-	verify-extension-version verify-vsix
+	sync-version verify-extension-version verify-vsix
 
 help:
 	@echo "ROHD Wave Viewer Extension - Build Targets"
@@ -100,8 +103,10 @@ help:
 	@echo "  all              - Build the extension (default target)"
 	@echo "  extension        - Build VS Code extension (TS + Flutter web)"
 	@echo "  vsix             - Package extension as VSIX file"
+	@echo "  verify-extension-version - Verify Pub and VS Code extension versions match"
 	@echo "  verify-vsix       - Verify the existing Marketplace VSIX"
 	@echo "  package          - Package extension as slim zip"
+	@echo "  sync-version     - Sync VS Code extension manifests to pubspec.yaml"
 	@echo ""
 	@echo "Web Build Targets:"
 	@echo "  web              - Build Flutter web app (default mode: release)"
@@ -347,19 +352,33 @@ coverity-clean:
 # Extension version validation
 # ---------------------------------------------------------------------------
 
+sync-version:
+	@if [ -z "$(PUBSPEC_VERSION)" ]; then \
+		echo "error: Unable to read version from pubspec.yaml."; \
+		exit 1; \
+	fi
+	@cd "$(ROOT)/vscode-extension" && $(NPM) version "$(PUBSPEC_VERSION)" --no-git-tag-version --allow-same-version
+	@echo "Synchronized VS Code extension version $(PUBSPEC_VERSION) from pubspec.yaml."
+
 verify-extension-version:
-	@manifest_version="$$($(NODE) -p "require('$(ROOT)/vscode-extension/package.json').version")"; \
+	@pubspec_version="$(PUBSPEC_VERSION)"; \
+	manifest_version="$$($(NODE) -p "require('$(ROOT)/vscode-extension/package.json').version")"; \
 	lock_version="$$($(NODE) -p "require('$(ROOT)/vscode-extension/package-lock.json').version")"; \
 	lock_root_version="$$($(NODE) -p "require('$(ROOT)/vscode-extension/package-lock.json').packages[''].version")"; \
-	if [ "$$manifest_version" != "$$lock_version" ] || \
-	   [ "$$manifest_version" != "$$lock_root_version" ]; then \
-		echo "error: VS Code extension versions do not match."; \
+	if [ -z "$$pubspec_version" ]; then \
+		echo "error: Unable to read version from pubspec.yaml."; \
+		exit 1; \
+	elif [ "$$pubspec_version" != "$$manifest_version" ] || \
+	   [ "$$pubspec_version" != "$$lock_version" ] || \
+	   [ "$$pubspec_version" != "$$lock_root_version" ]; then \
+		echo "error: Pub and VS Code extension versions do not match."; \
+		echo "  pubspec.yaml:               $$pubspec_version"; \
 		echo "  package.json:              $$manifest_version"; \
 		echo "  package-lock.json:         $$lock_version"; \
 		echo "  package-lock.json root:    $$lock_root_version"; \
 		exit 1; \
 	fi; \
-	echo "VS Code extension version $$manifest_version verified."
+	echo "Pub package and VS Code extension version $$pubspec_version verified."
 
 # ---------------------------------------------------------------------------
 # Extension packaging  (TypeScript + Flutter web + asset staging)
@@ -457,7 +476,7 @@ vsix: $(SLIM_ZIP)
 	@bash "$(ROOT)/scripts/build_vsix.sh" "$(EXT_STAGE)" "$(VSIX)"
 	@echo "VSIX available at $(VSIX)"
 
-verify-vsix:
+verify-vsix: verify-extension-version
 	@bash "$(ROOT)/scripts/verify_extension_vsix.sh" "$(VSIX)"
 
 # ---------------------------------------------------------------------------

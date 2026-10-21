@@ -1156,6 +1156,48 @@ void main() {
   });
 
   group('cross-probing', () {
+    testWidgets('receives top-level structured ports with repeated leaf names',
+        (
+      tester,
+    ) async {
+      _useDesktopViewport(tester);
+      final fixture = await _loadFixture(
+        'packages/dart_wellen/test/fixtures/fp_adder_struct.fst',
+      );
+      final channel = LocalCrossProbeChannel();
+      final waveService = LocalCrossProbeService(channel, source: 'wave');
+      final peerService = LocalCrossProbeService(channel, source: 'schematic');
+      addTearDown(waveService.dispose);
+      addTearDown(peerService.dispose);
+      const names = ['clk', 'a', 'b', 'sum'];
+      final top = fixture.hierarchy.root;
+      expect(
+        fixture.signalIds.where((id) => id.endsWith('/a')).length,
+        greaterThan(1),
+      );
+      await tester.pumpWidget(
+        App(
+          signalWaveformRepository: fixture.repository,
+          externalHierarchy: fixture.hierarchy,
+          crossProbeService: waveService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      peerService.send(
+        names.map((name) => 'SchematicDefinition/$name').toList(),
+        source: 'schematic',
+      );
+      await tester.pumpAndSettle();
+
+      final monitored = _signalBloc(tester).state.monitorSignalsList;
+      expect(
+        monitored.map((signal) => signal.signalId),
+        names.map((name) => '${top.path()}/$name'),
+      );
+      expect(monitored.every((signal) => signal.data.isNotEmpty), isTrue);
+    });
+
     testWidgets('receives peer signals and follows the active toggle', (
       tester,
     ) async {

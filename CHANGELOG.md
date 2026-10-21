@@ -2,6 +2,9 @@
 
 ## 0.1.1
 
+- Prevent stale registration results from hiding Send Signal after a receiver appears, and accept numeric source coordinates from the Wasm host.
+- Preserve already-decoded host messages and replay queued waveform loads, and deliver readiness metadata directly through the typed JavaScript callback.
+- Fix incoming cross-probe signal selections in the Wasm viewer by decoding JavaScript host messages into Dart maps and lists, and distinguish empty selections from self-originated messages in diagnostics.
 - Broaden the hierarchy and waveform dependency constraints to accept 0.1.x and 0.2.x, and require `dart_wellen` 0.1.1 for the same compatibility.
 - Accept DevTools widgets 0.1.1 through 0.2.x without requiring the new widgets release first.
 - Accept ROHD 0.6.11 and 0.7.x, and Equatable 2.x and 3.x.

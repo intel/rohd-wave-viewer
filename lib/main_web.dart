@@ -274,7 +274,7 @@ void main() async {
       String? text;
       Map<dynamic, dynamic>? dartMap;
       try {
-        final dartified = plat.dartify(data);
+        final dartified = data is Map ? data : plat.dartify(data);
         debugPrint('[WebMain] Dartified data: ${dartified.runtimeType}');
         if (dartified is Map) {
           dartMap = dartified;
@@ -332,8 +332,9 @@ void main() async {
       } else if (type == 'incomingSignals') {
         final signalPaths = _readStringList(data, dartMap, 'signalPaths');
         final sourceViewerId = _readString(data, dartMap, 'sourceViewerId');
-        if (signalPaths.isNotEmpty &&
-            crossProbeService.acceptsIncoming(sourceViewerId)) {
+        if (signalPaths.isEmpty) {
+          debugPrint('[WebMain] incomingSignals contains no signal paths');
+        } else if (crossProbeService.acceptsIncoming(sourceViewerId)) {
           crossProbeService.incomingSignals.value = signalPaths;
           debugPrint(
             '[WebMain] incomingSignals: ${signalPaths.length} signal(s)',
@@ -392,18 +393,11 @@ void main() async {
       } else if (type == 'vcdBytes' && data != null) {
         // Legacy bytes-based loading
         try {
-          final bytes =
-              plat.dartify(plat.getProperty(data, 'bytes')) as List<dynamic>;
-          final intList = bytes.map((e) => e as int).toList();
-          String? uriStr;
-          try {
-            final uriProp = plat.getProperty(data, 'uri');
-            if (uriProp != null) {
-              uriStr = uriProp.toString();
-            }
-          } on Object catch (_) {
-            uriStr = null;
-          }
+          final bytes = dartMap?['bytes'] ??
+              plat.dartify(plat.getProperty(data, 'bytes'));
+          final intList =
+              (bytes as List).map((e) => (e as num).toInt()).toList();
+          final uriStr = _readString(data, dartMap, 'uri');
           final fName = uriStr != null ? uriStr.split('/').last : 'binary.wave';
           await loadAndNotify(
             uriStr ?? 'binary message',
@@ -455,7 +449,8 @@ void main() async {
         // call rohdEmbed.onMessage as it would overwrite our typed callback
         // with a broken one that went through callMethod/jsify
         try {
-          final queue = plat.getGlobalPropertyExported('__rohdMessageQueue');
+          final queue =
+              (web.window as JSObject).getProperty('__rohdMessageQueue'.toJS);
           if (queue != null) {
             final dartQueue = plat.dartify(queue);
             if (dartQueue is List && dartQueue.isNotEmpty) {

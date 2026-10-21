@@ -3,17 +3,18 @@
 ## Release Inventory
 
 The repository produces independently releasable packages and applications.
-They do not need to share a version or ship together. A release selects only
-the components that changed, except where one selected package has a hosted
-dependency on another.
+The root `rohd_wave_viewer` Pub package and ROHD Wave Viewer VSIX are a
+matched release pair: they share the root `pubspec.yaml` version and use the
+same `v<version>` release tag. Other components can release independently,
+except where one selected package has a hosted dependency on another.
 
 | Component | Distribution | Version source | Release relationship |
 | --- | --- | --- | --- |
 | `dart_wellen` | pub.dev package from `packages/dart_wellen` | `packages/dart_wellen/pubspec.yaml` | Publish before any new `rohd_wave_viewer` version that depends on it. Native and WebAssembly callers must also stage the matching bridge artifact. |
-| `rohd_wave_viewer` | Embeddable pub.dev Flutter package from the repository root | Root `pubspec.yaml` | Requires its declared `dart_wellen` constraint to resolve from pub.dev. It can be released without Pages, Linux, or VSIX releases. |
+| `rohd_wave_viewer` | Embeddable pub.dev Flutter package from the repository root | Root `pubspec.yaml` | Requires its declared `dart_wellen` constraint to resolve from pub.dev. Its version must match the companion VSIX. |
 | Hosted Wave Viewer | GitHub Pages application built by `.github/workflows/app.yml` | Deployment source commit; no independent package version | Deploys workspace source and does not prove pub.dev readiness. |
 | Linux Wave Viewer | Flutter Linux application bundle under `build/linux` | Root application metadata at the selected source commit | Build and distribute when a Linux application release is wanted; it does not force either Pub package or other application distributions to release. |
-| ROHD Wave Viewer extension | Slim ZIP or VSIX built from `vscode-extension` | `vscode-extension/package.json` | Versioned and released independently. `package-lock.json` must match the extension manifest; packaging never rewrites it from the root Pub version. |
+| ROHD Wave Viewer extension | Slim ZIP or VSIX built from `vscode-extension` | Root `pubspec.yaml`, mirrored in `vscode-extension/package.json` and `package-lock.json` | Ships with the matching `rohd_wave_viewer` Pub version. Packaging and CI fail if either extension manifest drifts from `pubspec.yaml`. |
 
 ## Non-Publishing Preparation
 

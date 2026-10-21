@@ -664,35 +664,31 @@ packages:
   rohd:
     dependency: "direct main"
     description:
-      name: rohd
-      sha256: "95ec2d52c1b208a64199a40c3e9b588f3c12fa513bb830bd1cb32090a0a45506"
-      url: "https://pub.dev"
-    source: hosted
+      path: "/home/desmond/rohd.worktrees/no-logic-array-07-devtools-debugger"
+      relative: false
+    source: path
     version: "0.6.11"
   rohd_devtools_widgets:
     dependency: "direct main"
     description:
-      name: rohd_devtools_widgets
-      sha256: d50cd9e6aa9459fd472b5fab43dbef80e7fde5884d2cc4a66b768fb1f9f2fa39
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.1"
+      path: "/home/desmond/rohd.worktrees/no-logic-array-07-devtools-debugger/packages/rohd_devtools_widgets"
+      relative: false
+    source: path
+    version: "0.1.2"
   rohd_hierarchy:
     dependency: "direct main"
     description:
-      name: rohd_hierarchy
-      sha256: "6428806f3a913c6cec964821f5b6e67beaf8935f9b0e9d9fda99b16feac3c870"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.0"
+      path: "/home/desmond/rohd.worktrees/no-logic-array-07-devtools-debugger/packages/rohd_hierarchy"
+      relative: false
+    source: path
+    version: "0.1.1"
   rohd_waveform:
     dependency: "direct main"
     description:
-      name: rohd_waveform
-      sha256: "2e522285f7bf32631455a617276292cb693bf80c700c2b04032f97f05ecad356"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.0"
+      path: "/home/desmond/rohd.worktrees/no-logic-array-07-devtools-debugger/packages/rohd_waveform"
+      relative: false
+    source: path
+    version: "0.1.1"
   shelf:
     dependency: transitive
     description:
