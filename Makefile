@@ -372,9 +372,10 @@ verify-extension-version:
 # Compiled extension.js output
 vscode-extension/out/extension.js: $(TS_SOURCES) vscode-extension/package.json
 	@echo "Building VS Code TypeScript extension..."
-	@bash -lc 'set -euo pipefail; \
-		if [ -x /usr/bin/node ] && [ "$$(/usr/bin/node -p "process.versions.node.split(\".\")[0]")" -eq 24 ]; then \
-			export PATH="/usr/bin:$$PATH"; \
+	@bash -c 'set -euo pipefail; \
+		if command -v node >/dev/null 2>&1 && \
+		   [ "$$(node -p "process.versions.node.split(\".\")[0]")" -eq 24 ]; then \
+			echo "Using Node $$(node -v) from PATH"; \
 		elif [ -s "$$HOME/.nvm/nvm.sh" ]; then \
 			. "$$HOME/.nvm/nvm.sh"; \
 			if nvm use --silent 24 >/dev/null 2>&1; then \
