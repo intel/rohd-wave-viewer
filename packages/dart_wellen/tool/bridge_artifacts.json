@@ -1,0 +1,17 @@
+{
+  "version": "0.1.1",
+  "bridge_version": "2.7.1",
+  "profile": "release",
+  "archive_url": "https://github.com/desmonddak/rohd-wave-viewer/releases/download/dart-wellen-0.1.1-dev/dart_wellen-0.1.1-web.tar.gz",
+  "git_archive_url_template": "https://github.com/desmonddak/rohd-wave-viewer/releases/download/dart-wellen-{commit}/dart_wellen-0.1.1-web.tar.gz",
+  "files": [
+    "lib/src/rust/api.dart",
+    "lib/src/rust/frb_generated.dart",
+    "lib/src/rust/frb_generated.io.dart",
+    "lib/src/rust/frb_generated.web.dart",
+    "web/pkg/wellen_bridge.js",
+    "web/pkg/wellen_bridge_bg.wasm",
+    "web/pkg/LICENSE",
+    "web/pkg/wellen_bridge_LICENSES.txt"
+  ]
+}

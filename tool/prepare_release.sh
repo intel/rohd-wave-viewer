@@ -175,30 +175,7 @@ resolve_and_analyze_package() {
 
 verify_root_hosted_resolution() {
   local hosted_root="$temp_dir/rohd_wave_viewer_hosted"
-  mkdir -p "$hosted_root"
-  tar -C "$repo_root" \
-    --exclude=.git \
-    --exclude=.dart_tool \
-    --exclude=.flutter-plugins \
-    --exclude=.flutter-plugins-dependencies \
-    --exclude=build \
-    --exclude=coverage \
-    --exclude=node_modules \
-    --exclude=packages \
-    --exclude=pubspec.lock \
-    --exclude=pubspec_overrides.yaml \
-    --exclude='pubspec_overrides.yaml.disabled*' \
-    --exclude=rust/wellen_bridge/target \
-    --exclude=vscode-extension/node_modules \
-    -cf - . |
-    tar -C "$hosted_root" -xf -
-
-  awk '
-    /^workspace:[[:space:]]*$/ { skipping = 1; next }
-    skipping && /^[^[:space:]#]/ { skipping = 0 }
-    !skipping { print }
-  ' "$hosted_root/pubspec.yaml" >"$hosted_root/pubspec.yaml.hosted"
-  mv "$hosted_root/pubspec.yaml.hosted" "$hosted_root/pubspec.yaml"
+  bash "$script_dir/stage_hosted_viewer.sh" "$hosted_root"
 
   (
     cd "$hosted_root"
@@ -227,6 +204,9 @@ run_pub_dry_run() {
   local issue_count
   directory="$(package_directory "$package")"
   sdk="$(package_sdk "$package")"
+  if [[ "$package" == rohd_wave_viewer ]]; then
+    directory="$temp_dir/rohd_wave_viewer_hosted"
+  fi
 
   set +e
   (
@@ -239,6 +219,11 @@ run_pub_dry_run() {
   if [[ "$package" == rohd_wave_viewer ]] &&
     grep -Eq 'vscode-extension|Waveform\.mp4|waveform-demo\.mp4' "$output"; then
     echo 'rohd_wave_viewer archive contains independent extension or demo-video payload.' >&2
+    return 1
+  fi
+  if [[ "$package" == rohd_wave_viewer ]] &&
+    grep -Eq 'frb_generated(\.io|\.web)?\.dart|wellen_bridge(_bg\.wasm|\.js)' "$output"; then
+    echo 'rohd_wave_viewer archive duplicates independently published bridge artifacts.' >&2
     return 1
   fi
 
@@ -343,6 +328,27 @@ run_stage 'Build native Wellen bridge' make -C "$repo_root" rust-native
 run_stage 'Build WebAssembly Wellen bridge' make -C "$repo_root" wasm
 run_stage 'Validate matching bridge release set' \
   "$script_dir/verify_bridge_release.sh"
+bridge_version="$(manifest_value "$repo_root/packages/dart_wellen/pubspec.yaml" version)"
+bridge_release_url="${BRIDGE_RELEASE_URL:-}"
+if [[ -z "$bridge_release_url" ]] &&
+  [[ -f "$repo_root/packages/dart_wellen/tool/bridge_artifacts.json" ]]; then
+  bridge_release_url="$(
+    python3 -c '
+import json
+import sys
+
+with open(sys.argv[1]) as source:
+    manifest = json.load(source)
+if manifest.get("version") != sys.argv[2]:
+    sys.exit("Artifact manifest is stale. Set BRIDGE_RELEASE_URL for the new package version.")
+print(manifest["archive_url"])
+' "$repo_root/packages/dart_wellen/tool/bridge_artifacts.json" "$bridge_version"
+  )"
+fi
+bridge_release_url="${bridge_release_url:-https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-$bridge_version/dart_wellen-$bridge_version-web.tar.gz}"
+run_stage 'Package dart_wellen consumer artifacts' \
+  python3 "$repo_root/packages/dart_wellen/tool/bridge_artifacts.py" prepare \
+    --release-url "$bridge_release_url"
 
 for package in "${selected_packages[@]}"; do
   run_stage "$package dependency resolution, formatting, and analysis" \

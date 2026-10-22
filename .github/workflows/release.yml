@@ -22,12 +22,17 @@ on:
         required: true
         type: boolean
         default: false
+      publish_bundle:
+        description: Publish the verified bridge bundle at its pinned GitHub release URL
+        required: true
+        type: boolean
+        default: false
 
 permissions: {}
 
 jobs:
   release-checks:
-    name: Prepare ${{ inputs.package }}
+    name: Prepare ${{ inputs.package || 'dart_wellen' }}
     permissions:
       contents: read
     timeout-minutes: 120
@@ -51,6 +56,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
+
+      - name: Test bridge artifact installation and publication
+        run: |
+          python3 tool/test/bridge_artifacts_test.py
+          node --test tool/test/publish_bridge_artifacts_test.cjs
 
       - name: Install native build tools
         run: tool/gh_actions/install_build_tools.sh
@@ -80,7 +90,7 @@ jobs:
         env:
           BROWSER_TEST_PLATFORM: chrome_ci
           CHROME_EXECUTABLE: ${{ steps.setup-chrome.outputs.chrome-path }}
-          RELEASE_PACKAGE: ${{ inputs.package }}
+          RELEASE_PACKAGE: ${{ inputs.package || 'dart_wellen' }}
           RUN_TESTS: ${{ inputs.run_tests }}
           RUN_PANA: ${{ inputs.run_pana }}
         run: |
@@ -105,3 +115,62 @@ jobs:
               ;;
           esac
           tool/prepare_release.sh "${arguments[@]}"
+
+      - name: Upload pinned consumer bundle for explicit release publication
+        uses: actions/upload-artifact@v4
+        with:
+          name: dart-wellen-consumer-artifacts
+          path: |
+            build/dart_wellen-*-web.tar.gz
+            packages/dart_wellen/tool/bridge_artifacts.build.json
+          if-no-files-found: error
+
+  publish-bridge-bundle:
+    name: Publish pinned bridge bundle
+    needs: release-checks
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_bundle }}
+    permissions:
+      contents: write
+    concurrency:
+      group: dart-wellen-release-publication
+      cancel-in-progress: false
+    timeout-minutes: 10
+    runs-on: ${{ github.repository_owner == 'intel' && 'intel-ubuntu-latest' || 'ubuntu-latest' }}
+    steps:
+      - name: Checkout verified source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Download verified consumer artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dart-wellen-consumer-artifacts
+          path: ${{ runner.temp }}/dart-wellen-consumer-artifacts
+
+      - name: Publish immutable bridge release asset
+        uses: actions/github-script@v7
+        env:
+          BRIDGE_ARTIFACT_DIRECTORY: ${{ runner.temp }}/dart-wellen-consumer-artifacts
+        with:
+          script: |
+            const path = require('node:path');
+            const publish = require(path.join(
+              process.env.GITHUB_WORKSPACE,
+              'tool/gh_actions/publish_bridge_artifacts.cjs',
+            ));
+            const result = await publish({
+              github,
+              context,
+              workspace: process.env.GITHUB_WORKSPACE,
+              artifactDirectory: process.env.BRIDGE_ARTIFACT_DIRECTORY,
+            });
+            core.info(result.alreadyPresent
+              ? 'Existing archive and checksum metadata match this tested build; no upload needed.'
+              : 'Uploaded the verified bundle without rebuilding.');
+            await core.summary
+              .addHeading('Pinned dart_wellen bridge bundle')
+              .addLink('Download verified bundle', result.assetUrl)
+              .addRaw(`\n\nSHA-256: \`${result.sha256}\`\n`)
+              .write();

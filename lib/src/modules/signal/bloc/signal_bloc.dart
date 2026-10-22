@@ -494,6 +494,13 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
       return null;
     }
     final hierarchyTail = slashPath.substring(firstSeparator + 1);
+    final rootPath = _signalWaveformRepository.hierarchyService?.root.path();
+    if (rootPath != null) {
+      final rootedPath = '$rootPath/$hierarchyTail';
+      if (knownIds.contains(rootedPath)) {
+        return '$rootedPath$suffix';
+      }
+    }
     final matches = knownIds
         .where((id) => id == hierarchyTail || id.endsWith('/$hierarchyTail'))
         .toList();

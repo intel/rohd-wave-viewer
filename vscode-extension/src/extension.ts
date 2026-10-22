@@ -138,6 +138,7 @@ class VcdCustomEditorProvider implements vscode.CustomReadonlyEditorProvider {
   private readonly context: vscode.ExtensionContext;
   private activeWebview: vscode.Webview | undefined;
   private readonly webviews = new Map<string, vscode.Webview>();
+  private readonly availabilityNotified = new Set<string>();
   constructor(context: vscode.ExtensionContext) { this.context = context; }
 
   /** Post a synthetic key event to the currently active webview. */
@@ -167,6 +168,7 @@ class VcdCustomEditorProvider implements vscode.CustomReadonlyEditorProvider {
     if (!viewerId) {
       return;
     }
+    this.availabilityNotified.add(viewerId);
     const availableViewers = Array.isArray(payload?.availableViewers)
       ? payload.availableViewers
       : [];
@@ -211,6 +213,7 @@ class VcdCustomEditorProvider implements vscode.CustomReadonlyEditorProvider {
       disposed = true;
       if (this.activeWebview === webview) { this.activeWebview = undefined; }
       this.webviews.delete(viewerId);
+      this.availabilityNotified.delete(viewerId);
       vscode.commands.executeCommand('rohd.unregisterSignalViewer', { viewerId }).then(
         undefined,
         err => output.appendLine(`[SignalViewers] unregister failed: ${err}`),
@@ -230,6 +233,9 @@ class VcdCustomEditorProvider implements vscode.CustomReadonlyEditorProvider {
         );
         if (disposed) {
           await vscode.commands.executeCommand('rohd.unregisterSignalViewer', { viewerId });
+          return;
+        }
+        if (this.availabilityNotified.has(viewerId)) {
           return;
         }
         webview.postMessage({

@@ -39,8 +39,8 @@ extension_version="$(
     sed -n 's/^PKG_VERSION := //p' |
     head -n 1
 )"
-if [[ "$extension_version" != '0.1.0' ]]; then
-  echo "error: extension version should come from package.json; found $extension_version." >&2
+if [[ "$extension_version" != '9.9.9' ]]; then
+  echo "error: extension version should come from pubspec.yaml; found $extension_version." >&2
   exit 1
 fi
 

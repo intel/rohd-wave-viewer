@@ -4,6 +4,9 @@
 
 - Support both 0.1.x and 0.2.x releases of the shared hierarchy and waveform packages without increasing the Dart SDK lower bound.
 - Update the Flutter Rust Bridge runtime and generated bindings together to 2.7.1.
+- Package the matching web runtime and license notices alongside generated Dart bindings. Add checksummed release bundles and a non-building installer for Git consumers, with bridge versions determined by this package.
+- Automatically distribute immutable CI bundles for every pushed branch, with Git consumers selecting the exact resolved commit rather than a branch-specific or package-release URL.
+- Keep runner-specific archive and runtime checksums in generated build metadata distributed with the tested bundle, separate from the checked-in package contract.
 
 ## 0.1.0
 

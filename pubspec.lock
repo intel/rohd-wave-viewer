@@ -667,7 +667,7 @@ packages:
       path: "/home/desmond/rohd.worktrees/no-logic-array-07-devtools-debugger"
       relative: false
     source: path
-    version: "0.7.0"
+    version: "0.6.11"
   rohd_devtools_widgets:
     dependency: "direct main"
     description:

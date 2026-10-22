@@ -10,6 +10,7 @@
 
 ## Reference
 
+- **[Script inventory](../scripts/README.md)** - User-facing commands, internal build helpers, and legacy scripts
 - **[SIGNAL_FILTERING.md](SIGNAL_FILTERING.md)** - Module-signal text and wildcard filtering behavior
 - **[WASM_WEBVIEW_PATCH.md](WASM_WEBVIEW_PATCH.md)** - WASM integration details
 - **[`dart_wellen` README](../packages/dart_wellen/README.md)** - Waveform bridge API and development notes

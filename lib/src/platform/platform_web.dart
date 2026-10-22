@@ -75,27 +75,17 @@ Future<List<int>> readFileBytes(String path) => Future<List<int>>.error(
 
 /// Signals to the host that the embedded viewer is ready.
 void signalEmbedReadyImpl([Map<String, dynamic>? info]) {
-  try {
-    final payload = Map<String, dynamic>.from(info ?? {'initialized': true});
-    payload['reloaded_in_gui'] = true;
-    try {
-      final console = getGlobalProperty('console');
-      if (console != null) {
-        callMethod(console, 'log', [
-          '[embed] signalEmbedReady called',
-          jsify(payload),
-        ]);
-      }
-    } on Object catch (_) {}
-    try {
-      final cb = getGlobalProperty('__rohdEmbedReady');
-      if (cb != null) {
-        // The bridge exposes globals as JSObject values, including functions.
-        // Invoke through Function.call so this works without an unsafe cast.
-        callMethod(cb, 'call', [getGlobalProperty('window'), jsify(payload)]);
-      }
-    } on Object catch (_) {}
-  } on Object catch (_) {}
+  final payload = <String, dynamic>{
+    ...?info,
+    if (info == null) 'initialized': true,
+    'reloaded_in_gui': true,
+  };
+  final callback = (web.window as JSObject).getProperty('__rohdEmbedReady'.toJS)
+      as JSFunction?;
+  if (callback == null) {
+    return;
+  }
+  callback.callAsFunction(web.window, payload.jsify());
 }
 
 /// Posts a message from the web viewer to the embedding host.

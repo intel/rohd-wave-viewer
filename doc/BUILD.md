@@ -1,5 +1,8 @@
 # Building ROHD Wave Viewer
 
+See the [script inventory](../scripts/README.md) for each script's purpose,
+whether it is intended for direct use, and its preferred Makefile entry point.
+
 ## Prerequisites
 
 - Flutter with its bundled Dart SDK. The root `pubspec.yaml` declares package
@@ -97,6 +100,15 @@ with pinned `@vscode/vsce` as the standard Marketplace package
 `build/rohd-wave-viewer-<version>.vsix`. `make verify-vsix` checks the existing
 archive's VSIX metadata, publisher/version, and required Flutter/Rust WASM
 assets without rebuilding it.
+
+The root [`pubspec.yaml`](../pubspec.yaml) is the shared release-version
+source for the published Dart package and VSIX. The extension
+[`package.json`](../vscode-extension/package.json) and
+[`package-lock.json`](../vscode-extension/package-lock.json) must contain that
+same version; packaging and Marketplace CI run `make verify-extension-version`
+and fail on drift. After intentionally changing the Pub version, run
+`make sync-version`, commit the manifest updates, and use the matching
+`v<version>` release tag.
 
 ## Running Locally
 

@@ -50,6 +50,13 @@ done
 source_version="$(
   node -p 'require(process.argv[1]).version' "$ROOT/vscode-extension/package.json"
 )"
+pubspec_version="$(awk '/^version:/ { print $2; exit }' "$ROOT/pubspec.yaml")"
+lock_version="$(
+  node -p 'require(process.argv[1]).version' "$ROOT/vscode-extension/package-lock.json"
+)"
+lock_root_version="$(
+  node -p 'require(process.argv[1]).packages[""].version' "$ROOT/vscode-extension/package-lock.json"
+)"
 source_publisher="$(
   node -p 'require(process.argv[1]).publisher' "$ROOT/vscode-extension/package.json"
 )"
@@ -65,6 +72,12 @@ package_publisher="$(
     node -e 'let input = ""; process.stdin.on("data", c => input += c); process.stdin.on("end", () => console.log(JSON.parse(input).publisher));'
 )"
 
+[[ "$source_version" == "$pubspec_version" ]] ||
+  fail "package.json version $source_version does not match pubspec $pubspec_version"
+[[ "$lock_version" == "$pubspec_version" ]] ||
+  fail "package-lock.json version $lock_version does not match pubspec $pubspec_version"
+[[ "$lock_root_version" == "$pubspec_version" ]] ||
+  fail "package-lock.json root version $lock_root_version does not match pubspec $pubspec_version"
 [[ "$package_version" == "$source_version" ]] ||
   fail "VSIX version $package_version does not match package.json $source_version"
 [[ "$package_publisher" == "$source_publisher" ]] ||
