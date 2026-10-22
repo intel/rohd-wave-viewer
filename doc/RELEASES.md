@@ -138,14 +138,14 @@ Release preparation performs this packaging step too. Its final clean-source
 check requires the source contract to remain unchanged; generated checksums
 are not compared with a local developer's build. Preparation preserves the
 committed contract's download URL, including development-release URLs, only
-for the same package version. The publication workflow can write assets only
-to the repository named by that URL. The canonical contract points to
-`intel/rohd-wave-viewer`; a fork that enables bundle publication must commit a
-matching fork URL on its own branch and must not merge that fork-specific
-contract upstream. General and Release Checks validate the contract against
-their repository before building artifacts. Set `BRIDGE_RELEASE_URL` explicitly
-when changing the package version; it also overrides the saved URL when
-selecting a different release for that version.
+for the same package version. The canonical contract points to
+`intel/rohd-wave-viewer` and must name the same repository as the publication
+workflow. A fork that enables bundle publication must commit a matching fork
+URL on its own branch and must not merge that fork-specific contract upstream.
+General and Release Checks validate the contract against their repository
+before building artifacts. Set `BRIDGE_RELEASE_URL` explicitly when changing
+the package version; it also overrides the saved URL when selecting a different
+release for that version.
 The **General** workflow runs for pushes to every branch, including `main`,
 with identical bundle behavior regardless of branch name. It packages the
 already-built bridge, requires the regenerated source contract to stay unchanged,
