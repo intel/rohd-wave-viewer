@@ -5,7 +5,29 @@ const { createHash } = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
-module.exports = async function publishBridgeArtifacts({
+function publicationLocation(archiveUrl, { owner, repo }) {
+  let url;
+  try {
+    url = new URL(archiveUrl);
+  } catch {
+    throw new Error('Artifact publication URL must belong to this GitHub repository.');
+  }
+  const location = /^\/([^/]+)\/([^/]+)\/releases\/download\/([^/]+)\/([^/]+)$/.exec(url.pathname);
+  if (url.protocol !== 'https:' || url.host !== 'github.com'
+      || url.username || url.password || url.search || url.hash || !location
+      || location[1].toLowerCase() !== owner.toLowerCase()
+      || location[2].toLowerCase() !== repo.toLowerCase()) {
+    throw new Error('Artifact publication URL must belong to this GitHub repository.');
+  }
+  return {
+    owner: location[1],
+    repo: location[2],
+    tag: decodeURIComponent(location[3]),
+    name: decodeURIComponent(location[4]),
+  };
+}
+
+async function publishBridgeArtifacts({
   github, context, workspace, artifactDirectory, development = false,
 }) {
   const manifestPath = 'packages/dart_wellen/tool/bridge_artifacts.json';
@@ -33,22 +55,15 @@ module.exports = async function publishBridgeArtifacts({
       || !Object.values(manifest.files).every((value) => /^[a-f0-9]{64}$/.test(value))) {
     throw new Error('Prepared artifact metadata has invalid version, profile, or checksums.');
   }
-  const url = new URL(manifest.archive_url);
-  const location = /^\/([^/]+)\/([^/]+)\/releases\/download\/([^/]+)\/([^/]+)$/.exec(url.pathname);
   const { owner, repo } = context.repo;
-  if (url.protocol !== 'https:' || url.host !== 'github.com'
-      || url.username || url.password || url.search || url.hash || !location
-      || location[1].toLowerCase() !== owner.toLowerCase()
-      || location[2].toLowerCase() !== repo.toLowerCase()) {
-    throw new Error('Artifact publication URL must belong to this GitHub repository.');
-  }
-  let tag = decodeURIComponent(location[3]);
-  const name = decodeURIComponent(location[4]);
+  const location = publicationLocation(manifest.archive_url, context.repo);
+  let tag = location.tag;
+  const name = location.name;
   if (name !== `dart_wellen-${manifest.version}-web.tar.gz`) {
     throw new Error('Artifact publication filename does not match the package version.');
   }
   if (development) {
-    const template = `https://github.com/${location[1]}/${location[2]}/releases/download/dart-wellen-{commit}/${name}`;
+    const template = `https://github.com/${location.owner}/${location.repo}/releases/download/dart-wellen-{commit}/${name}`;
     if (!/^[a-f0-9]{40}$/.test(context.sha)
         || manifest.git_archive_url_template !== template) {
       throw new Error('Development publication requires a valid source commit and matching Git artifact URL template.');
@@ -128,4 +143,7 @@ module.exports = async function publishBridgeArtifacts({
     sha256: manifest.archive_sha256,
     alreadyPresent,
   };
-};
+}
+
+module.exports = publishBridgeArtifacts;
+module.exports.publicationLocation = publicationLocation;

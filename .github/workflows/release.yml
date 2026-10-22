@@ -62,6 +62,9 @@ jobs:
           python3 tool/test/bridge_artifacts_test.py
           node --test tool/test/publish_bridge_artifacts_test.cjs
 
+      - name: Verify bridge artifact publication repository
+        run: node tool/gh_actions/verify_bridge_artifact_publication_url.cjs "${{ github.repository }}"
+
       - name: Install native build tools
         run: tool/gh_actions/install_build_tools.sh
 

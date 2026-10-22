@@ -125,6 +125,26 @@ test('creates the pinned development release and uploads the exact verified bund
   assert.deepEqual(JSON.parse(uploads[1].data), f.manifest);
 });
 
+test('extracts a release location only when it belongs to the publishing repository', async (t) => {
+  const f = await fixture(t);
+  assert.deepEqual(
+    publish.publicationLocation(f.manifest.archive_url, f.options.context.repo),
+    {
+      owner: 'example',
+      repo: 'viewer',
+      tag: 'dart-wellen-0.1.1-dev',
+      name: 'dart_wellen-0.1.1-web.tar.gz',
+    },
+  );
+  assert.throws(
+    () => publish.publicationLocation(
+      'https://github.com/another/viewer/releases/download/dev/bundle.tar.gz',
+      f.options.context.repo,
+    ),
+    /must belong to this GitHub repository/,
+  );
+});
+
 test('canonical stable artifact tags create non-prereleases', async (t) => {
   const f = await fixture(t);
   f.manifest.archive_url = f.manifest.archive_url.replace('0.1.1-dev/', '0.1.1/');
