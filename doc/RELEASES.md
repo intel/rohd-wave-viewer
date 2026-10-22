@@ -137,10 +137,15 @@ deterministic; recompiling them is not assumed to be.
 Release preparation performs this packaging step too. Its final clean-source
 check requires the source contract to remain unchanged; generated checksums
 are not compared with a local developer's build. Preparation preserves the
-committed contract's download URL (including fork
-and development-release URLs) only for the same package version.
-Set `BRIDGE_RELEASE_URL` explicitly when changing the package version; it also
-overrides the saved URL when selecting a different release for that version.
+committed contract's download URL, including development-release URLs, only
+for the same package version. The canonical contract points to
+`intel/rohd-wave-viewer` and must name the same repository as the publication
+workflow. A fork that enables bundle publication must commit a matching fork
+URL on its own branch and must not merge that fork-specific contract upstream.
+General and Release Checks validate the contract against their repository
+before building artifacts. Set `BRIDGE_RELEASE_URL` explicitly when changing
+the package version; it also overrides the saved URL when selecting a different
+release for that version.
 The **General** workflow runs for pushes to every branch, including `main`,
 with identical bundle behavior regardless of branch name. It packages the
 already-built bridge, requires the regenerated source contract to stay unchanged,
@@ -218,18 +223,20 @@ or versions, not maintain an independent bridge pin or vendored WASM copy.
 Neither consumer needs a local viewer checkout or a package release.
 There are no special branch names in the distribution contract:
 
-1. In this repository, prepare the existing validated bridge outputs with a
-   prerelease URL belonging to the fork. This command packages existing files;
-   it does not compile Rust or a viewer application:
+1. In the canonical repository, prepare the existing validated bridge outputs
+   with its development release URL. This command packages existing files; it
+   does not compile Rust or a viewer application:
 
    ```bash
    python3 packages/dart_wellen/tool/bridge_artifacts.py prepare \
-     --release-url https://github.com/desmonddak/rohd-wave-viewer/releases/download/dart-wellen-0.1.1-dev/dart_wellen-0.1.1-web.tar.gz
+     --release-url https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-0.1.1-dev/dart_wellen-0.1.1-web.tar.gz
    ```
 
 2. Review, sign, commit, and push the installer, manifest, packaging rules,
    tests, documentation, and hosted workspace lockfile to any branch in the
-   chosen repository.
+   canonical repository. To test publication from a fork, first update the
+   fork branch's artifact URL and template to name that fork; do not merge
+   those fork-specific URLs upstream.
    Do not commit local-path lockfile entries, generated bindings, `web/pkg`,
    generated `bridge_artifacts.build.json`, or the bundle.
    This procedure does not perform commits or pushes automatically.
