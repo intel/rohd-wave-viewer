@@ -5,19 +5,18 @@ const { createHash } = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
-function publicationLocation(archiveUrl, { owner, repo }) {
+function parsePublicationLocation(archiveUrl) {
   let url;
   try {
     url = new URL(archiveUrl);
   } catch {
-    throw new Error('Artifact publication URL must belong to this GitHub repository.');
+    throw new Error('Artifact publication URL must be a GitHub release asset URL.');
   }
   const location = /^\/([^/]+)\/([^/]+)\/releases\/download\/([^/]+)\/([^/]+)$/.exec(url.pathname);
   if (url.protocol !== 'https:' || url.host !== 'github.com'
       || url.username || url.password || url.search || url.hash || !location
-      || location[1].toLowerCase() !== owner.toLowerCase()
-      || location[2].toLowerCase() !== repo.toLowerCase()) {
-    throw new Error('Artifact publication URL must belong to this GitHub repository.');
+  ) {
+    throw new Error('Artifact publication URL must be a GitHub release asset URL.');
   }
   return {
     owner: location[1],
@@ -25,6 +24,15 @@ function publicationLocation(archiveUrl, { owner, repo }) {
     tag: decodeURIComponent(location[3]),
     name: decodeURIComponent(location[4]),
   };
+}
+
+function publicationLocation(archiveUrl, { owner, repo }) {
+  const location = parsePublicationLocation(archiveUrl);
+  if (location.owner.toLowerCase() !== owner.toLowerCase()
+      || location.repo.toLowerCase() !== repo.toLowerCase()) {
+    throw new Error('Artifact publication URL must belong to this GitHub repository.');
+  }
+  return location;
 }
 
 async function publishBridgeArtifacts({
@@ -55,20 +63,22 @@ async function publishBridgeArtifacts({
       || !Object.values(manifest.files).every((value) => /^[a-f0-9]{64}$/.test(value))) {
     throw new Error('Prepared artifact metadata has invalid version, profile, or checksums.');
   }
-  const { owner, repo } = context.repo;
-  const location = publicationLocation(manifest.archive_url, context.repo);
-  let tag = location.tag;
-  const name = location.name;
+  const archiveLocation = parsePublicationLocation(manifest.archive_url);
+  const name = archiveLocation.name;
   if (name !== `dart_wellen-${manifest.version}-web.tar.gz`) {
     throw new Error('Artifact publication filename does not match the package version.');
   }
+  let { owner, repo, tag } = archiveLocation;
   if (development) {
-    const template = `https://github.com/${location.owner}/${location.repo}/releases/download/dart-wellen-{commit}/${name}`;
+    const template = `https://github.com/${archiveLocation.owner}/${archiveLocation.repo}/releases/download/dart-wellen-{commit}/${name}`;
     if (!/^[a-f0-9]{40}$/.test(context.sha)
         || manifest.git_archive_url_template !== template) {
-      throw new Error('Development publication requires a valid source commit and matching Git artifact URL template.');
+      throw new Error('Development publication requires a valid source commit and canonical Git artifact URL template.');
     }
+    ({ owner, repo } = context.repo);
     tag = `dart-wellen-${context.sha}`;
+  } else {
+    ({ owner, repo, tag } = publicationLocation(manifest.archive_url, context.repo));
   }
   const archive = await fs.readFile(path.join(artifactDirectory, 'build', name));
   const sha256 = (data) => createHash('sha256').update(data).digest('hex');

@@ -113,10 +113,37 @@ def source_commit(repository):
     return commit
 
 
+def git_remote_repository(repository):
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repository), "remote", "get-url", "origin"],
+            check=False, capture_output=True, text=True,
+        )
+    except subprocess.CalledProcessError:
+        return None
+    if result.returncode:
+        return None
+    remote = result.stdout.strip()
+    match = re.fullmatch(
+        r"(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)([^/]+)/([^/]+?)(?:\.git)?/?",
+        remote,
+    )
+    return (match[1], match[2]) if match else None
+
+
 def download_target(package, manifest):
     template = manifest.get("git_archive_url_template")
-    commit = source_commit(package.parents[1]) if template else None
+    repository = package.parents[1]
+    commit = source_commit(repository) if template else None
     if commit:
+        remote = git_remote_repository(repository)
+        if remote:
+            template = re.sub(
+                r"^(https://github\.com/)[^/]+/[^/]+(?=/releases/download/)",
+                rf"\g<1>{remote[0]}/{remote[1]}",
+                template,
+                count=1,
+            )
         return template.replace("{commit}", commit), commit
     return manifest["archive_url"], None
 
@@ -227,10 +254,12 @@ def install(package):
 
 def prepare(repository, release_url):
     package = repository / "packages/dart_wellen"
+    contract = read_contract(package)
+    if release_url != contract["archive_url"]:
+        raise ValueError("Release URL does not match the checked-in artifact contract")
     # The producer owns compilation and semantic validation, including the
     # generated Dart/native/WASM content hash agreement.
     subprocess.run(["bash", str(repository / "tool/verify_bridge_release.sh")], check=True)
-    version, bridge = manifest_versions(package)
     runtime = package / "web/pkg"
     runtime.mkdir(parents=True, exist_ok=True)
     for name in ("wellen_bridge.js", "wellen_bridge_bg.wasm", "LICENSE"):
@@ -239,16 +268,6 @@ def prepare(repository, release_url):
         repository / "assets/licenses/wellen_bridge_LICENSES.txt",
         runtime / "wellen_bridge_LICENSES.txt",
     )
-    contract = {
-        "version": version,
-        "bridge_version": bridge,
-        "profile": "release",
-        "archive_url": release_url,
-    }
-    template = git_archive_template(release_url, version)
-    if template:
-        contract["git_archive_url_template"] = template
-    contract["files"] = list(FILES)
     manifest = {**contract, "files": {name: digest((package / name).read_bytes()) for name in FILES}}
     commit = source_commit(repository)
     if commit:
@@ -264,11 +283,10 @@ def prepare(repository, release_url):
                 info.size = len(data)
                 info.mode = 0o644
                 bundle.addfile(info, io.BytesIO(data))
-    archive = repository / "build" / f"dart_wellen-{version}-web.tar.gz"
+    archive = repository / "build" / f"dart_wellen-{contract['version']}-web.tar.gz"
     archive.parent.mkdir(parents=True, exist_ok=True)
     archive.write_bytes(output.getvalue())
     manifest["archive_sha256"] = digest(output.getvalue())
-    (package / MANIFEST).write_text(json.dumps(contract, indent=2) + "\n")
     (package / BUILD_MANIFEST).write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"Prepared {archive}")
     print(f"Commit {package / MANIFEST}; General CI distributes the bundle for each pushed commit.")

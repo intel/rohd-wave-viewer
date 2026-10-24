@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Require `dart_wellen` 0.1.2 for canonical, offline-verifiable hosted bridge artifacts.
+- Update Flutter Rust Bridge and its generator to 2.8.0.
+
 ## 0.1.1
 
 - Prevent stale registration results from hiding Send Signal after a receiver appears, and accept numeric source coordinates from the Wasm host.

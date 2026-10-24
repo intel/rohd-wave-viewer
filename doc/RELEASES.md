@@ -112,7 +112,7 @@ After producing a validated bridge release set, prepare its consumer package:
 
 ```bash
 make consumer-artifacts \
-  BRIDGE_RELEASE_URL=https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-0.1.1/dart_wellen-0.1.1-web.tar.gz
+   BRIDGE_RELEASE_URL=https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-0.1.2/dart_wellen-0.1.2-web.tar.gz
 ```
 
 Use the selected package's version in the URL; it is not the bridge version.
@@ -223,20 +223,20 @@ or versions, not maintain an independent bridge pin or vendored WASM copy.
 Neither consumer needs a local viewer checkout or a package release.
 There are no special branch names in the distribution contract:
 
-1. In the canonical repository, prepare the existing validated bridge outputs
-   with its development release URL. This command packages existing files; it
-   does not compile Rust or a viewer application:
+1. In the producer checkout, prepare the existing validated bridge outputs
+   with the archive URL from the checked-in contract. This command packages
+   existing files; it does not compile Rust or a viewer application:
 
    ```bash
    python3 packages/dart_wellen/tool/bridge_artifacts.py prepare \
-     --release-url https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-0.1.1-dev/dart_wellen-0.1.1-web.tar.gz
+       --release-url https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-0.1.2/dart_wellen-0.1.2-web.tar.gz
    ```
 
 2. Review, sign, commit, and push the installer, manifest, packaging rules,
-   tests, documentation, and hosted workspace lockfile to any branch in the
-   canonical repository. To test publication from a fork, first update the
-   fork branch's artifact URL and template to name that fork; do not merge
-   those fork-specific URLs upstream.
+   tests, documentation, and hosted workspace lockfile to the repository under
+   test. Keep the package's release contract canonical; commit-keyed bundles
+   publish to the current GitHub repository, and Git installs resolve that
+   repository from the checked-out package's `origin` remote.
    Do not commit local-path lockfile entries, generated bindings, `web/pkg`,
    generated `bridge_artifacts.build.json`, or the bundle.
    This procedure does not perform commits or pushes automatically.
