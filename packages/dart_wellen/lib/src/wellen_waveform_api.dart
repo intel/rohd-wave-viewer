@@ -22,6 +22,9 @@ import 'rust/frb_generated.dart' show RustLib;
 /// This reads VCD, FST, and GHW through native FFI or a preloaded browser
 /// WebAssembly module.
 class WellenSignalWaveformApi extends SignalWaveformApi {
+  /// Creates an API instance. Call [loadFile] or [loadBytes] before querying.
+  WellenSignalWaveformApi();
+
   static bool _initialized = false;
   rust.WaveformStructure? _cachedStructure;
   bool _isLoaded = false;

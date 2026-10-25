@@ -44,6 +44,9 @@ import 'rust/frb_generated.dart' show RustLib;
 /// await reader.close();
 /// ```
 class WellenReader {
+  /// Creates a reader. Call [loadFile] to load a waveform.
+  WellenReader();
+
   static bool _initialized = false;
 
   /// Initialize the Rust FFI library.

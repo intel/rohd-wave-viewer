@@ -1,9 +1,9 @@
 {
-  "version": "0.1.1",
-  "bridge_version": "2.7.1",
+  "version": "0.1.2",
+  "bridge_version": "2.8.0",
   "profile": "release",
-  "archive_url": "https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-0.1.1-dev/dart_wellen-0.1.1-web.tar.gz",
-  "git_archive_url_template": "https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-{commit}/dart_wellen-0.1.1-web.tar.gz",
+  "archive_url": "https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-0.1.2/dart_wellen-0.1.2-web.tar.gz",
+  "git_archive_url_template": "https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-{commit}/dart_wellen-0.1.2-web.tar.gz",
   "files": [
     "lib/src/rust/api.dart",
     "lib/src/rust/frb_generated.dart",

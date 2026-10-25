@@ -18,6 +18,9 @@ import 'package:rohd_waveform/rohd_waveform.dart';
 /// The API retains a format parameter for future expansion, but currently
 /// rejects every format except [WaveFormat.vcd].
 class WellenWriter {
+  /// Creates a writer. Register signals, then call [writeHeader].
+  WellenWriter();
+
   /// The output sink.
   IOSink? _sink;
 

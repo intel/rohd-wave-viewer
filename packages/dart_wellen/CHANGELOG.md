@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Keep generated hosted artifact metadata aligned with the canonical Intel producer contract and validate hosted artifacts offline.
+- Update Flutter Rust Bridge and its generator to 2.8.0.
+
 ## 0.1.1
 
 - Support both 0.1.x and 0.2.x releases of the shared hierarchy and waveform packages without increasing the Dart SDK lower bound.

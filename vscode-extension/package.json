@@ -2,7 +2,7 @@
   "name": "rohd-wave-viewer",
   "displayName": "ROHD Wave Viewer",
   "description": "Interactive waveform viewer for VCD, FST, and GHW files — pan, zoom, search signals, place markers, and cross-probe to source in VS Code.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "intel-corporation",
   "license": "BSD-3-Clause",
   "repository": {
