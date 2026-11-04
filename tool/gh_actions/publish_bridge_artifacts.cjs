@@ -36,7 +36,7 @@ function publicationLocation(archiveUrl, { owner, repo }) {
 }
 
 async function publishBridgeArtifacts({
-  github, context, workspace, artifactDirectory, development = false,
+  github, context, workspace, artifactDirectory,
 }) {
   const manifestPath = 'packages/dart_wellen/tool/bridge_artifacts.json';
   const contract = JSON.parse(await fs.readFile(path.join(workspace, manifestPath), 'utf8'));
@@ -44,7 +44,7 @@ async function publishBridgeArtifacts({
     artifactDirectory, 'packages/dart_wellen/tool/bridge_artifacts.build.json',
   ));
   const manifest = JSON.parse(prepared.toString('utf8'));
-  for (const key of ['version', 'bridge_version', 'profile', 'archive_url', 'git_archive_url_template']) {
+  for (const key of ['version', 'bridge_version', 'profile', 'archive_url']) {
     if (manifest[key] !== contract[key]) {
       throw new Error(`Prepared artifact metadata differs from the source contract: ${key}`);
     }
@@ -68,18 +68,10 @@ async function publishBridgeArtifacts({
   if (name !== `dart_wellen-${manifest.version}-web.tar.gz`) {
     throw new Error('Artifact publication filename does not match the package version.');
   }
-  let { owner, repo, tag } = archiveLocation;
-  if (development) {
-    const template = `https://github.com/${archiveLocation.owner}/${archiveLocation.repo}/releases/download/dart-wellen-{commit}/${name}`;
-    if (!/^[a-f0-9]{40}$/.test(context.sha)
-        || manifest.git_archive_url_template !== template) {
-      throw new Error('Development publication requires a valid source commit and canonical Git artifact URL template.');
-    }
-    ({ owner, repo } = context.repo);
-    tag = `dart-wellen-${context.sha}`;
-  } else {
-    ({ owner, repo, tag } = publicationLocation(manifest.archive_url, context.repo));
+  if (archiveLocation.tag !== `dart-wellen-${manifest.version}`) {
+    throw new Error('Artifact publication URL tag does not match the package version.');
   }
+  const { owner, repo, tag } = publicationLocation(manifest.archive_url, context.repo);
   const archive = await fs.readFile(path.join(artifactDirectory, 'build', name));
   const sha256 = (data) => createHash('sha256').update(data).digest('hex');
   if (sha256(archive) !== manifest.archive_sha256) {
@@ -102,7 +94,7 @@ async function publishBridgeArtifacts({
       target_commitish: context.sha,
       name: tag,
       draft: false,
-      prerelease: development || tag !== `dart-wellen-${manifest.version}` || manifest.version.includes('-'),
+      prerelease: manifest.version.includes('-'),
       make_latest: 'false',
     }));
   }

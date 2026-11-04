@@ -21,8 +21,7 @@ async function fixture(t) {
     version: '0.1.2',
     bridge_version: '2.8.0',
     profile: 'release',
-    archive_url: 'https://github.com/example/viewer/releases/download/dart-wellen-0.1.2-dev/dart_wellen-0.1.2-web.tar.gz',
-    git_archive_url_template: 'https://github.com/example/viewer/releases/download/dart-wellen-{commit}/dart_wellen-0.1.2-web.tar.gz',
+    archive_url: 'https://github.com/example/viewer/releases/download/dart-wellen-0.1.2/dart_wellen-0.1.2-web.tar.gz',
     archive_sha256: createHash('sha256').update(archive).digest('hex'),
     source_commit: 'a'.repeat(40),
     files: { 'web/pkg/wellen_bridge_bg.wasm': createHash('sha256').update(archive).digest('hex') },
@@ -105,13 +104,13 @@ async function fixture(t) {
   };
 }
 
-test('creates the pinned development release and uploads the exact verified bundle', async (t) => {
+test('creates the versioned release and uploads the exact verified bundle', async (t) => {
   const f = await fixture(t);
   const result = await publish(f.options);
   const created = f.calls.find(([name]) => name === 'create')[1];
   assert.equal(created.target_commitish, f.options.context.sha);
-  assert.equal(created.tag_name, 'dart-wellen-0.1.2-dev');
-  assert.equal(created.prerelease, true);
+  assert.equal(created.tag_name, 'dart-wellen-0.1.2');
+  assert.equal(created.prerelease, false);
   assert.equal(created.draft, false);
   assert.equal(created.make_latest, 'false');
   const uploaded = f.calls.find(([name]) => name === 'upload')[1];
@@ -132,7 +131,7 @@ test('extracts a release location only when it belongs to the publishing reposit
     {
       owner: 'example',
       repo: 'viewer',
-      tag: 'dart-wellen-0.1.2-dev',
+      tag: 'dart-wellen-0.1.2',
       name: 'dart_wellen-0.1.2-web.tar.gz',
     },
   );
@@ -145,75 +144,12 @@ test('extracts a release location only when it belongs to the publishing reposit
   );
 });
 
-test('canonical stable artifact tags create non-prereleases', async (t) => {
+test('rejects a release tag that does not match the package version', async (t) => {
   const f = await fixture(t);
-  f.manifest.archive_url = f.manifest.archive_url.replace('0.1.2-dev/', '0.1.2/');
+  f.manifest.archive_url = f.manifest.archive_url.replace('dart-wellen-0.1.2/', 'dart-wellen-commit/');
   await f.writeManifest();
-  await publish(f.options);
-  assert.equal(f.calls.find(([name]) => name === 'create')[1].prerelease, false);
-});
-
-test('automatic publication uses the exact commit instead of the versioned release tag', async (t) => {
-  const f = await fixture(t);
-  f.asset.browser_download_url = f.manifest.git_archive_url_template.replace(
-    '{commit}', f.options.context.sha,
-  );
-  const result = await publish({ ...f.options, development: true });
-  const created = f.calls.find(([name]) => name === 'create')[1];
-  assert.equal(created.tag_name, `dart-wellen-${f.options.context.sha}`);
-  assert.equal(created.target_commitish, f.options.context.sha);
-  assert.equal(created.prerelease, true);
-  assert.equal(created.make_latest, 'false');
-  assert.equal(result.assetUrl, f.asset.browser_download_url);
-  assert.deepEqual(f.calls.find(([name]) => name === 'upload')[1].data, f.archive);
-});
-
-test('fork commit bundles publish to the fork while preserving canonical package URLs', async (t) => {
-  const f = await fixture(t);
-  f.manifest.archive_url = 'https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-0.1.2/dart_wellen-0.1.2-web.tar.gz';
-  f.manifest.git_archive_url_template = 'https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-{commit}/dart_wellen-0.1.2-web.tar.gz';
-  f.options.context.repo = { owner: 'desmonddak', repo: 'rohd-wave-viewer' };
-  const expectedAssetUrl = f.manifest.git_archive_url_template.replace(
-    '{commit}', f.options.context.sha,
-  ).replace('intel/rohd-wave-viewer', 'desmonddak/rohd-wave-viewer');
-  f.asset.browser_download_url = expectedAssetUrl;
-  f.metadataAsset.browser_download_url = `${expectedAssetUrl}.json`;
-  await f.writeManifest();
-
-  const result = await publish({ ...f.options, development: true });
-
-  assert.deepEqual(f.calls.find(([name]) => name === 'create')[1], {
-    owner: 'desmonddak',
-    repo: 'rohd-wave-viewer',
-    tag_name: `dart-wellen-${f.options.context.sha}`,
-    target_commitish: f.options.context.sha,
-    name: `dart-wellen-${f.options.context.sha}`,
-    draft: false,
-    prerelease: true,
-    make_latest: 'false',
-  });
-  assert.equal(result.assetUrl, expectedAssetUrl);
-  const sourceContract = JSON.parse(await fs.readFile(
-    path.join(f.options.workspace, 'packages/dart_wellen/tool/bridge_artifacts.json'), 'utf8',
-  ));
-  assert.equal(sourceContract.archive_url, 'https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-0.1.2/dart_wellen-0.1.2-web.tar.gz');
-});
-
-test('development publication rejects missing templates and invalid commits before GitHub access', async (t) => {
-  for (const mode of ['missing', 'different-repository', 'invalid-commit']) {
-    await t.test(mode, async (child) => {
-      const f = await fixture(child);
-      if (mode === 'missing') delete f.manifest.git_archive_url_template;
-      if (mode === 'different-repository') f.manifest.git_archive_url_template = 'https://example.invalid/{commit}';
-      if (mode === 'invalid-commit') f.options.context.sha = 'branch-name';
-      await f.writeManifest();
-      await assert.rejects(
-        publish({ ...f.options, development: true }),
-        /valid source commit and canonical Git artifact URL template|tested source commit/,
-      );
-      assert.deepEqual(f.calls, []);
-    });
-  }
+  await assert.rejects(publish(f.options), /tag does not match the package version/);
+  assert.deepEqual(f.calls, []);
 });
 
 test('an existing identical asset is verified without uploading or moving its tag', async (t) => {
@@ -258,7 +194,7 @@ test('runner-specific bytes use CI checksums without changing the committed cont
   await fs.writeFile(
     path.join(f.options.artifactDirectory, f.manifestPath), JSON.stringify(f.manifest),
   );
-  await publish({ ...f.options, development: true });
+  await publish(f.options);
   const uploads = f.calls.filter(([name]) => name === 'upload');
   assert.deepEqual(uploads[0][1].data, bytes);
   assert.equal(JSON.parse(uploads[1][1].data).archive_sha256, f.manifest.archive_sha256);

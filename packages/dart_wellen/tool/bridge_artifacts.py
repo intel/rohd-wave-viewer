@@ -38,19 +38,6 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def git_archive_template(release_url, version):
-    location = re.fullmatch(
-        r"https://github\.com/([^/]+)/([^/]+)/releases/download/[^/]+/[^/?#]+",
-        release_url,
-    )
-    if not location:
-        return None
-    return (
-        f"https://github.com/{location[1]}/{location[2]}/releases/download/"
-        f"dart-wellen-{{commit}}/dart_wellen-{version}-web.tar.gz"
-    )
-
-
 def manifest_versions(package):
     text = (package / "pubspec.yaml").read_text()
     version = re.search(r"^version:\s*(\S+)", text, re.M)
@@ -82,14 +69,12 @@ def validate_manifest(package, manifest):
     if manifest.get("profile") != "release":
         raise ValueError("This web artifact contract requires an explicit release profile")
     if "git_archive_url_template" in manifest:
-        expected = git_archive_template(manifest["archive_url"], version)
-        if not expected or manifest["git_archive_url_template"] != expected:
-            raise ValueError("Git artifact URL template does not match the pinned repository/version")
+        raise ValueError("Artifact manifest cannot use commit-keyed download URLs")
 
 
-def validate_build_manifest(package, contract, manifest, commit=None):
+def validate_build_manifest(package, contract, manifest):
     validate_manifest(package, manifest)
-    for key in ("version", "bridge_version", "profile", "archive_url", "git_archive_url_template"):
+    for key in ("version", "bridge_version", "profile", "archive_url"):
         if manifest.get(key) != contract.get(key):
             raise ValueError(f"Build metadata does not match the source contract: {key}")
     if not isinstance(manifest["files"], dict) or not all(
@@ -97,8 +82,6 @@ def validate_build_manifest(package, contract, manifest, commit=None):
         for value in (*manifest["files"].values(), manifest.get("archive_sha256"))
     ):
         raise ValueError("Build metadata requires valid file and archive SHA-256 checksums")
-    if commit and manifest.get("source_commit") != commit:
-        raise ValueError("Build metadata does not match the selected Git commit")
 
 
 def source_commit(repository):
@@ -111,41 +94,6 @@ def source_commit(repository):
     if not re.fullmatch(r"[a-f0-9]{40}", commit):
         raise ValueError("Could not determine the selected Git commit for artifact installation")
     return commit
-
-
-def git_remote_repository(repository):
-    try:
-        result = subprocess.run(
-            ["git", "-C", str(repository), "remote", "get-url", "origin"],
-            check=False, capture_output=True, text=True,
-        )
-    except subprocess.CalledProcessError:
-        return None
-    if result.returncode:
-        return None
-    remote = result.stdout.strip()
-    match = re.fullmatch(
-        r"(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)([^/]+)/([^/]+?)(?:\.git)?/?",
-        remote,
-    )
-    return (match[1], match[2]) if match else None
-
-
-def download_target(package, manifest):
-    template = manifest.get("git_archive_url_template")
-    repository = package.parents[1]
-    commit = source_commit(repository) if template else None
-    if commit:
-        remote = git_remote_repository(repository)
-        if remote:
-            template = re.sub(
-                r"^(https://github\.com/)[^/]+/[^/]+(?=/releases/download/)",
-                rf"\g<1>{remote[0]}/{remote[1]}",
-                template,
-                count=1,
-            )
-        return template.replace("{commit}", commit), commit
-    return manifest["archive_url"], None
 
 
 def verify(package, manifest):
@@ -195,9 +143,8 @@ def download(url):
     except urllib.error.HTTPError as error:
         if error.code == 404:
             raise ValueError(
-                f"No prebuilt bundle at {url}. Wait for the producer's General workflow, "
-                "including Distribute commit-keyed bridge bundle, for this exact commit "
-                "to succeed. Pull-request checks do not distribute bundles."
+                f"No prebuilt bundle at {url}. Run Release Checks with publish_bundle "
+                "enabled to publish the matching versioned dart_wellen bridge release."
             ) from error
         raise
 
@@ -223,10 +170,10 @@ def install(package):
         return
     except ValueError as error:
         print(f"Packaged artifacts need installation: {error}", flush=True)
-    url, commit = download_target(package, contract)
+    url = contract["archive_url"]
     metadata = download(url + ".json")
     manifest = json.loads(metadata)
-    validate_build_manifest(package, contract, manifest, commit)
+    validate_build_manifest(package, contract, manifest)
     archive = download(url)
     if digest(archive) != manifest["archive_sha256"]:
         raise ValueError("Downloaded artifact archive SHA-256 does not match the build metadata")
@@ -289,8 +236,8 @@ def prepare(repository, release_url):
     manifest["archive_sha256"] = digest(output.getvalue())
     (package / BUILD_MANIFEST).write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"Prepared {archive}")
-    print(f"Commit {package / MANIFEST}; General CI distributes the bundle for each pushed commit.")
-    print(f"Explicit release publication remains available at {release_url}.")
+    print(f"Commit {package / MANIFEST}; publish the versioned bundle with Release Checks.")
+    print(f"Versioned release publication will use {release_url}.")
 
 
 def main():
