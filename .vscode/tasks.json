@@ -78,6 +78,22 @@
             "detail": "Select one source for rohd and all ROHD companion packages without changing the Wave Viewer package source."
         },
         {
+            "label": "Prepare dart_wellen Consumer Artifacts",
+            "type": "shell",
+            "command": "make ci-consumer-artifacts",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "clear": true
+            },
+            "problemMatcher": [],
+            "detail": "Build and checksum the local dart_wellen bindings/runtime for local consumer worktrees without publishing a release."
+        },
+        {
             "label": "ROHD Wave Viewer: Web Debug",
             "type": "shell",
             "command": "flutter pub get && bash scripts/wave_run.sh web-debug",

@@ -123,6 +123,7 @@ help:
 	@echo "  wasm             - Build WASM bridge"
 	@echo "  wasm-tools       - Install required WASM build tools into the environment"
 	@echo "  rust-native      - Build native Rust library for Linux"
+	@echo "  ci-consumer-artifacts - Build local dart_wellen consumer artifacts without publishing"
 	@echo "  rust-test        - Run Rust bridge unit tests separately from Dart coverage"
 	@echo "  browser-test     - Run viewer Wasm startup and dart_wellen tests in Chrome"
 	@echo "  coverity         - Run configured Coverity scan workflow"
@@ -191,10 +192,18 @@ $(WASM_OUTPUTS) &: $(FRB_OUTPUTS) $(RUST_CARGO) rust/wellen_bridge/build_wasm.sh
 wasm: $(WASM_OUTPUTS)
 
 # Producer-only packaging. Consumers install the pinned files, never this target.
-.PHONY: consumer-artifacts
+.PHONY: consumer-artifacts ci-consumer-artifacts
 consumer-artifacts: dart wasm rust-native
 	@python3 packages/dart_wellen/tool/bridge_artifacts.py prepare \
 		--release-url "$(BRIDGE_RELEASE_URL)"
+
+# Producer-only branch/local packaging. Uses the checked-in release contract
+# only as metadata and does not require the referenced release to exist.
+ci-consumer-artifacts: dart wasm rust-native
+	@release_url="$$(python3 -c 'import json; print(json.load(open("packages/dart_wellen/tool/bridge_artifacts.json"))["archive_url"])')"; \
+	python3 packages/dart_wellen/tool/bridge_artifacts.py prepare \
+		--release-url "$$release_url" \
+		--ci-artifact
 
 # Build native Rust library for Linux
 $(NATIVE_LIB): $(FRB_OUTPUTS) $(RUST_CARGO) rust/wellen_bridge/build_native.sh
