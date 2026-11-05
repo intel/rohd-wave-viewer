@@ -147,10 +147,11 @@ before building artifacts. Set `BRIDGE_RELEASE_URL` explicitly when changing
 the package version; it also overrides the saved URL when selecting a different
 release for that version.
 The **General** workflow runs validation for every push, including `main`.
-It prepares and uploads the complete `dart-wellen-consumer-artifacts` payload
-for the checked commit. Development consumers can download that ephemeral
-artifact by selecting CI source mode, which verifies that the artifact commit
-matches their resolved Git dependency. General never creates a GitHub Release.
+It prepares and publishes the complete `dart_wellen` payload under the public
+commit-addressed `artifacts` branch for the checked commit. Development
+consumers can download that payload by selecting CI source mode, which verifies
+that the payload commit matches their resolved Git dependency. General never
+creates a GitHub Release.
 After General succeeds, manually dispatch
 **Release Checks** for `dart_wellen` with `publish_bundle` enabled. The
 publication job runs only after all selected checks succeed, matches build
@@ -188,9 +189,9 @@ python3 <resolved-dart_wellen-root>/tool/bridge_artifacts.py install
   metadata for offline reinstallation. It never invokes Cargo or code
   generation.
 - Branch-CI consumers resolve the same package source from Git, then download
-  General's `dart-wellen-consumer-artifacts` payload for the exact resolved
-  commit. This mode is intended for development branches and requires an
-  Actions artifact token when GitHub does not allow anonymous downloads.
+  General's public `artifacts` branch payload for the exact resolved commit.
+  This mode is intended for development branches and does not require GitHub
+  Actions API access.
 - Missing manifests, stale versions, unavailable versioned releases, and
   checksum failures fail explicitly. There is no fallback to an older runtime
   or a source build.

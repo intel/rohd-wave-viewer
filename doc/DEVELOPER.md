@@ -148,7 +148,7 @@ from the producer.
 | --- | --- | --- |
 | Hosted | pub.dev | Included in the published `dart_wellen` archive and verified offline |
 | Local | Prepared Wave Viewer worktree | Files and `tool/bridge_artifacts.build.json` in that worktree |
-| CI | Git repository and branch | `dart-wellen-consumer-artifacts` from the successful General CI run for the exact resolved commit |
+| CI | Git repository and branch | Public `artifacts` branch payload for the exact resolved commit |
 | Git release | Git repository and ref | Immutable, versioned GitHub Release bundle |
 
 For pub.dev, publish `dart_wellen` first with its generated bindings,
@@ -157,12 +157,12 @@ Then publish `rohd_wave_viewer` against that hosted `dart_wellen` version.
 Consumers receive the complete bridge package from pub.dev and verify it
 without downloading a GitHub artifact.
 
-For development branches, General CI prepares and uploads the complete
-`dart-wellen-consumer-artifacts` payload for every successful push. A consumer
-must use the same Git repository/ref for both `rohd_wave_viewer` and
-`dart_wellen`; it then selects only an artifact whose source commit matches
-Pub's resolved Git checkout. This supports fork branches, Intel feature
-branches, and `main` without publishing a GitHub Release.
+For development branches, General CI prepares and publishes the complete
+`dart-wellen` payload under `artifacts/dart-wellen/<source-commit>/` for every
+successful push. A consumer must use the same Git repository/ref for both
+`rohd_wave_viewer` and `dart_wellen`; it then selects only a payload whose
+source commit matches Pub's resolved Git checkout. This supports fork branches,
+Intel feature branches, and `main` without publishing a GitHub Release.
 
 For example, ROHD DevTools can consume a fork branch with:
 
@@ -175,10 +175,10 @@ GITHUB_TOKEN=<actions-read-token> \
   make -C rohd_devtools_extension viewer-artifacts
 ```
 
-Set `GITHUB_TOKEN` or `GH_TOKEN` when GitHub requires Actions-artifact read
-access. CI artifacts are intentionally ephemeral development inputs. Use the
-versioned GitHub Release bundle or the pub.dev package when an immutable,
-long-lived consumer artifact is required.
+CI payloads are intentionally development inputs, but they are public and
+commit-addressed rather than Actions-artifact downloads. Use the versioned
+GitHub Release bundle or the pub.dev package when an immutable, long-lived
+consumer artifact is required.
 
 ## Run Targets
 

@@ -120,6 +120,7 @@ jobs:
         with:
           name: dart-wellen-consumer-artifacts
           path: |
+            build/dart_wellen-*-web.tar.gz
             packages/dart_wellen/lib/src/rust/*.dart
             packages/dart_wellen/tool/bridge_artifacts.json
             packages/dart_wellen/tool/bridge_artifacts.build.json
@@ -138,6 +139,33 @@ jobs:
         with:
           push: never
           runCmd: tool/gh_actions/run_tests.sh
+
+  publish-ci-consumer-artifact:
+    name: Publish branch dart_wellen consumer artifact
+    needs: run-checks
+    if: ${{ github.event_name == 'push' }}
+    permissions:
+      contents: write
+      actions: read
+    concurrency:
+      group: dart-wellen-ci-artifacts-${{ github.repository }}
+      cancel-in-progress: false
+    runs-on: ${{ github.repository_owner == 'intel' && 'intel-ubuntu-latest' || 'ubuntu-latest' }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Download verified consumer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dart-wellen-consumer-artifacts
+          path: ${{ runner.temp }}/dart-wellen-consumer-artifacts
+
+      - name: Publish public commit-addressed artifact
+        run: |
+          tool/gh_actions/publish_ci_bridge_artifact.sh \
+            "${{ runner.temp }}/dart-wellen-consumer-artifacts" \
+            "${{ github.sha }}"
 
   browser-tests:
     name: Browser/WASM Tests
