@@ -5,6 +5,5 @@
 pubspec.lock
 pubspec_overrides.yaml
 test/
-example/
 __pycache__/
 *.pyc

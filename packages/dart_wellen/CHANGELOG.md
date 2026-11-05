@@ -2,8 +2,9 @@
 
 ## 0.1.2
 
+- Update Flutter Rust Bridge and its generator to 2.13.0, requiring Dart 3.9.2 or newer.
+- Include the waveform-reading example in the published package.
 - Keep generated hosted artifact metadata aligned with the canonical Intel producer contract and validate hosted artifacts offline.
-- Update Flutter Rust Bridge and its generator to 2.8.0.
 
 ## 0.1.1
 
