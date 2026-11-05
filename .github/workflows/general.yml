@@ -136,6 +136,7 @@ jobs:
       - name: Build dev container and run tests in it
         uses: devcontainers/ci@v0.3
         with:
+          push: never
           runCmd: tool/gh_actions/run_tests.sh
 
   browser-tests:
