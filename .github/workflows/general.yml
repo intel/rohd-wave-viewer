@@ -114,17 +114,22 @@ jobs:
           manifest=packages/dart_wellen/tool/bridge_artifacts.json
           release_url="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["archive_url"])' "$manifest")"
           python3 packages/dart_wellen/tool/bridge_artifacts.py prepare \
-            --release-url "$release_url"
+            --release-url "$release_url" \
+            --ci-artifact
           git diff --exit-code -- "$manifest"
 
-      - name: Upload browser/WASM test inputs
+      - name: Upload branch consumer artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: wellen-browser-test-inputs
+          name: dart-wellen-consumer-artifacts
           path: |
             packages/dart_wellen/lib/src/rust/*.dart
+            packages/dart_wellen/tool/bridge_artifacts.json
+            packages/dart_wellen/tool/bridge_artifacts.build.json
             web/pkg/wellen_bridge.js
             web/pkg/wellen_bridge_bg.wasm
+            web/pkg/LICENSE
+            assets/licenses/wellen_bridge_LICENSES.txt
           if-no-files-found: error
 
       - name: Build and verify Marketplace VSIX
@@ -165,7 +170,7 @@ jobs:
       - name: Download browser/WASM test inputs
         uses: actions/download-artifact@v4
         with:
-          name: wellen-browser-test-inputs
+          name: dart-wellen-consumer-artifacts
           path: .
 
       - name: Run browser/WASM integration tests

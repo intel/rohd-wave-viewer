@@ -152,6 +152,12 @@ class BridgeArtifactsTest(unittest.TestCase):
             (self.repository / "build/dart_wellen-0.1.2-web.tar.gz").read_bytes(),
         )
 
+    def test_ci_artifact_preparation_skips_release_validation(self):
+        with patch.object(bridge.subprocess, "run") as validate:
+            bridge.prepare(self.repository, self.url, verify_release=False)
+            validate.assert_not_called()
+        self.assertTrue((self.package / bridge.BUILD_MANIFEST).is_file())
+
     def test_producer_rejects_a_fork_release_url_without_rewriting_contract(self):
         source_contract = (self.package / bridge.MANIFEST).read_bytes()
         with self.assertRaisesRegex(ValueError, "does not match the checked-in artifact contract"):

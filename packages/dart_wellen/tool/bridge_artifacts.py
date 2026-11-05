@@ -199,14 +199,15 @@ def install(package):
     verify_prepared(package, contract)
 
 
-def prepare(repository, release_url):
+def prepare(repository, release_url, *, verify_release=True):
     package = repository / "packages/dart_wellen"
     contract = read_contract(package)
     if release_url != contract["archive_url"]:
         raise ValueError("Release URL does not match the checked-in artifact contract")
     # The producer owns compilation and semantic validation, including the
     # generated Dart/native/WASM content hash agreement.
-    subprocess.run(["bash", str(repository / "tool/verify_bridge_release.sh")], check=True)
+    if verify_release:
+        subprocess.run(["bash", str(repository / "tool/verify_bridge_release.sh")], check=True)
     runtime = package / "web/pkg"
     runtime.mkdir(parents=True, exist_ok=True)
     for name in ("wellen_bridge.js", "wellen_bridge_bg.wasm", "LICENSE"):
@@ -248,12 +249,21 @@ def main():
     producer = commands.add_parser("prepare", help="Package artifacts already built by the viewer")
     producer.add_argument("--repository-root", type=Path, default=PACKAGE.parents[1])
     producer.add_argument("--release-url", required=True)
+    producer.add_argument(
+        "--ci-artifact",
+        action="store_true",
+        help="Prepare a branch-CI artifact without requiring a published release bundle",
+    )
     args = parser.parse_args()
     try:
         if args.command == "prepare":
             if urlparse(args.release_url).scheme != "https":
                 raise ValueError("Release URL must use HTTPS")
-            prepare(args.repository_root.resolve(), args.release_url)
+            prepare(
+                args.repository_root.resolve(),
+                args.release_url,
+                verify_release=not args.ci_artifact,
+            )
         elif args.command == "install":
             install(PACKAGE)
         else:

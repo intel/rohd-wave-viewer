@@ -50,6 +50,11 @@ release tag or commit that declares a package version with a matching
 but does not publish bundles; run Release Checks with `publish_bundle` enabled
 to create the versioned bridge release. Pub.dev publication remains a separate
 maintainer action.
+
+Development consumers can instead select the successful General CI artifact
+matching their resolved Git commit. General uploads the complete
+`dart-wellen-consumer-artifacts` payload with generated bindings, runtime, and
+build checksum metadata; this ephemeral artifact is not a GitHub Release.
 Hosts
 copy `web/pkg`, including license notices, into ignored web staging output and
 load its JavaScript/WASM pair. They must not pin a separate bridge version or
