@@ -208,10 +208,7 @@ class WellenSignalWaveformApi extends SignalWaveformApi {
 
     final requests = [
       for (final signalId in signalIds)
-        (
-          signalId: signalId,
-          source: _resolveWellenSignalSource(signalId),
-        ),
+        (signalId: signalId, source: _resolveWellenSignalSource(signalId)),
     ];
     final wellenIds = requests
         .expand((request) => request.source.fields)
@@ -367,8 +364,9 @@ class WellenSignalWaveformApi extends SignalWaveformApi {
       );
     }
 
-    for (final structScope in moduleNode.subModules
-        .where((scope) => scope.scopeType == 'struct')) {
+    for (final structScope in moduleNode.subModules.where(
+      (scope) => scope.scopeType == 'struct',
+    )) {
       final direction = _inferDirection(structScope.name);
       var startBit = 0;
       final fields = <Map<String, dynamic>>[];
@@ -376,10 +374,7 @@ class WellenSignalWaveformApi extends SignalWaveformApi {
         fields.add({
           'name': field.name,
           'width': field.bitWidth,
-          'bits': List.generate(
-            field.bitWidth,
-            (index) => startBit + index,
-          ),
+          'bits': List.generate(field.bitWidth, (index) => startBit + index),
         });
         startBit += field.bitWidth;
       }
@@ -451,8 +446,9 @@ class WellenSignalWaveformApi extends SignalWaveformApi {
       }
     }
 
-    for (final structScope in moduleNode.subModules
-        .where((scope) => scope.scopeType == 'struct')) {
+    for (final structScope in moduleNode.subModules.where(
+      (scope) => scope.scopeType == 'struct',
+    )) {
       final structIndex = occurrence.signalIndexByName(structScope.name);
       if (structIndex >= 0) {
         final structSignal = occurrence.signals[structIndex];
@@ -468,9 +464,11 @@ class WellenSignalWaveformApi extends SignalWaveformApi {
     final childModules = moduleNode.subModules
         .where((subModule) => subModule.scopeType != 'struct')
         .toList();
-    for (var i = 0;
-        i < occurrence.children.length && i < childModules.length;
-        i++) {
+    for (
+      var i = 0;
+      i < occurrence.children.length && i < childModules.length;
+      i++
+    ) {
       _buildWellenIdMap(occurrence.children[i], childModules[i]);
     }
   }
@@ -506,9 +504,7 @@ class WellenSignalWaveformApi extends SignalWaveformApi {
       }
     }
 
-    final fieldValues = [
-      for (final field in source.fields) 'x' * field.width,
-    ];
+    final fieldValues = [for (final field in source.fields) 'x' * field.width];
     final packedData = <Data>[];
     final times = events.keys.toList()..sort();
     for (final time in times) {

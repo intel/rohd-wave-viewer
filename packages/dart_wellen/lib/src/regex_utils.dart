@@ -15,14 +15,13 @@ Pattern regExpPattern(
   bool caseSensitive = true,
   bool unicode = false,
   bool dotAll = false,
-}) =>
-    RegExp(
-      source,
-      multiLine: multiLine,
-      caseSensitive: caseSensitive,
-      unicode: unicode,
-      dotAll: dotAll,
-    );
+}) => RegExp(
+  source,
+  multiLine: multiLine,
+  caseSensitive: caseSensitive,
+  unicode: unicode,
+  dotAll: dotAll,
+);
 
 Match? regExpFirstMatch(
   String source,
@@ -31,11 +30,10 @@ Match? regExpFirstMatch(
   bool caseSensitive = true,
   bool unicode = false,
   bool dotAll = false,
-}) =>
-    RegExp(
-      source,
-      multiLine: multiLine,
-      caseSensitive: caseSensitive,
-      unicode: unicode,
-      dotAll: dotAll,
-    ).firstMatch(input);
+}) => RegExp(
+  source,
+  multiLine: multiLine,
+  caseSensitive: caseSensitive,
+  unicode: unicode,
+  dotAll: dotAll,
+).firstMatch(input);

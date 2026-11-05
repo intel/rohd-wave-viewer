@@ -367,10 +367,10 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_rust_bridge
-      sha256: "39804d78730d41ecddbe97e38c7dd6c2b43f76e91ef7bbd329f98f9b0bd19e56"
+      sha256: ec69331e2335ab4d456c0a9fc700892c2c85b72b9c0cb39df3ecfe8833d5d5c8
       url: "https://pub.dev"
     source: hosted
-    version: "2.8.0"
+    version: "2.13.0"
   flutter_simple_treeview:
     dependency: "direct main"
     description:

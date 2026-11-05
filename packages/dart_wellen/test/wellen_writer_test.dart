@@ -36,42 +36,44 @@ void main() {
     }
   });
 
-  test('unsupported FST preserves its destination and leaves no open sink',
-      () async {
-    const originalContents = 'existing waveform data\n';
-    final destination = File('${outputDirectory.path}/existing.fst');
-    await destination.writeAsString(originalContents);
+  test(
+    'unsupported FST preserves its destination and leaves no open sink',
+    () async {
+      const originalContents = 'existing waveform data\n';
+      final destination = File('${outputDirectory.path}/existing.fst');
+      await destination.writeAsString(originalContents);
 
-    await expectLater(
-      writer.open(destination.path, format: WaveFormat.fst),
-      throwsA(
-        isA<WellenWriterException>().having(
-          (error) => error.message,
-          'message',
-          'FST writing not yet implemented',
+      await expectLater(
+        writer.open(destination.path, format: WaveFormat.fst),
+        throwsA(
+          isA<WellenWriterException>().having(
+            (error) => error.message,
+            'message',
+            'FST writing not yet implemented',
+          ),
         ),
-      ),
-    );
+      );
 
-    expect(await destination.readAsString(), originalContents);
-    expect(writer.isOpen, isFalse);
-    expect(writer.format, WaveFormat.vcd);
+      expect(await destination.readAsString(), originalContents);
+      expect(writer.isOpen, isFalse);
+      expect(writer.format, WaveFormat.vcd);
 
-    final retryDestination = File('${outputDirectory.path}/retry.vcd');
-    await writer.open(
-      retryDestination.path,
-      date: '2026-10-02',
-      version: 'WellenWriter test',
-    );
-    writer.writeHeader();
-    await writer.close();
+      final retryDestination = File('${outputDirectory.path}/retry.vcd');
+      await writer.open(
+        retryDestination.path,
+        date: '2026-10-02',
+        version: 'WellenWriter test',
+      );
+      writer.writeHeader();
+      await writer.close();
 
-    expect(writer.isOpen, isFalse);
-    expect(
-      await retryDestination.readAsString(),
-      contains(r'$enddefinitions $end'),
-    );
-  });
+      expect(writer.isOpen, isFalse);
+      expect(
+        await retryDestination.readAsString(),
+        contains(r'$enddefinitions $end'),
+      );
+    },
+  );
 
   test('filesystem open failure leaves the writer reusable', () async {
     final missingParentPath = '${outputDirectory.path}/missing/output.vcd';
@@ -108,16 +110,10 @@ void main() {
           name: 'left',
           signals: [leftSignal],
           children: [
-            HierarchyOccurrence(
-              name: 'nested',
-              signals: [nestedSignal],
-            ),
+            HierarchyOccurrence(name: 'nested', signals: [nestedSignal]),
           ],
         ),
-        HierarchyOccurrence(
-          name: 'right',
-          signals: [rightSignal],
-        ),
+        HierarchyOccurrence(name: 'right', signals: [rightSignal]),
       ],
     )..buildAddresses();
     final expectedSignalPaths = {
@@ -127,15 +123,12 @@ void main() {
       'top/right/right_value',
     };
 
-    expect(
-      {
-        topSignal.path(),
-        leftSignal.path(),
-        nestedSignal.path(),
-        rightSignal.path(),
-      },
-      expectedSignalPaths,
-    );
+    expect({
+      topSignal.path(),
+      leftSignal.path(),
+      nestedSignal.path(),
+      rightSignal.path(),
+    }, expectedSignalPaths);
 
     final destination = File('${outputDirectory.path}/hierarchy.vcd');
     await writer.open(
@@ -143,12 +136,7 @@ void main() {
       date: '2026-10-02',
       version: 'WellenWriter test',
     );
-    writer.registerSignals([
-      rightSignal,
-      nestedSignal,
-      topSignal,
-      leftSignal,
-    ]);
+    writer.registerSignals([rightSignal, nestedSignal, topSignal, leftSignal]);
     writer.writeHeader();
     writer.writeValues(0, {
       topSignal.path(): '0',
@@ -192,10 +180,10 @@ void main() {
       )..buildAddresses();
       expect(structure.allSignalIds, containsAll(expectedSignalPaths));
       expect(parsedTop.signals.map((signal) => signal.name), ['top_flag']);
-      expect(
-        parsedTop.children.map((module) => module.name),
-        ['left', 'right'],
-      );
+      expect(parsedTop.children.map((module) => module.name), [
+        'left',
+        'right',
+      ]);
       expect(
         parsedTop.children
             .singleWhere((module) => module.name == 'left')
@@ -218,9 +206,7 @@ Set<String> _declaredSignalPaths(String vcd) {
   for (final rawLine in vcd.split('\n')) {
     final line = rawLine.trim();
     if (line.startsWith(r'$scope ')) {
-      final match = RegExp(
-        r'^\$scope\s+\S+\s+(\S+)\s+\$end$',
-      ).firstMatch(line);
+      final match = RegExp(r'^\$scope\s+\S+\s+(\S+)\s+\$end$').firstMatch(line);
       expect(match, isNotNull, reason: 'Malformed VCD scope: $line');
       if (match != null) {
         scopes.add(match.group(1)!);

@@ -47,21 +47,24 @@ $enddefinitions $end
   });
 
   test('loads tracked VCD values through the browser WASM bridge', () async {
-    final bytes =
-        await platform.fetchBytes('fixtures/xz_transitions.vcd').timeout(
-              const Duration(seconds: 10),
-              onTimeout: () => throw TimeoutException('fetching VCD fixture'),
-            );
+    final bytes = await platform
+        .fetchBytes('fixtures/xz_transitions.vcd')
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw TimeoutException('fetching VCD fixture'),
+        );
     final api = WellenSignalWaveformApi();
-    await api.loadBytes(bytes.toList(), fileName: 'xz_transitions.vcd').timeout(
+    await api
+        .loadBytes(bytes.toList(), fileName: 'xz_transitions.vcd')
+        .timeout(
           const Duration(seconds: 10),
           onTimeout: () => throw TimeoutException('loading VCD bytes'),
         );
 
     final structure = await api.getModuleStructureOnly().timeout(
-          const Duration(seconds: 10),
-          onTimeout: () => throw TimeoutException('reading VCD hierarchy'),
-        );
+      const Duration(seconds: 10),
+      onTimeout: () => throw TimeoutException('reading VCD hierarchy'),
+    );
     expect(structure.modules.single.name, 'test');
 
     final binXzId = structure.allSignalIds.singleWhere(
@@ -70,12 +73,12 @@ $enddefinitions $end
     final data8Id = structure.allSignalIds.singleWhere(
       (signalId) => signalId.endsWith('/data8'),
     );
-    final waveforms = await api.getWaveformData(
-      signalIds: [binXzId, data8Id],
-    ).timeout(
-      const Duration(seconds: 10),
-      onTimeout: () => throw TimeoutException('reading VCD values'),
-    );
+    final waveforms = await api
+        .getWaveformData(signalIds: [binXzId, data8Id])
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw TimeoutException('reading VCD values'),
+        );
     final valuesById = {
       for (final waveform in waveforms)
         waveform.signalId: [
@@ -85,12 +88,7 @@ $enddefinitions $end
 
     expect(
       valuesById[binXzId],
-      containsAll([
-        (0, 'x'),
-        (80000, '1'),
-        (90000, 'z'),
-        (120000, '0'),
-      ]),
+      containsAll([(0, 'x'), (80000, '1'), (90000, 'z'), (120000, '0')]),
     );
     expect(
       valuesById[data8Id],

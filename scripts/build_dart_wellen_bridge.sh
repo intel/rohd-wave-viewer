@@ -52,7 +52,7 @@ fi
 # Ensure flutter_rust_bridge_codegen is installed
 if ! command -v flutter_rust_bridge_codegen >/dev/null 2>&1; then
     echo "[build-dart-wellen] ERROR: flutter_rust_bridge_codegen not found."
-    echo "Please install: cargo install flutter_rust_bridge_codegen --version 2.8.0 --locked"
+    echo "Run tool/gh_actions/install_rust_1_92.sh to install the pinned generator."
     exit 1
 fi
 expected_codegen_version="$(
@@ -100,9 +100,8 @@ else
     printf "\ndart_root: \".\"\n" >> "$TMP_CFG"
 fi
 
-# FRB 2.7 only searches dart_root for pubspec.lock and predates root workspace
-# lockfiles. Pub has already validated and resolved dependencies at the root,
-# so skip its legacy checks and automatic pubspec mutation.
+# Pub resolves dependencies at the workspace root, so skip the generator's
+# package-local dependency checks and automatic pubspec mutation.
 if grep -q "^deps_check:" "$TMP_CFG"; then
     sed -i 's|^deps_check:.*$|deps_check: false|' "$TMP_CFG"
 else

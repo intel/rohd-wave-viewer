@@ -220,8 +220,9 @@ class WellenReader {
 
     // Split signal IDs into chunks
     for (var i = 0; i < signalIds.length; i += chunkSize) {
-      final end =
-          (i + chunkSize > signalIds.length) ? signalIds.length : i + chunkSize;
+      final end = (i + chunkSize > signalIds.length)
+          ? signalIds.length
+          : i + chunkSize;
       final chunk = signalIds.sublist(i, end);
 
       final data = await getSignalData(
@@ -289,8 +290,7 @@ class WellenReader {
     List<String> signalIds, {
     int? startTime,
     int? endTime,
-  }) =>
-      getSignalData(signalIds, startTime: startTime, endTime: endTime);
+  }) => getSignalData(signalIds, startTime: startTime, endTime: endTime);
 
   /// Parse wave format from string.
   WaveFormat _parseFormat(String format) {

@@ -3,7 +3,7 @@
 ## 0.1.2
 
 - Require `dart_wellen` 0.1.2 for canonical, offline-verifiable hosted bridge artifacts.
-- Update Flutter Rust Bridge and its generator to 2.8.0.
+- Update Flutter Rust Bridge and its generator to 2.13.0; `dart_wellen` requires Dart 3.9.2 or newer.
 
 ## 0.1.1
 

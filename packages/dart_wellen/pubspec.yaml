@@ -12,12 +12,12 @@ topics:
 resolution: workspace
 
 environment:
-  sdk: '>=3.6.0 <4.0.0'
+  sdk: '>=3.9.2 <4.0.0'
 
 dependencies:
   ffi: ^2.1.0
   # Must match lib/src/rust/ and rust/wellen_bridge/Cargo.toml.
-  flutter_rust_bridge: 2.8.0
+  flutter_rust_bridge: 2.13.0
   meta: ^1.9.0
   rohd_hierarchy: '>=0.1.0 <0.3.0'
   rohd_waveform: '>=0.1.0 <0.3.0'

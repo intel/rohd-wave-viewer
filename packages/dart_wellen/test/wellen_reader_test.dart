@@ -181,10 +181,7 @@ void main() {
 
       expect(structure.metadata.format, equals(WaveFormat.ghw));
       expect(structure.allSignalIds, isNotEmpty);
-      expect(
-        await reader.getWaveformData(structure.allSignalIds),
-        isNotEmpty,
-      );
+      expect(await reader.getWaveformData(structure.allSignalIds), isNotEmpty);
     });
   });
 
@@ -235,11 +232,7 @@ void main() {
       final signalId = structure.allSignalIds.single;
       final valuesBeforeFailure = (await reader.getWaveformData([
         signalId,
-      ]))
-          .single
-          .data
-          .map((datum) => datum.value)
-          .toList();
+      ])).single.data.map((datum) => datum.value).toList();
 
       await expectLater(
         reader.loadFile('$fixturesPath/reload_malformed.vcd'),
@@ -248,10 +241,9 @@ void main() {
       expect(reader.structure, same(structure));
       expect(await reader.getStructure(), same(structure));
       expect(
-        (await reader.getWaveformData([signalId]))
-            .single
-            .data
-            .map((datum) => datum.value),
+        (await reader.getWaveformData([
+          signalId,
+        ])).single.data.map((datum) => datum.value),
         valuesBeforeFailure,
       );
     });

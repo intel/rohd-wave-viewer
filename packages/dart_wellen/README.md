@@ -62,9 +62,25 @@ retain an older runtime when changing dependency sources.
 The packaged WASM profile is explicitly `release`, independent of whether the
 embedding Flutter application runs in debug or release mode.
 
-Native applications additionally need a matching native library. Artifact
-production belongs to this repository, never an embedding application's build.
+Native applications additionally need a matching native library. The package
+requires Dart 3.9.2 or newer. Artifact production belongs to this repository,
+never an embedding application's build.
 See the [consumer artifact release procedure](../../doc/RELEASES.md#consumer-web-artifacts-local-git-and-hosted).
+
+## Example
+
+The [command-line example](example/main.dart) reads metadata from a VCD, FST,
+or GHW file. From a prepared repository checkout, build the matching native
+bridge and run it from the package directory:
+
+```bash
+make rust-native
+cd packages/dart_wellen
+dart run example/main.dart /path/to/waveform.vcd
+```
+
+For other native deployments, provide the matching native library as described
+above; the published package does not include it.
 
 ## Reading a Waveform
 
