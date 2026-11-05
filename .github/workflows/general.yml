@@ -84,9 +84,6 @@ jobs:
       - name: Verify Dart source headers
         run: dart run tool/gh_actions/verify_dart_headers.dart
 
-      - name: Verify waveform client migration boundary
-        run: tool/gh_actions/verify_waveform_client_core.sh
-
       - name: Setup Pana source analysis
         run: tool/gh_actions/install_pana.sh
 

@@ -7,8 +7,7 @@
 // 2026 January
 // Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
 
-import 'package:rohd_wave_viewer/src/waveform_client_core/waveform_client_core.dart';
-import 'package:rohd_waveform/rohd_waveform.dart' hide SignalWaveform;
+import 'package:rohd_waveform/rohd_waveform.dart';
 import 'package:test/test.dart';
 
 void main() {

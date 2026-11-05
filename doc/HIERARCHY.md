@@ -12,9 +12,9 @@ packages/dart_wellen
 ```
 
 `dart_wellen` parses VCD, FST, and GHW files through the Wellen bridge. The
-viewer keeps its backend-neutral waveform client state in
-`lib/src/waveform_client_core/`; it is isolated for eventual migration to
-`rohd_waveform`.
+viewer uses the shared waveform repository and signal-data service from
+`rohd_waveform`. Monitor-list identity and presentation state remain in the
+viewer.
 
 ## Using the Contracts
 
@@ -36,9 +36,9 @@ The relevant local code is:
 | Path | Responsibility |
 | --- | --- |
 | `packages/dart_wellen/` | Wellen-backed waveform loading for native and web targets |
-| `lib/src/waveform_client_core/waveform_repository.dart` | Cached waveform and signal state |
-| `lib/src/waveform_client_core/signal_data_service_impl.dart` | Repository-backed signal-data adapter |
-| `lib/src/viewer_waveform_client.dart` | Viewer-owned migration and compatibility seam |
+| `rohd_waveform` | Cached waveform and signal state, and the signal-data adapter |
+| `lib/src/viewer_waveform_client.dart` | Shared waveform API and viewer monitor-row facade |
+| `lib/src/modules/signal/models/monitor_row.dart` | Viewer-owned monitor identity and presentation state |
 | `lib/src/modules/rohd_module/` | Loaded hierarchy and module-selection state |
 | `lib/src/modules/hierarchy/` | Hierarchy presentation |
 | `lib/src/modules/signal/` | Signal selection and monitored rows |

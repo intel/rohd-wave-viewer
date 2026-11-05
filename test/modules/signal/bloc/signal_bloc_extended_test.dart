@@ -46,8 +46,8 @@ void main() {
         'focusSignal sets focused signal',
         build: () => signalBloc,
         seed: () => SignalLoaded(mockSignals, [
-          SignalWaveform.empty('a'),
-          SignalWaveform.empty('b'),
+          MonitorRow.empty('a'),
+          MonitorRow.empty('b'),
         ]),
         act: (bloc) {
           final state = bloc.state as SignalLoaded;
@@ -66,8 +66,8 @@ void main() {
         build: () => signalBloc,
         // Seed with two monitored signals and one focused
         seed: () {
-          final a = SignalWaveform.empty('a');
-          final b = SignalWaveform.empty('b');
+          final a = MonitorRow.empty('a');
+          final b = MonitorRow.empty('b');
           return SignalLoaded(
             mockSignals,
             [a, b],
@@ -90,8 +90,8 @@ void main() {
         'focusSignal with multiSelect toggles signal into set',
         build: () => signalBloc,
         seed: () {
-          final a = SignalWaveform.empty('a');
-          final b = SignalWaveform.empty('b');
+          final a = MonitorRow.empty('a');
+          final b = MonitorRow.empty('b');
           return SignalLoaded(
             mockSignals,
             [a, b],
@@ -119,8 +119,8 @@ void main() {
         'focusSignal with multiSelect removes already-focused signal',
         build: () => signalBloc,
         seed: () {
-          final a = SignalWaveform.empty('a');
-          final b = SignalWaveform.empty('b');
+          final a = MonitorRow.empty('a');
+          final b = MonitorRow.empty('b');
           return SignalLoaded(
             mockSignals,
             [a, b],
@@ -148,10 +148,10 @@ void main() {
         'rangeFocusSignal selects range',
         build: () => signalBloc,
         seed: () => SignalLoaded(mockSignals, [
-          SignalWaveform.empty('x0'),
-          SignalWaveform.empty('x1'),
-          SignalWaveform.empty('x2'),
-          SignalWaveform.empty('x3'),
+          MonitorRow.empty('x0'),
+          MonitorRow.empty('x1'),
+          MonitorRow.empty('x2'),
+          MonitorRow.empty('x3'),
         ]),
         act: (bloc) =>
             bloc.add(SignalRangeFocusEvent(anchorIndex: 1, extentIndex: 3)),
@@ -170,9 +170,9 @@ void main() {
         'rangeFocusSignal handles reversed indices',
         build: () => signalBloc,
         seed: () => SignalLoaded(mockSignals, [
-          SignalWaveform.empty('a'),
-          SignalWaveform.empty('b'),
-          SignalWaveform.empty('c'),
+          MonitorRow.empty('a'),
+          MonitorRow.empty('b'),
+          MonitorRow.empty('c'),
         ]),
         act: (bloc) =>
             bloc.add(SignalRangeFocusEvent(anchorIndex: 2, extentIndex: 0)),
@@ -191,7 +191,7 @@ void main() {
         build: () => signalBloc,
         seed: () => SignalLoaded(
           mockSignals,
-          [SignalWaveform.empty('a')],
+          [MonitorRow.empty('a')],
           focusedSignalIds: const {'a'},
         ),
         act: (bloc) => bloc.add(SignalUnfocusEvent()),
@@ -205,7 +205,7 @@ void main() {
         build: () => signalBloc,
         seed: () => SignalLoaded(
           mockSignals,
-          [SignalWaveform.empty('a'), SignalWaveform.empty('b')],
+          [MonitorRow.empty('a'), MonitorRow.empty('b')],
           focusedSignalIds: const {'a', 'b'},
         ),
         act: (bloc) => bloc.add(SignalUnfocusOneEvent('a')),
@@ -218,9 +218,9 @@ void main() {
         'focusAllEvent selects all monitored signals',
         build: () => signalBloc,
         seed: () => SignalLoaded(mockSignals, [
-          SignalWaveform.empty('a'),
-          SignalWaveform.empty('b'),
-          SignalWaveform.empty('c'),
+          MonitorRow.empty('a'),
+          MonitorRow.empty('b'),
+          MonitorRow.empty('c'),
         ]),
         act: (bloc) => bloc.add(SignalFocusAllEvent()),
         verify: (bloc) {
@@ -241,8 +241,8 @@ void main() {
         'removeSignal removes waveform from monitor list',
         build: () => signalBloc,
         seed: () => SignalLoaded(mockSignals, [
-          SignalWaveform.empty('a'),
-          SignalWaveform.empty('b'),
+          MonitorRow.empty('a'),
+          MonitorRow.empty('b'),
         ]),
         act: (bloc) {
           final state = bloc.state as SignalLoaded;
@@ -258,8 +258,8 @@ void main() {
         'removeSignal also clears focus for that signal',
         build: () => signalBloc,
         seed: () {
-          final a = SignalWaveform.empty('a');
-          final b = SignalWaveform.empty('b');
+          final a = MonitorRow.empty('a');
+          final b = MonitorRow.empty('b');
           return SignalLoaded(
             mockSignals,
             [a, b],
@@ -282,8 +282,8 @@ void main() {
         'removeSignal preserves another monitor row for the same signal',
         build: () => signalBloc,
         seed: () {
-          final first = SignalWaveform.empty('a');
-          final second = SignalWaveform.copyFrom(first);
+          final first = MonitorRow.empty('a');
+          final second = MonitorRow.copyFrom(first);
           return SignalLoaded(
             mockSignals,
             [first, second],
@@ -305,7 +305,7 @@ void main() {
       blocTest<SignalBloc, SignalState>(
         'resetSignals returns to SignalLoading',
         build: () => signalBloc,
-        seed: () => SignalLoaded(mockSignals, [SignalWaveform.empty('a')]),
+        seed: () => SignalLoaded(mockSignals, [MonitorRow.empty('a')]),
         act: (bloc) => bloc.add(SignalResetEvent()),
         expect: () => [isA<SignalLoading>()],
       );
@@ -318,9 +318,9 @@ void main() {
         'reorderSignal moves item from oldIndex to newIndex',
         build: () => signalBloc,
         seed: () => SignalLoaded(mockSignals, [
-          SignalWaveform.empty('a'),
-          SignalWaveform.empty('b'),
-          SignalWaveform.empty('c'),
+          MonitorRow.empty('a'),
+          MonitorRow.empty('b'),
+          MonitorRow.empty('c'),
         ]),
         act: (bloc) => bloc.add(SignalReorderEvent(oldIndex: 0, newIndex: 2)),
         verify: (bloc) {
@@ -333,10 +333,10 @@ void main() {
         'reorderSignalGroup moves group maintaining relative order',
         build: () => signalBloc,
         seed: () => SignalLoaded(mockSignals, [
-          SignalWaveform.empty('a'), // 0
-          SignalWaveform.empty('b'), // 1
-          SignalWaveform.empty('c'), // 2
-          SignalWaveform.empty('d'), // 3
+          MonitorRow.empty('a'), // 0
+          MonitorRow.empty('b'), // 1
+          MonitorRow.empty('c'), // 2
+          MonitorRow.empty('d'), // 3
         ]),
         act: (bloc) => bloc.add(
           SignalGroupReorderEvent(
@@ -357,8 +357,8 @@ void main() {
         'undo restores a removed monitor row and its focus',
         build: () => signalBloc,
         seed: () {
-          final a = SignalWaveform.empty('a');
-          final b = SignalWaveform.empty('b');
+          final a = MonitorRow.empty('a');
+          final b = MonitorRow.empty('b');
           return SignalLoaded(
             mockSignals,
             [a, b],
@@ -388,9 +388,9 @@ void main() {
         'redo reapplies an undone reorder',
         build: () => signalBloc,
         seed: () => SignalLoaded(mockSignals, [
-          SignalWaveform.empty('a'),
-          SignalWaveform.empty('b'),
-          SignalWaveform.empty('c'),
+          MonitorRow.empty('a'),
+          MonitorRow.empty('b'),
+          MonitorRow.empty('c'),
         ]),
         act: (bloc) => bloc
           ..add(SignalReorderEvent(oldIndex: 0, newIndex: 2))
@@ -409,8 +409,8 @@ void main() {
         'reset clears undo and redo history from the previous file',
         build: () => signalBloc,
         seed: () => SignalLoaded(mockSignals, [
-          SignalWaveform.empty('old.a'),
-          SignalWaveform.empty('old.b'),
+          MonitorRow.empty('old.a'),
+          MonitorRow.empty('old.b'),
         ]),
         act: (bloc) async {
           final removed = bloc.stream.firstWhere(
@@ -444,7 +444,7 @@ void main() {
       blocTest<SignalBloc, SignalState>(
         'sets and undoes a per-row display format',
         build: () => signalBloc,
-        seed: () => SignalLoaded(mockSignals, [SignalWaveform.empty('a')]),
+        seed: () => SignalLoaded(mockSignals, [MonitorRow.empty('a')]),
         act: (bloc) {
           final row = bloc.state.monitorSignalsList.single;
           bloc
@@ -469,9 +469,9 @@ void main() {
         'sets a display format for every monitored row of an occurrence',
         build: () => signalBloc,
         seed: () => SignalLoaded(mockSignals, [
-          SignalWaveform.empty('shared.path'),
-          SignalWaveform.empty('shared.path'),
-          SignalWaveform.empty('other.path'),
+          MonitorRow.empty('shared.path'),
+          MonitorRow.empty('shared.path'),
+          MonitorRow.empty('other.path'),
         ]),
         act: (bloc) => bloc.add(
           SignalSetOccurrenceValueFormatEvent(
@@ -501,8 +501,8 @@ void main() {
         'sets signed decimal for every monitored row of an occurrence',
         build: () => signalBloc,
         seed: () => SignalLoaded(mockSignals, [
-          SignalWaveform(signalId: 'signed.path', overrideWidth: 8),
-          SignalWaveform(signalId: 'signed.path', overrideWidth: 8),
+          MonitorRow(signalId: 'signed.path', overrideWidth: 8),
+          MonitorRow(signalId: 'signed.path', overrideWidth: 8),
         ]),
         act: (bloc) => bloc.add(
           SignalSetOccurrenceValueFormatEvent(
@@ -527,7 +527,7 @@ void main() {
       blocTest<SignalBloc, SignalState>(
         'sets and undoes a monitor group',
         build: () => signalBloc,
-        seed: () => SignalLoaded(mockSignals, [SignalWaveform.empty('a')]),
+        seed: () => SignalLoaded(mockSignals, [MonitorRow.empty('a')]),
         act: (bloc) {
           final row = bloc.state.monitorSignalsList.single;
           bloc
@@ -713,9 +713,9 @@ void main() {
         seed: () => SignalLoaded(
           mockSignals,
           [
-            SignalWaveform.empty('Counter.Signal1'),
-            SignalWaveform.empty('Counter.Signal2'),
-            SignalWaveform.empty('Counter.Signal3'),
+            MonitorRow.empty('Counter.Signal1'),
+            MonitorRow.empty('Counter.Signal2'),
+            MonitorRow.empty('Counter.Signal3'),
           ],
           moduleSelectedSignalIds: const {'Counter.Signal1', 'Counter.Signal3'},
         ),
@@ -732,7 +732,7 @@ void main() {
         build: () => signalBloc,
         seed: () => SignalLoaded(
           mockSignals,
-          [SignalWaveform.empty('a'), SignalWaveform.empty('b')],
+          [MonitorRow.empty('a'), MonitorRow.empty('b')],
           focusedSignalIds: const {'a', 'b'},
           moduleSelectedSignalIds: const {'a'},
         ),
@@ -750,7 +750,7 @@ void main() {
         'SignalRefreshEvent with cacheOnly re-reads from repo cache',
         build: () => signalBloc,
         seed: () => SignalLoaded(mockSignals, [
-          SignalWaveform.empty(mockSignals[0].path()),
+          MonitorRow.empty(mockSignals[0].path()),
         ]),
         act: (bloc) => bloc.add(SignalRefreshEvent(cacheOnly: true)),
         verify: (bloc) {
@@ -762,7 +762,7 @@ void main() {
         'SignalRefreshEvent preserves row-specific display metadata',
         build: () => signalBloc,
         seed: () {
-          final waveform = SignalWaveform.empty(mockSignals.first.path())
+          final waveform = MonitorRow.empty(mockSignals.first.path())
             ..valueFormat = MonitorValueFormat.signedDecimal
             ..monitorGroup = 'Control'
             ..monitorParentId = 'parent-monitor'
@@ -782,10 +782,33 @@ void main() {
       );
 
       blocTest<SignalBloc, SignalState>(
+        'refresh retains expanded and focused duplicate row identities',
+        build: () => signalBloc,
+        seed: () {
+          final first = MonitorRow.empty(mockSignals.first.path());
+          final second = MonitorRow.copyFrom(first);
+          return SignalLoaded(
+            mockSignals,
+            [first, second],
+            focusedSignalIds: {second.monitorId},
+            expandedMonitorSignals: {second.monitorId},
+          );
+        },
+        act: (bloc) => bloc.add(SignalRefreshEvent(cacheOnly: true)),
+        verify: (bloc) {
+          final rows = bloc.state.monitorSignalsList;
+          expect(rows, hasLength(2));
+          expect(rows.first.monitorId, isNot(rows.last.monitorId));
+          expect(bloc.state.focusedSignalIds, {rows.last.monitorId});
+          expect(bloc.state.expandedMonitorSignals, {rows.last.monitorId});
+        },
+      );
+
+      blocTest<SignalBloc, SignalState>(
         'session refresh clears history without discarding current rows',
         build: () => signalBloc,
         seed: () => SignalLoaded(mockSignals, [
-          SignalWaveform.empty(mockSignals.first.path()),
+          MonitorRow.empty(mockSignals.first.path()),
         ]),
         act: (bloc) async {
           final grouped = bloc.stream.firstWhere(
@@ -825,7 +848,7 @@ void main() {
 
     group('SignalState helpers', () {
       test('hasFocusedSignals returns true when set is non-empty', () {
-        final waveform = SignalWaveform.empty('a');
+        final waveform = MonitorRow.empty('a');
         final state = SignalLoaded(
           mockSignals,
           [waveform],
@@ -840,8 +863,8 @@ void main() {
       });
 
       test('focusedSignals returns matching waveforms', () {
-        final wfA = SignalWaveform.empty('a');
-        final wfB = SignalWaveform.empty('b');
+        final wfA = MonitorRow.empty('a');
+        final wfB = MonitorRow.empty('b');
         final state = SignalLoaded(
           mockSignals,
           [wfA, wfB],
@@ -852,7 +875,7 @@ void main() {
       });
 
       test('focusedSignal returns first focused or null', () {
-        final waveform = SignalWaveform.empty('a');
+        final waveform = MonitorRow.empty('a');
         final state1 = SignalLoaded(
           mockSignals,
           [waveform],
@@ -865,7 +888,7 @@ void main() {
       });
 
       test('isSignalFocused checks specific signal', () {
-        final waveform = SignalWaveform.empty('a');
+        final waveform = MonitorRow.empty('a');
         final state = SignalLoaded(
           mockSignals,
           [waveform],
@@ -937,8 +960,7 @@ void main() {
       blocTest<SignalBloc, SignalState>(
         'loadSignalList appends to existing monitor list',
         build: () => signalBloc,
-        seed: () =>
-            SignalLoaded(mockSignals, [SignalWaveform.empty('existing')]),
+        seed: () => SignalLoaded(mockSignals, [MonitorRow.empty('existing')]),
         act: (bloc) =>
             bloc.add(SignalLoadListEvent(mockSignals.take(1).toList())),
         verify: (bloc) {
@@ -1008,7 +1030,7 @@ void main() {
         'splits from an LSB offset and retains the final partial chunk',
         build: () => signalBloc,
         seed: () {
-          final parent = SignalWaveform(
+          final parent = MonitorRow(
             signalId: 'chunked',
             overrideWidth: 16,
             monitorGroup: 'Payload',
@@ -1129,7 +1151,7 @@ void main() {
         'refresh with cacheOnly=false reloads waveform data',
         build: () => signalBloc,
         seed: () {
-          final wf = SignalWaveform(signalId: 'Counter.Signal1');
+          final wf = MonitorRow(signalId: 'Counter.Signal1');
           return SignalLoaded(mockSignals, [wf]);
         },
         act: (bloc) => bloc.add(SignalRefreshEvent()),

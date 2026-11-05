@@ -238,7 +238,7 @@ class _SelectedSignalsPanelState extends State<SelectedSignalsPanel> {
   Widget _buildSignalRow(
     BuildContext context, {
     required SignalLoaded state,
-    required SignalWaveform signal,
+    required MonitorRow signal,
     required int index,
     required bool isFocused,
   }) {
@@ -446,7 +446,7 @@ class _SelectedSignalsPanelState extends State<SelectedSignalsPanel> {
   /// shift-click range-select.
   void _onSignalTap(
     BuildContext context,
-    SignalWaveform signal,
+    MonitorRow signal,
     bool isFocused,
     int index,
   ) {
@@ -492,7 +492,7 @@ class _SelectedSignalsPanelState extends State<SelectedSignalsPanel> {
   /// immediately without prompting.
   Future<void> _showFieldPickerMenu(
     BuildContext context, {
-    required SignalWaveform signal,
+    required MonitorRow signal,
     required int index,
     required Offset tapPosition,
   }) async {
@@ -628,7 +628,7 @@ class _SelectedSignalsPanelState extends State<SelectedSignalsPanel> {
   /// Show a small dialog to input a range (start:end) for array expansion.
   Future<void> _showRangeInputDialog(
     BuildContext context, {
-    required SignalWaveform signal,
+    required MonitorRow signal,
     required int index,
   }) async {
     final signalOccurrence = signal.signal!;
@@ -723,7 +723,7 @@ class _SelectedSignalsPanelState extends State<SelectedSignalsPanel> {
     BuildContext context,
     Offset globalPosition,
     SignalLoaded state,
-    SignalWaveform signal,
+    MonitorRow signal,
     int index,
     bool isFocused,
   ) async {
@@ -738,7 +738,7 @@ class _SelectedSignalsPanelState extends State<SelectedSignalsPanel> {
         ? state.monitorSignalsList
             .where((s) => state.focusedSignalIds.contains(s.monitorId))
             .toList()
-        : <SignalWaveform>[signal];
+        : <MonitorRow>[signal];
 
     final paths = selectedSignals.map((s) => s.fullPath ?? s.signalId).toList();
     final leafNames = selectedSignals.map((s) => s.name).toList();
@@ -847,7 +847,7 @@ class _SelectedSignalsPanelState extends State<SelectedSignalsPanel> {
   Future<void> _handleBitExpansion(
     BuildContext context,
     String value,
-    SignalWaveform signal,
+    MonitorRow signal,
     int index,
   ) async {
     final action = await resolveBitExpansionMenuValue(

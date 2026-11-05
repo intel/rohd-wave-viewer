@@ -10,9 +10,7 @@
 import 'dart:async';
 
 import 'package:rohd_hierarchy/rohd_hierarchy.dart';
-import 'package:rohd_wave_viewer/src/waveform_client_core/waveform_client_core.dart';
-import 'package:rohd_waveform/rohd_waveform.dart'
-    hide SignalWaveform, SignalWaveformRepository;
+import 'package:rohd_waveform/rohd_waveform.dart';
 import 'package:test/test.dart';
 
 class _TestWaveformApi extends SignalWaveformApi {

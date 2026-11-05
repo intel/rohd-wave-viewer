@@ -38,9 +38,9 @@ dependencies:
   material_ui: ^1.1.0
   package_info_plus: ^10.2.1
   rohd: '>=0.6.11 <0.8.0'
-  rohd_devtools_widgets: '>=0.1.1 <0.3.0'
-  rohd_hierarchy: '>=0.1.0 <0.3.0'
-  rohd_waveform: '>=0.1.0 <0.3.0'
+  rohd_devtools_widgets: ^0.1.1
+  rohd_hierarchy: ^0.1.1
+  rohd_waveform: ^0.1.1
   web: ^1.0.0
 
 dev_dependencies:

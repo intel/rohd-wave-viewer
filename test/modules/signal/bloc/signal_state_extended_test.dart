@@ -15,7 +15,7 @@ import 'package:rohd_wave_viewer/testing.dart';
 
 void main() {
   late List<SignalOccurrence> mockSignals;
-  late List<SignalWaveform> emptyMonitor;
+  late List<MonitorRow> emptyMonitor;
 
   setUp(() async {
     final api = MockSignalWaveformApi();
@@ -50,7 +50,7 @@ void main() {
     });
 
     test('focusedSignal returns first focused signal', () {
-      final wf = SignalWaveform(signalId: 'Counter.Signal1');
+      final wf = MonitorRow(signalId: 'Counter.Signal1');
       final state = SignalLoaded(
         mockSignals,
         [wf],
@@ -61,8 +61,8 @@ void main() {
     });
 
     test('focusedSignals returns matching waveforms', () {
-      final wf1 = SignalWaveform(signalId: 'Counter.Signal1');
-      final wf2 = SignalWaveform(signalId: 'Counter.Signal2');
+      final wf1 = MonitorRow(signalId: 'Counter.Signal1');
+      final wf2 = MonitorRow(signalId: 'Counter.Signal2');
       final state = SignalLoaded(
         mockSignals,
         [wf1, wf2],
@@ -184,7 +184,7 @@ void main() {
     // ──── getDisplayNameForSignal ────
 
     test('getDisplayNameForSignal falls back to leaf name with dot', () {
-      final wf = SignalWaveform(signalId: 'Counter.Signal1');
+      final wf = MonitorRow(signalId: 'Counter.Signal1');
       // No monitored signals with matching id — triggers fallback
       final state = SignalLoaded(mockSignals, const []);
       final name = state.getDisplayNameForSignal(wf);
@@ -194,14 +194,14 @@ void main() {
     });
 
     test('getDisplayNameForSignal falls back to leaf name with slash', () {
-      final wf = SignalWaveform(signalId: 'root/sub/Signal1');
+      final wf = MonitorRow(signalId: 'root/sub/Signal1');
       final state = SignalLoaded(mockSignals, const []);
       final name = state.getDisplayNameForSignal(wf);
       expect(name, 'Signal1');
     });
 
     test('getDisplayNameForSignal returns bare name without separator', () {
-      final wf = SignalWaveform(signalId: 'Signal1');
+      final wf = MonitorRow(signalId: 'Signal1');
       final state = SignalLoaded(mockSignals, const []);
       final name = state.getDisplayNameForSignal(wf);
       expect(name, 'Signal1');
@@ -209,7 +209,7 @@ void main() {
 
     test('getDisplayNameForSignal prefers a monitor-local alias', () {
       final monitored = MonitoredSignal.fromWaveform(
-        SignalWaveform(signalId: 'Counter.Signal1'),
+        MonitorRow(signalId: 'Counter.Signal1'),
         displayName: 'exponent',
       );
       final state = SignalLoaded(mockSignals, [monitored]);

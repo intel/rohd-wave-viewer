@@ -8,8 +8,7 @@
 // Author: Desmond Kirkpatrick <desmond.a.kirkpatrick@intel.com>
 
 import 'package:rohd_hierarchy/rohd_hierarchy.dart';
-import 'package:rohd_wave_viewer/src/waveform_client_core/waveform_client_core.dart'
-    as viewer;
+import 'package:rohd_wave_viewer/src/viewer_waveform_client.dart' as viewer;
 import 'package:rohd_waveform/rohd_waveform.dart';
 import 'package:test/test.dart';
 

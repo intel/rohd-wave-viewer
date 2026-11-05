@@ -1,0 +1,4 @@
+# The root package's tests require Flutter's test runner. Explicit paths passed
+# to dart test override this default; dart_wellen has its own configuration.
+paths:
+  - tool/test/flutter_test_runner_guard.dart

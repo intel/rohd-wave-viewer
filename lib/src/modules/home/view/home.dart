@@ -45,7 +45,8 @@ import 'package:rohd_wave_viewer/src/services/vscode_extension_client.dart'
 import 'package:rohd_wave_viewer/src/services/vscode_webview_interop_io.dart'
     if (dart.library.js_interop) 'package:rohd_wave_viewer/src/services/vscode_webview_interop_web.dart'
     as vscode;
-import 'package:rohd_wave_viewer/src/waveform_client_core/module_structure_hierarchy.dart';
+import 'package:rohd_wave_viewer/src/viewer_waveform_client.dart'
+    show resolveModuleStructure;
 
 /// Main page for the standalone and embedded waveform viewer.
 class WaveFormViewerPage extends StatefulWidget {

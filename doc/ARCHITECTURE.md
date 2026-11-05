@@ -11,7 +11,7 @@ The Pub workspace has the root application and one member:
 ```text
 .
 ├── lib/                              # Flutter application
-│   └── src/waveform_client_core/      # Future rohd_waveform migration unit
+│   └── src/modules/signal/           # Viewer-owned monitor-row state
 ├── packages/
 │   └── dart_wellen/                   # Wellen Rust FFI bindings
 └── rust/wellen_bridge/                # Native and WebAssembly Wellen bridge
@@ -92,11 +92,11 @@ Widgets rebuild from BLoC state; repositories and services are supplied with
 targets. Its `WellenSignalWaveformApi` loads VCD, FST, and GHW data and exposes
 the shared waveform contracts from `rohd_waveform`.
 
-`lib/src/waveform_client_core/` contains `SignalWaveformRepository`, which
-caches loaded signals and waveform data for the viewer. Its
-`RepositorySignalDataService` adapts cached data for waveform presentation.
-The viewer imports `viewer_waveform_client.dart`, a compatibility seam that
-will adapt the API after the reusable core moves into `rohd_waveform`.
+`rohd_waveform` supplies `SignalWaveformRepository`, which caches signals and
+waveforms, and `RepositorySignalDataService`, which adapts the cache for
+presentation. The viewer imports them through `viewer_waveform_client.dart`.
+Its `MonitorRow` model keeps row identity, grouping and display preferences
+separate from the shared waveform data.
 
 ## Runtime Data Flow
 

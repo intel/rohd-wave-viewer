@@ -22,7 +22,7 @@ part 'signal_event.dart';
 part 'signal_state.dart';
 
 class _MonitorSnapshot {
-  final List<SignalWaveform> monitorSignals;
+  final List<MonitorRow> monitorSignals;
   final Set<String> focusedMonitorIds;
   final Set<String> expandedMonitorIds;
 
@@ -35,8 +35,8 @@ class _MonitorSnapshot {
   factory _MonitorSnapshot.fromState(SignalLoaded state) => _MonitorSnapshot(
         monitorSignals: state.monitorSignalsList
             .map(
-              (waveform) => SignalWaveform.copyFrom(waveform,
-                  monitorId: waveform.monitorId),
+              (waveform) =>
+                  MonitorRow.copyFrom(waveform, monitorId: waveform.monitorId),
             )
             .toList(),
         focusedMonitorIds: Set<String>.from(state.focusedSignalIds),
@@ -197,7 +197,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
       if (!event.monitorIds.contains(waveform.monitorId)) {
         return waveform;
       }
-      return SignalWaveform.copyFrom(waveform, monitorId: waveform.monitorId)
+      return MonitorRow.copyFrom(waveform, monitorId: waveform.monitorId)
         ..valueFormat = event.valueFormat;
     }).toList();
     _recordMonitorEdit();
@@ -254,7 +254,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
       if (!event.signalPaths.contains(path)) {
         return waveform;
       }
-      return SignalWaveform.copyFrom(waveform, monitorId: waveform.monitorId)
+      return MonitorRow.copyFrom(waveform, monitorId: waveform.monitorId)
         ..valueFormat = event.valueFormat;
     }).toList();
 
@@ -286,7 +286,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
       if (!event.monitorIds.contains(waveform.monitorId)) {
         return waveform;
       }
-      return SignalWaveform.copyFrom(waveform, monitorId: waveform.monitorId)
+      return MonitorRow.copyFrom(waveform, monitorId: waveform.monitorId)
         ..monitorGroup = groupName?.isEmpty ?? true ? null : groupName;
     }).toList();
     _recordMonitorEdit();
@@ -351,7 +351,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
 
     // Only fetch from the backend if we don't already have real data.
     // _buildSignalCache() pre-populates _waveformCache with empty
-    // SignalWaveform entries for every signal in the hierarchy, so a
+    // MonitorRow entries for every signal in the hierarchy, so a
     // non-null result from getWaveform does NOT mean data was fetched.
     // Check data.isEmpty to distinguish placeholders from real data.
     var cachedWaveform = signalAddr != null
@@ -373,13 +373,13 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
 
     // Create a COPY of the waveform for this monitor entry. This is critical
     // for duplicate signal support: when the same signal is added multiple
-    // times, each monitor entry must have its own SignalWaveform instance.
+    // times, each monitor entry must have its own MonitorRow instance.
     // Otherwise, all duplicates share the same object reference, which causes
     // visual corruption after reorder (painters read from the same data, strip
     // cache can't distinguish rows, etc.).
     final waveform = (cachedWaveform != null
-        ? SignalWaveform.copyFrom(cachedWaveform)
-        : SignalWaveform.empty(signalKey))
+        ? MonitorRow.fromWaveform(cachedWaveform)
+        : MonitorRow.empty(signalKey))
       ..valueFormat = _valueFormatForNewSignal(
         signalKey,
         address: signalAddr,
@@ -421,7 +421,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
       signalIds: signalPaths,
     );
 
-    final restoredSignals = <SignalWaveform>[];
+    final restoredSignals = <MonitorRow>[];
     for (var index = 0; index < signalPaths.length; index++) {
       final path = signalPaths[index];
       final cached = _signalWaveformRepository.getWaveformById(path);
@@ -430,8 +430,8 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
         continue;
       }
       final waveform = (cached != null
-          ? SignalWaveform.copyFrom(cached)
-          : SignalWaveform.empty(path))
+          ? MonitorRow.fromWaveform(cached)
+          : MonitorRow.empty(path))
         ..valueFormat =
             event.valueFormats != null && index < event.valueFormats!.length
                 ? event.valueFormats![index]
@@ -509,7 +509,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
 
   /// Derive `overrideWidth` and `overrideName` for a sub-field waveform
   /// from the signal ID structure and the parent signal's logicType metadata.
-  void _deriveSubFieldOverrides(SignalWaveform waveform, String signalId) {
+  void _deriveSubFieldOverrides(MonitorRow waveform, String signalId) {
     final hashIdx = signalId.indexOf('#');
     if (hashIdx < 0) {
       return;
@@ -811,7 +811,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
     final updatedMonitorList = availableMonitors.map((waveform) {
       final updated = _signalWaveformRepository.getWaveformById(waveform.id);
       if (updated != null) {
-        return SignalWaveform.copyFrom(
+        return MonitorRow.fromWaveform(
           updated,
           monitorId: waveform.monitorId,
         )
@@ -825,9 +825,6 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
     }).toList();
     final availableMonitorIds =
         availableMonitors.map((waveform) => waveform.monitorId).toSet();
-    final availableSignalIds =
-        availableMonitors.map((waveform) => waveform.id).toSet();
-
     emit(
       SignalLoaded(
         state.signals,
@@ -841,7 +838,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
         sortAscending: state.sortAscending,
         moduleSelectedSignalIds: state.moduleSelectedSignalIds,
         expandedMonitorSignals: state.expandedMonitorSignals.intersection(
-          availableSignalIds,
+          availableMonitorIds,
         ),
       ),
     );
@@ -872,7 +869,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
   /// Reorder a signal in the monitor list.
   void reorderSignal(SignalReorderEvent event, Emitter<SignalState> emit) {
     _recordMonitorEdit();
-    final list = List<SignalWaveform>.from(state.monitorSignalsList);
+    final list = List<MonitorRow>.from(state.monitorSignalsList);
     final item = list.removeAt(event.oldIndex);
     list.insert(event.newIndex, item);
 
@@ -897,11 +894,11 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
     Emitter<SignalState> emit,
   ) {
     _recordMonitorEdit();
-    final list = List<SignalWaveform>.from(state.monitorSignalsList);
+    final list = List<MonitorRow>.from(state.monitorSignalsList);
     final oldIndices = List<int>.from(event.oldIndices)..sort();
 
     // Extract group items in their original relative order.
-    final groupItems = <SignalWaveform>[for (final i in oldIndices) list[i]];
+    final groupItems = <MonitorRow>[for (final i in oldIndices) list[i]];
 
     // Remove group items from list (reverse to preserve indices).
     for (var i = oldIndices.length - 1; i >= 0; i--) {
@@ -943,7 +940,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
   /// caller (via [OccurrenceAddress.tryFromPathname] +
   /// [HierarchyService.signalByAddress]).  This handler follows the same path
   /// as [addSignalToMonitor]: load waveform data for each signal, then retrieve
-  /// the cached [SignalWaveform].
+  /// the cached [MonitorRow].
   ///
   /// **Appends** the resolved signals to the existing monitor list rather than
   /// replacing it.  Duplicates are allowed.
@@ -952,7 +949,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
     Emitter<SignalState> emit,
   ) async {
     // Start from the existing monitor list so loaded signals are appended.
-    final existing = List<SignalWaveform>.from(state.monitorSignalsList);
+    final existing = List<MonitorRow>.from(state.monitorSignalsList);
 
     // Batch: collect all signal keys and fetch in one API call.
     final signalKeys = event.signals.map((s) => s.path()).toList();
@@ -969,8 +966,8 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
           ? _signalWaveformRepository.getWaveform(signalAddr)
           : _signalWaveformRepository.getWaveformById(signalKey);
       final waveform = cachedWaveform != null
-          ? SignalWaveform.copyFrom(cachedWaveform)
-          : SignalWaveform.empty(signalKey);
+          ? MonitorRow.fromWaveform(cachedWaveform)
+          : MonitorRow.empty(signalKey);
       existing.add(waveform);
     }
 
@@ -1141,12 +1138,12 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
     );
 
     // Build waveform list from cache after the single batch fetch.
-    final newWaveforms = <SignalWaveform>[];
+    final newWaveforms = <MonitorRow>[];
     for (final signalKey in signalKeys) {
       final cached = _signalWaveformRepository.getWaveformById(signalKey);
       final waveform = (cached != null
-          ? SignalWaveform.copyFrom(cached)
-          : SignalWaveform.empty(signalKey))
+          ? MonitorRow.fromWaveform(cached)
+          : MonitorRow.empty(signalKey))
         ..valueFormat = valueFormatForSignalPath(signalKey);
       newWaveforms.add(waveform);
     }
@@ -1179,7 +1176,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
     final selectedSignals = state.signals
         .where((signal) => selectedIds.contains(signal.path()))
         .toList();
-    bool isSelected(SignalWaveform waveform) =>
+    bool isSelected(MonitorRow waveform) =>
         selectedIds.contains(waveform.signalId) ||
         selectedSignals.any(waveform.matchesOccurrence);
 
@@ -1273,8 +1270,8 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
       subFieldId,
     );
     final waveform = (cachedWaveform != null
-        ? SignalWaveform.copyFrom(cachedWaveform)
-        : SignalWaveform.empty(subFieldId))
+        ? MonitorRow.fromWaveform(cachedWaveform)
+        : MonitorRow.empty(subFieldId))
       // Set override metadata for sub-field waveforms that don't exist in the
       // hierarchy tree (so signal lookup returns null).
       ..overrideWidth = event.width
@@ -1329,7 +1326,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
     final selectedIndices = event.fieldIndices;
 
     // Build sub-field waveforms for each descriptor.
-    final subWaveforms = <SignalWaveform>[];
+    final subWaveforms = <MonitorRow>[];
     for (var i = 0; i < descriptors.length; i++) {
       if (selectedIndices != null && !selectedIndices.contains(i)) {
         continue;
@@ -1361,8 +1358,8 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
           cachedWaveform = _signalWaveformRepository.getWaveformById(childPath);
         }
         final waveform = cachedWaveform != null
-            ? SignalWaveform.copyFrom(cachedWaveform)
-            : SignalWaveform.empty(childPath);
+            ? MonitorRow.fromWaveform(cachedWaveform)
+            : MonitorRow.empty(childPath);
         subWaveforms.add(waveform..monitorParentId = parentWaveform.monitorId);
       } else {
         // Use bit-slice computed waveform.
@@ -1373,8 +1370,8 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
           subFieldId,
         );
         final waveform = (cachedWaveform != null
-            ? SignalWaveform.copyFrom(cachedWaveform, isComputed: true)
-            : SignalWaveform.empty(subFieldId, isComputed: true))
+            ? MonitorRow.fromWaveform(cachedWaveform, isComputed: true)
+            : MonitorRow.empty(subFieldId, isComputed: true))
           ..overrideWidth = desc.width;
         // Build display name like "parentName[0]" or "parentName_field"
         final parentName = parentSignal.name;
@@ -1394,7 +1391,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
 
     // Insert sub-fields after the parent in the monitor list.
     final insertIndex = event.index + 1;
-    final updatedList = List<SignalWaveform>.from(state.monitorSignalsList)
+    final updatedList = List<MonitorRow>.from(state.monitorSignalsList)
       ..insertAll(
         insertIndex.clamp(0, state.monitorSignalsList.length),
         subWaveforms,
@@ -1480,7 +1477,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
     final bitStart = event.bitStart;
     final bitEnd = event.bitEnd;
 
-    final subWaveforms = <SignalWaveform>[];
+    final subWaveforms = <MonitorRow>[];
     for (var bit = bitEnd; bit >= bitStart; bit--) {
       final subFieldId = '$parentPath#b[$bit]';
       await _signalWaveformRepository.loadAndAppendWaveformData(
@@ -1488,8 +1485,8 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
       );
       final cached = _signalWaveformRepository.getWaveformById(subFieldId);
       final waveform = (cached != null
-          ? SignalWaveform.copyFrom(cached, isComputed: true)
-          : SignalWaveform.empty(subFieldId, isComputed: true))
+          ? MonitorRow.fromWaveform(cached, isComputed: true)
+          : MonitorRow.empty(subFieldId, isComputed: true))
         ..overrideWidth = 1
         ..overrideName = '$parentName[$bit]'
         ..monitorParentId = parentWaveform.monitorId;
@@ -1505,7 +1502,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
       event.index,
       parentPath,
     );
-    final updatedList = List<SignalWaveform>.from(state.monitorSignalsList)
+    final updatedList = List<MonitorRow>.from(state.monitorSignalsList)
       ..insertAll(
         insertIndex.clamp(0, state.monitorSignalsList.length),
         subWaveforms,
@@ -1555,7 +1552,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
       ranges.add((high: high, low: low));
     }
 
-    final subWaveforms = <SignalWaveform>[];
+    final subWaveforms = <MonitorRow>[];
     for (final range in ranges.reversed) {
       final subFieldId = range.high == range.low
           ? '$parentPath#b[${range.low}]'
@@ -1565,8 +1562,8 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
       );
       final cached = _signalWaveformRepository.getWaveformById(subFieldId);
       final waveform = (cached != null
-          ? SignalWaveform.copyFrom(cached, isComputed: true)
-          : SignalWaveform.empty(subFieldId, isComputed: true))
+          ? MonitorRow.fromWaveform(cached, isComputed: true)
+          : MonitorRow.empty(subFieldId, isComputed: true))
         ..overrideWidth = range.high - range.low + 1
         ..overrideName = range.high == range.low
             ? '$parentName[${range.low}]'
@@ -1581,7 +1578,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
       event.index,
       parentPath,
     );
-    final updatedList = List<SignalWaveform>.from(state.monitorSignalsList)
+    final updatedList = List<MonitorRow>.from(state.monitorSignalsList)
       ..insertAll(
         insertIndex.clamp(0, state.monitorSignalsList.length),
         subWaveforms,
@@ -1615,7 +1612,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
     final parentPath = parentWaveform.fullPath ?? parentWaveform.signalId;
     final parentName = parentWaveform.name;
 
-    final subWaveforms = <SignalWaveform>[];
+    final subWaveforms = <MonitorRow>[];
     for (final field in event.fields) {
       final subFieldId = field.high == field.low
           ? '$parentPath#b[${field.low}]'
@@ -1625,8 +1622,8 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
       );
       final cached = _signalWaveformRepository.getWaveformById(subFieldId);
       final waveform = (cached != null
-          ? SignalWaveform.copyFrom(cached, isComputed: true)
-          : SignalWaveform.empty(subFieldId, isComputed: true))
+          ? MonitorRow.fromWaveform(cached, isComputed: true)
+          : MonitorRow.empty(subFieldId, isComputed: true))
         ..overrideWidth = field.width
         ..overrideName = '$parentName.${field.name}'
         ..monitorParentId = parentWaveform.monitorId;
@@ -1642,7 +1639,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
       event.index,
       parentPath,
     );
-    final updatedList = List<SignalWaveform>.from(state.monitorSignalsList)
+    final updatedList = List<MonitorRow>.from(state.monitorSignalsList)
       ..insertAll(
         insertIndex.clamp(0, state.monitorSignalsList.length),
         subWaveforms,
@@ -1670,7 +1667,7 @@ class SignalBloc extends Bloc<SignalEvent, SignalState> {
   /// path starts with `parentPath#` (sub-field separator).  Returns the index
   /// immediately after the last such entry.
   static int _findInsertAfterSubFields(
-    List<SignalWaveform> list,
+    List<MonitorRow> list,
     int parentIndex,
     String parentPath,
   ) {

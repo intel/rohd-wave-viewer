@@ -39,7 +39,7 @@ void main() {
   late MockSignalWaveformApi signalWaveformApi;
   late SignalWaveformRepository signalWaveformRepository;
   late List<SignalOccurrence> signals;
-  late List<SignalWaveform> monitoredSignals;
+  late List<MonitorRow> monitoredSignals;
 
   setUp(() async {
     rohdModuleBloc = MockRohdModuleBloc();
@@ -59,7 +59,7 @@ void main() {
     final waveforms = signalWaveformRepository.getWaveformsBySelectedModule(
       selectedModule,
     );
-    monitoredSignals = waveforms.take(3).toList();
+    monitoredSignals = waveforms.take(3).map(MonitorRow.fromWaveform).toList();
     waveformModuleBloc = WaveformModuleBloc(
       signalWaveformRepository: signalWaveformRepository,
     );
@@ -194,7 +194,7 @@ void main() {
         final fixtureWaveforms = (await api.getWaveformData(
           signalIds: structure.allSignalIds,
         ))
-            .map(SignalWaveform.fromWaveformData)
+            .map(MonitorRow.fromWaveformData)
             .toList();
         final fixtureCursorBloc = WaveformModuleBloc(
           signalWaveformRepository: fixtureRepository,

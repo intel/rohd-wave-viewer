@@ -96,11 +96,14 @@ WAVE_SOURCE_VALUE=github.com/desmonddak/rohd-wave-viewer:modernize \
 flutter pub get
 ```
 
-The committed manifests use published `rohd`, `rohd_hierarchy`,
-`rohd_waveform`, and `rohd_devtools_widgets` packages.
-`lib/src/waveform_client_core/` contains backend-neutral Wave Viewer client
-state and depends on the published `rohd_waveform` service contracts. Its
-README defines the boundary for eventual migration into `rohd_waveform`.
+The manifests normally select published `rohd`, `rohd_hierarchy`,
+`rohd_waveform`, and `rohd_devtools_widgets` packages. The viewer now uses the
+shared repository and signal-data service from `rohd_waveform` 0.1.1. Until
+that release is published, use a compatible local ROHD checkout via
+`configure-group all local` for this development version. After publication,
+raise the viewer's minimum `rohd_waveform` constraint to 0.1.1 and validate
+hosted resolution before releasing the viewer. Monitor-row identity and
+presentation state remain in the viewer.
 Any selection that differs from the manifest baseline writes one ignored
 override at the workspace root, which applies to every member. Selecting
 hosted or Git Wave Viewer packages also disables the local Pub workspace so
