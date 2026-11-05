@@ -157,6 +157,18 @@ Then publish `rohd_wave_viewer` against that hosted `dart_wellen` version.
 Consumers receive the complete bridge package from pub.dev and verify it
 without downloading a GitHub artifact.
 
+To prepare the same complete payload in a local producer worktree, run the
+**Prepare dart_wellen Consumer Artifacts** VS Code task or:
+
+```bash
+make ci-consumer-artifacts
+```
+
+This builds the producer artifacts and writes the local
+`tool/bridge_artifacts.build.json` plus deterministic archive. It does not
+publish a release, change the checked-in contract, or make the worktree a
+pub.dev archive; select that worktree through a consumer's local source mode.
+
 For development branches, General CI prepares and publishes the complete
 `dart-wellen` payload under `artifacts/dart-wellen/<source-commit>/` for every
 successful push. A consumer must use the same Git repository/ref for both
