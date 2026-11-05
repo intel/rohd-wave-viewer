@@ -1,0 +1,18 @@
+{
+  "version": "0.1.2",
+  "bridge_version": "2.8.0",
+  "profile": "release",
+  "archive_url": "https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-0.1.2/dart_wellen-0.1.2-web.tar.gz",
+  "files": {
+    "lib/src/rust/api.dart": "3caca7284c54a05da279c2a878ba101d9bc7992e0704292c133f05a7a8a6bd7e",
+    "lib/src/rust/frb_generated.dart": "bedf0be804decf5f384cc3f121d779c552959ed75df69f99d1ddb8c59a798697",
+    "lib/src/rust/frb_generated.io.dart": "ab3380d41ae01efcaebc4153f04ca8744dc006e6dbc9dcb5df6db87dfbad746c",
+    "lib/src/rust/frb_generated.web.dart": "4b8ea7f3759eeb90cf857870c15497518cf2f6607e37baee2cb90b1a83b4e5f6",
+    "web/pkg/wellen_bridge.js": "60b95d33959fad3e34ed16c914ed880fe48e988144e8ad6ebb88edaa68e5f74a",
+    "web/pkg/wellen_bridge_bg.wasm": "0e8720de20542b94a1f3cc079ff4a6e4960839714871296e31a0590f040659e6",
+    "web/pkg/LICENSE": "83489be07bc27aec19cc60d6b99206536c398ec4097a78e27c3ecbfe63688301",
+    "web/pkg/wellen_bridge_LICENSES.txt": "c2c541c51cba7d6b66cbaef14310efffbf649e17ac650765792aa3f3b9c90aae"
+  },
+  "source_commit": "b8debb93f844368de02cba023d5e769d2ba51a47",
+  "archive_sha256": "75a5190e0df5bb19329666137910b777f909ba68fc37ed41dcb3cec99bb96d5f"
+}
