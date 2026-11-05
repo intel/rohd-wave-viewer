@@ -20,7 +20,7 @@ void main() {
   late HierarchyOccurrence selectedModule;
 
   late List<SignalOccurrence> mockSignals;
-  late List<SignalWaveform> mockMonitorSignals;
+  late List<MonitorRow> mockMonitorSignals;
 
   setUp(() async {
     signalWaveformApi = MockSignalWaveformApi();

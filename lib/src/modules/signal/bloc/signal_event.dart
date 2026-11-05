@@ -44,7 +44,7 @@ class SignalSelectedEvent extends SignalEvent {
 /// this signal.
 class SignalFocusEvent extends SignalEvent {
   /// The waveform to focus.
-  final SignalWaveform waveform;
+  final MonitorRow waveform;
 
   /// Whether to extend the current focus selection.
   final bool isMultiSelect;
@@ -95,7 +95,7 @@ class SignalUnfocusOneEvent extends SignalEvent {
 /// Removes a signal from the monitor list (used when DEL key is pressed).
 class SignalRemoveEvent extends SignalEvent {
   /// The waveform to remove.
-  final SignalWaveform waveform;
+  final MonitorRow waveform;
 
   /// Creates a signal removal event.
   SignalRemoveEvent(this.waveform);
@@ -457,7 +457,7 @@ class SignalFocusAllEvent extends SignalEvent {
 /// are expanded.  When null, all sub-fields are inserted.
 class SignalExpandMonitorEvent extends SignalEvent {
   /// The waveform entry in the monitor list to expand.
-  final SignalWaveform waveform;
+  final MonitorRow waveform;
 
   /// Index of the waveform in the monitor list.
   final int index;
@@ -481,7 +481,7 @@ class SignalExpandMonitorEvent extends SignalEvent {
 /// removing its sub-field waveform entries.
 class SignalCollapseMonitorEvent extends SignalEvent {
   /// The waveform entry in the monitor list to collapse.
-  final SignalWaveform waveform;
+  final MonitorRow waveform;
 
   /// Creates an event that collapses a monitored signal.
   SignalCollapseMonitorEvent({required this.waveform});
@@ -544,7 +544,7 @@ class SignalSubFieldSelectedEvent extends SignalEvent {
 /// When null, all bits (0..width-1) are expanded as individual 1-bit signals.
 class SignalBitExpandEvent extends SignalEvent {
   /// The monitored waveform to expand (must already be in the monitor list).
-  final SignalWaveform waveform;
+  final MonitorRow waveform;
 
   /// Index of [waveform] in the monitor list (for insertion after it).
   final int index;
@@ -573,7 +573,7 @@ class SignalBitExpandEvent extends SignalEvent {
 /// than [chunkWidth].
 class SignalBitChunkEvent extends SignalEvent {
   /// The monitored waveform to split.
-  final SignalWaveform waveform;
+  final MonitorRow waveform;
 
   /// Index of [waveform] in the monitor list.
   final int index;
@@ -603,7 +603,7 @@ class SignalBitChunkEvent extends SignalEvent {
 /// onto a flat bitvector signal.
 class SignalBitFieldsEvent extends SignalEvent {
   /// The monitored waveform to define fields on.
-  final SignalWaveform waveform;
+  final MonitorRow waveform;
 
   /// Index of [waveform] in the monitor list (for insertion after it).
   final int index;

@@ -26,6 +26,10 @@ try {
     owner: match[1],
     repo: match[2],
   });
+  if (location.tag !== `dart-wellen-${contract.version}`
+      || location.name !== `dart_wellen-${contract.version}-web.tar.gz`) {
+    throw new Error('Bridge artifact publication URL must use the package version.');
+  }
   console.log(
     `Bridge artifact publication URL belongs to ${location.owner}/${location.repo}.`,
   );

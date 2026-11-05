@@ -60,8 +60,8 @@ void main() {
         SignalWaveform.signalLookup = (id) => signals[id];
 
         final waveforms = [
-          SignalWaveform(signalId: 'sig1'),
-          SignalWaveform(signalId: 'sig2'),
+          MonitorRow(signalId: 'sig1'),
+          MonitorRow(signalId: 'sig2'),
         ];
 
         final displayNames = generateSignalDisplayNames(waveforms);
@@ -82,8 +82,8 @@ void main() {
         SignalWaveform.signalLookup = (id) => signals[id];
 
         final waveforms = [
-          SignalWaveform(signalId: 'sig1'),
-          SignalWaveform(signalId: 'sig2'),
+          MonitorRow(signalId: 'sig1'),
+          MonitorRow(signalId: 'sig2'),
         ];
 
         final displayNames = generateSignalDisplayNames(waveforms);
@@ -103,8 +103,8 @@ void main() {
         SignalWaveform.signalLookup = (id) => signals[id];
 
         final waveforms = [
-          SignalWaveform(signalId: 'sig1'),
-          SignalWaveform(signalId: 'sig2'),
+          MonitorRow(signalId: 'sig1'),
+          MonitorRow(signalId: 'sig2'),
         ];
 
         final displayNames = generateSignalDisplayNames(waveforms);
@@ -119,7 +119,7 @@ void main() {
 
         SignalWaveform.signalLookup = (id) => signals[id];
 
-        final waveforms = [SignalWaveform(signalId: 'sig1')];
+        final waveforms = [MonitorRow(signalId: 'sig1')];
 
         final displayNames = generateSignalDisplayNames(waveforms);
 
@@ -136,7 +136,7 @@ void main() {
 
         SignalWaveform.signalLookup = (id) => signals[id];
 
-        final waveforms = [SignalWaveform(signalId: 'sig1')];
+        final waveforms = [MonitorRow(signalId: 'sig1')];
 
         final displayNames = generateSignalDisplayNames(waveforms);
 
@@ -156,9 +156,9 @@ void main() {
           SignalWaveform.signalLookup = (id) => signals[id];
 
           final waveforms = [
-            SignalWaveform(signalId: 'sig1'),
-            SignalWaveform(signalId: 'sig2'),
-            SignalWaveform(signalId: 'sig3'),
+            MonitorRow(signalId: 'sig1'),
+            MonitorRow(signalId: 'sig2'),
+            MonitorRow(signalId: 'sig3'),
           ];
 
           final displayNames = generateSignalDisplayNames(waveforms);
@@ -183,8 +183,8 @@ void main() {
         SignalWaveform.signalLookup = (id) => signals[id];
 
         final waveforms = [
-          SignalWaveform(signalId: 'sig1'),
-          SignalWaveform(signalId: 'sig2'),
+          MonitorRow(signalId: 'sig1'),
+          MonitorRow(signalId: 'sig2'),
         ];
 
         final displayNames = generateSignalDisplayNames(
@@ -205,8 +205,8 @@ void main() {
         SignalWaveform.signalLookup = (id) => signals[id];
 
         final waveforms = [
-          SignalWaveform(signalId: 'sig1'),
-          SignalWaveform(signalId: 'sig2'),
+          MonitorRow(signalId: 'sig1'),
+          MonitorRow(signalId: 'sig2'),
         ];
 
         final displayNames = generateSignalDisplayNames(
@@ -226,7 +226,7 @@ void main() {
 
         SignalWaveform.signalLookup = (id) => signals[id];
 
-        final waveforms = [SignalWaveform(signalId: 'sig1')];
+        final waveforms = [MonitorRow(signalId: 'sig1')];
 
         final displayNames = generateSignalDisplayNames(
           waveforms,
@@ -246,8 +246,8 @@ void main() {
         SignalWaveform.signalLookup = (id) => signals[id];
 
         final waveforms = [
-          SignalWaveform(signalId: 'sig1'),
-          SignalWaveform(signalId: 'sig2'),
+          MonitorRow(signalId: 'sig1'),
+          MonitorRow(signalId: 'sig2'),
         ];
 
         final displayNames = generateSignalDisplayNames(
@@ -270,10 +270,10 @@ void main() {
         SignalWaveform.signalLookup = (id) => signals[id];
 
         final waveforms = [
-          SignalWaveform(signalId: 'sig1'),
-          SignalWaveform(signalId: 'sig2'),
-          SignalWaveform(signalId: 'sig3'),
-          SignalWaveform(signalId: 'sig4'),
+          MonitorRow(signalId: 'sig1'),
+          MonitorRow(signalId: 'sig2'),
+          MonitorRow(signalId: 'sig3'),
+          MonitorRow(signalId: 'sig4'),
         ];
 
         final displayNames = generateSignalDisplayNames(
@@ -300,8 +300,8 @@ void main() {
         SignalWaveform.signalLookup = (id) => signals[id];
 
         final waveforms = [
-          SignalWaveform(signalId: 'sig1'),
-          SignalWaveform(signalId: 'sig2'),
+          MonitorRow(signalId: 'sig1'),
+          MonitorRow(signalId: 'sig2'),
         ];
 
         final displayNames = generateSignalDisplayNames(
@@ -321,7 +321,7 @@ void main() {
 
         SignalWaveform.signalLookup = (id) => signals[id];
 
-        final waveforms = [SignalWaveform(signalId: 'sig1')];
+        final waveforms = [MonitorRow(signalId: 'sig1')];
 
         final displayNames = generateSignalDisplayNames(
           waveforms,
@@ -341,8 +341,8 @@ void main() {
         SignalWaveform.signalLookup = (id) => signals[id];
 
         final waveforms = [
-          SignalWaveform(signalId: 'sig1'),
-          SignalWaveform(signalId: 'sig2'),
+          MonitorRow(signalId: 'sig1'),
+          MonitorRow(signalId: 'sig2'),
         ];
 
         // Both names are unique → always bare, regardless of selected module
@@ -384,9 +384,9 @@ void main() {
         SignalWaveform.signalLookup = (id) => signals[id];
 
         final waveforms = [
-          SignalWaveform(signalId: 'testbench.clk'),
-          SignalWaveform(signalId: 'testbench.reset'),
-          SignalWaveform(signalId: 'testbench.data'),
+          MonitorRow(signalId: 'testbench.clk'),
+          MonitorRow(signalId: 'testbench.reset'),
+          MonitorRow(signalId: 'testbench.data'),
         ];
 
         final displayNames = generateSignalDisplayNames(
@@ -412,8 +412,8 @@ void main() {
         SignalWaveform.signalLookup = (id) => signals[id];
 
         final waveforms = [
-          SignalWaveform(signalId: 'testbench.clk'),
-          SignalWaveform(signalId: 'testbench.reset'),
+          MonitorRow(signalId: 'testbench.clk'),
+          MonitorRow(signalId: 'testbench.reset'),
         ];
 
         final displayNames = generateSignalDisplayNames(waveforms);
@@ -426,14 +426,14 @@ void main() {
       test(
           'Real-app format: signal lookup failure falls back to signalId '
           '(regression check)', () {
-        // When the signal lookup fails, SignalWaveform.name returns signalId
+        // When the signal lookup fails, MonitorRow.name returns signalId
         // which is the fullPath like "testbench.clk". The disambiguation
         // should NOT produce "testbench.clk" as the display name.
         SignalWaveform.clearSignalLookup();
 
         final waveforms = [
-          SignalWaveform(signalId: 'testbench.clk'),
-          SignalWaveform(signalId: 'testbench.reset'),
+          MonitorRow(signalId: 'testbench.clk'),
+          MonitorRow(signalId: 'testbench.reset'),
         ];
 
         // Without signal lookup, signal.name = signalId = "testbench.clk"
@@ -456,8 +456,8 @@ void main() {
         SignalWaveform.clearSignalLookup();
 
         final waveforms = [
-          SignalWaveform(signalId: 'testbench.clk'),
-          SignalWaveform(signalId: 'testbench.reset'),
+          MonitorRow(signalId: 'testbench.clk'),
+          MonitorRow(signalId: 'testbench.reset'),
         ];
 
         final displayNames = generateSignalDisplayNames(waveforms);
@@ -480,9 +480,9 @@ void main() {
         SignalWaveform.signalLookup = (id) => signals[id];
 
         final waveforms = [
-          SignalWaveform(signalId: 'top.counter.clk'),
-          SignalWaveform(signalId: 'top.counter.clk'), // same signal again
-          SignalWaveform(signalId: 'top.counter.clk'), // and again
+          MonitorRow(signalId: 'top.counter.clk'),
+          MonitorRow(signalId: 'top.counter.clk'), // same signal again
+          MonitorRow(signalId: 'top.counter.clk'), // and again
         ];
 
         // Without selectedModulePath (fallback path)
@@ -512,9 +512,9 @@ void main() {
         SignalWaveform.signalLookup = (id) => signals[id];
 
         final waveforms = [
-          SignalWaveform(signalId: 'top.counter.clk'),
-          SignalWaveform(signalId: 'top.counter.clk'), // duplicate
-          SignalWaveform(signalId: 'top.timer.clk'),
+          MonitorRow(signalId: 'top.counter.clk'),
+          MonitorRow(signalId: 'top.counter.clk'), // duplicate
+          MonitorRow(signalId: 'top.timer.clk'),
         ];
 
         final displayNames = generateSignalDisplayNames(waveforms);

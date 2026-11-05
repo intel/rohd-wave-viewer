@@ -103,7 +103,7 @@ void main() {
     testWidgets('passes wheel zoom through a clipped-value hover tooltip', (
       tester,
     ) async {
-      final clippedBus = SignalWaveform(
+      final clippedBus = MonitorRow(
         signalId: 'test/clipped_bus',
         overrideWidth: 16,
         data: [
@@ -190,7 +190,7 @@ void main() {
               (datum) => datum.value.toLowerCase() == 'z',
             ),
       );
-      final monitoredWaveform = SignalWaveform.fromWaveformData(
+      final monitoredWaveform = MonitorRow.fromWaveformData(
         fixtureWaveform,
       );
       final expectedTime = monitoredWaveform
@@ -208,7 +208,7 @@ void main() {
         SignalLoaded(
           const [],
           [monitoredWaveform],
-          focusedSignalIds: {monitoredWaveform.id},
+          focusedSignalIds: {monitoredWaveform.monitorId},
         ),
       );
 
@@ -331,7 +331,7 @@ void main() {
                 (datum) => datum.value.toLowerCase() == 'z',
               ),
         );
-        final monitoredWaveform = SignalWaveform.fromWaveformData(
+        final monitoredWaveform = MonitorRow.fromWaveformData(
           fixtureWaveform,
         );
         final firstRisingIndex =
@@ -362,7 +362,7 @@ void main() {
           SignalLoaded(
             const [],
             [monitoredWaveform],
-            focusedSignalIds: {monitoredWaveform.id},
+            focusedSignalIds: {monitoredWaveform.monitorId},
           ),
         );
 

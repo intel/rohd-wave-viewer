@@ -186,7 +186,10 @@ make real-clean
 ```
 
 `make test` delegates to `tool/gh_actions/run_tests.sh`; pass `ARGS` to select
-root-package tests, for example:
+root-package tests. The root package requires Flutter's test runner:
+`dart test` cannot load Flutter's `dart:ui` library. Bare `dart test` reports
+this immediately; explicit paths bypass the diagnostic. Run `flutter test`
+for the root package alone, or select a root-package test with:
 
 ```bash
 make test ARGS=test/services/signal_data_service_test.dart

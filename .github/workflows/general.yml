@@ -57,9 +57,6 @@ jobs:
           python3 tool/test/bridge_artifacts_test.py
           node --test tool/test/publish_bridge_artifacts_test.cjs
 
-      - name: Verify bridge artifact publication repository
-        run: node tool/gh_actions/verify_bridge_artifact_publication_url.cjs "${{ github.repository }}"
-
       - name: Install native build tools
         run: tool/gh_actions/install_build_tools.sh
 
@@ -83,9 +80,6 @@ jobs:
 
       - name: Verify Dart source headers
         run: dart run tool/gh_actions/verify_dart_headers.dart
-
-      - name: Verify waveform client migration boundary
-        run: tool/gh_actions/verify_waveform_client_core.sh
 
       - name: Setup Pana source analysis
         run: tool/gh_actions/install_pana.sh
@@ -111,32 +105,29 @@ jobs:
       - name: Verify matching bridge release set
         run: tool/verify_bridge_release.sh
 
-      - name: Package pinned consumer bundle without rebuilding
+      - name: Package versioned consumer bundle for release validation
         run: |
           set -euo pipefail
           manifest=packages/dart_wellen/tool/bridge_artifacts.json
           release_url="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["archive_url"])' "$manifest")"
           python3 packages/dart_wellen/tool/bridge_artifacts.py prepare \
-            --release-url "$release_url"
+            --release-url "$release_url" \
+            --ci-artifact
           git diff --exit-code -- "$manifest"
 
-      - name: Retain verified consumer bundle for distribution
+      - name: Upload branch consumer artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dart-wellen-consumer-artifacts
           path: |
             build/dart_wellen-*-web.tar.gz
-            packages/dart_wellen/tool/bridge_artifacts.build.json
-          if-no-files-found: error
-
-      - name: Upload browser/WASM test inputs
-        uses: actions/upload-artifact@v4
-        with:
-          name: wellen-browser-test-inputs
-          path: |
             packages/dart_wellen/lib/src/rust/*.dart
+            packages/dart_wellen/tool/bridge_artifacts.json
+            packages/dart_wellen/tool/bridge_artifacts.build.json
             web/pkg/wellen_bridge.js
             web/pkg/wellen_bridge_bg.wasm
+            web/pkg/LICENSE
+            assets/licenses/wellen_bridge_LICENSES.txt
           if-no-files-found: error
 
       - name: Build and verify Marketplace VSIX
@@ -146,7 +137,35 @@ jobs:
       - name: Build dev container and run tests in it
         uses: devcontainers/ci@v0.3
         with:
+          push: never
           runCmd: tool/gh_actions/run_tests.sh
+
+  publish-ci-consumer-artifact:
+    name: Publish branch dart_wellen consumer artifact
+    needs: run-checks
+    if: ${{ github.event_name == 'push' }}
+    permissions:
+      contents: write
+      actions: read
+    concurrency:
+      group: dart-wellen-ci-artifacts-${{ github.repository }}
+      cancel-in-progress: false
+    runs-on: ${{ github.repository_owner == 'intel' && 'intel-ubuntu-latest' || 'ubuntu-latest' }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Download verified consumer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dart-wellen-consumer-artifacts
+          path: ${{ runner.temp }}/dart-wellen-consumer-artifacts
+
+      - name: Publish public commit-addressed artifact
+        run: |
+          tool/gh_actions/publish_ci_bridge_artifact.sh \
+            "${{ runner.temp }}/dart-wellen-consumer-artifacts" \
+            "${{ github.sha }}"
 
   browser-tests:
     name: Browser/WASM Tests
@@ -177,7 +196,7 @@ jobs:
       - name: Download browser/WASM test inputs
         uses: actions/download-artifact@v4
         with:
-          name: wellen-browser-test-inputs
+          name: dart-wellen-consumer-artifacts
           path: .
 
       - name: Run browser/WASM integration tests
@@ -185,51 +204,3 @@ jobs:
           BROWSER_TEST_PLATFORM: chrome_ci
           CHROME_EXECUTABLE: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: tool/gh_actions/run_browser_tests.sh
-
-  distribute-bridge-bundle:
-    name: Distribute commit-keyed bridge bundle
-    needs: [run-checks, browser-tests]
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
-    permissions:
-      contents: write
-    concurrency:
-      group: dart-wellen-bundle-${{ github.sha }}
-      cancel-in-progress: false
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout tested source commit
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-
-      - name: Download tested consumer bundle
-        uses: actions/download-artifact@v4
-        with:
-          name: dart-wellen-consumer-artifacts
-          path: ${{ runner.temp }}/dart-wellen-consumer-artifacts
-
-      - name: Distribute immutable commit bundle
-        uses: actions/github-script@v7
-        env:
-          BRIDGE_ARTIFACT_DIRECTORY: ${{ runner.temp }}/dart-wellen-consumer-artifacts
-        with:
-          script: |
-            const path = require('node:path');
-            const publish = require(path.join(
-              process.env.GITHUB_WORKSPACE,
-              'tool/gh_actions/publish_bridge_artifacts.cjs',
-            ));
-            const result = await publish({
-              github,
-              context,
-              workspace: process.env.GITHUB_WORKSPACE,
-              artifactDirectory: process.env.BRIDGE_ARTIFACT_DIRECTORY,
-              development: true,
-            });
-            await core.summary
-              .addHeading('Commit-keyed dart_wellen bundle')
-              .addLink('Download tested bundle', result.assetUrl)
-              .addRaw(`\n\nCommit: \`${context.sha}\`\n\nSHA-256: \`${result.sha256}\`\n`)
-              .write();

@@ -23,7 +23,7 @@ on:
         type: boolean
         default: false
       publish_bundle:
-        description: Publish the verified bridge bundle at its pinned GitHub release URL
+        description: Publish the verified versioned dart_wellen bridge bundle to GitHub Releases
         required: true
         type: boolean
         default: false
@@ -63,6 +63,7 @@ jobs:
           node --test tool/test/publish_bridge_artifacts_test.cjs
 
       - name: Verify bridge artifact publication repository
+        if: ${{ inputs.publish_bundle }}
         run: node tool/gh_actions/verify_bridge_artifact_publication_url.cjs "${{ github.repository }}"
 
       - name: Install native build tools
@@ -129,7 +130,7 @@ jobs:
           if-no-files-found: error
 
   publish-bridge-bundle:
-    name: Publish pinned bridge bundle
+    name: Publish versioned dart_wellen bridge release
     needs: release-checks
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_bundle }}
     permissions:
@@ -152,7 +153,7 @@ jobs:
           name: dart-wellen-consumer-artifacts
           path: ${{ runner.temp }}/dart-wellen-consumer-artifacts
 
-      - name: Publish immutable bridge release asset
+      - name: Publish immutable versioned bridge release assets
         uses: actions/github-script@v7
         env:
           BRIDGE_ARTIFACT_DIRECTORY: ${{ runner.temp }}/dart-wellen-consumer-artifacts
@@ -173,7 +174,7 @@ jobs:
               ? 'Existing archive and checksum metadata match this tested build; no upload needed.'
               : 'Uploaded the verified bundle without rebuilding.');
             await core.summary
-              .addHeading('Pinned dart_wellen bridge bundle')
+              .addHeading('Versioned dart_wellen bridge release')
               .addLink('Download verified bundle', result.assetUrl)
               .addRaw(`\n\nSHA-256: \`${result.sha256}\`\n`)
               .write();

@@ -54,12 +54,12 @@ void main() {
 
     group('SignalFocus', () {
       test('supports value comparison', () {
-        final wf = SignalWaveform.empty('x');
+        final wf = MonitorRow.empty('x');
         expect(SignalFocusEvent(wf), equals(SignalFocusEvent(wf)));
       });
 
       test('isMultiSelect changes equality', () {
-        final wf = SignalWaveform.empty('x');
+        final wf = MonitorRow.empty('x');
         expect(
           SignalFocusEvent(wf),
           isNot(equals(SignalFocusEvent(wf, isMultiSelect: true))),
@@ -90,7 +90,7 @@ void main() {
 
     group('SignalRemove', () {
       test('supports value comparison', () {
-        final wf = SignalWaveform.empty('x');
+        final wf = MonitorRow.empty('x');
         expect(SignalRemoveEvent(wf), equals(SignalRemoveEvent(wf)));
       });
     });

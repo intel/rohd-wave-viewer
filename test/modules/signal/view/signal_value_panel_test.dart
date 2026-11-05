@@ -26,8 +26,8 @@ import 'package:rohd_wave_viewer/src/viewer_waveform_client.dart';
 import '../../../helpers.dart';
 
 /// Builds a monitor row whose decimal display value is [decimalValue].
-SignalWaveform buildRow(String signalId, int decimalValue, {int? atTime}) =>
-    SignalWaveform(
+MonitorRow buildRow(String signalId, int decimalValue, {int? atTime}) =>
+    MonitorRow(
       signalId: signalId,
       data: [
         Data(time: 0, value: '0'),
@@ -79,9 +79,8 @@ void main() {
             (codeUnit) => codeUnit == 0x30 || codeUnit == 0x31,
           ),
     );
-    final scalar = SignalWaveform.fromWaveformData(scalarData)
-      ..overrideWidth = 1;
-    final bus = SignalWaveform.fromWaveformData(busData)
+    final scalar = MonitorRow.fromWaveformData(scalarData)..overrideWidth = 1;
+    final bus = MonitorRow.fromWaveformData(busData)
       ..overrideWidth = numericBusDatum.value.length;
     final repository = SignalWaveformRepository(signalWaveformApi: api);
     final cursorBloc = WaveformModuleBloc(signalWaveformRepository: repository);

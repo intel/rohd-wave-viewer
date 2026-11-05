@@ -35,7 +35,7 @@ void main() {
   late MockSignalWaveformApi signalWaveformApi;
   late SignalWaveformRepository signalWaveformRepository;
   late List<SignalOccurrence> signals;
-  late List<SignalWaveform> monitorSignals;
+  late List<MonitorRow> monitorSignals;
 
   setUpAll(() {
     registerFallbackValue(SignalUnfocusEvent());
@@ -57,13 +57,12 @@ void main() {
       selectedModule,
     );
 
-    // Register signal lookup so SignalWaveform metadata accessors work
+    // Register signal lookup so MonitorRow metadata accessors work
     SignalWaveform.signalLookup =
         (id) => signals.where((s) => s.name == id).firstOrNull;
 
     // Build monitor waveforms from the signal metadata
-    monitorSignals =
-        signals.map((s) => SignalWaveform(signalId: s.name)).toList();
+    monitorSignals = signals.map((s) => MonitorRow(signalId: s.name)).toList();
   });
 
   tearDown(SignalWaveform.clearSignalLookup);
@@ -451,9 +450,9 @@ void main() {
 
   group('Selected Signals Panel viewport interactions', () {
     /// Builds [count] monitor rows so the list overflows the panel viewport.
-    List<SignalWaveform> buildOverflowRows(int count) => List.generate(
+    List<MonitorRow> buildOverflowRows(int count) => List.generate(
           count,
-          (index) => SignalWaveform(
+          (index) => MonitorRow(
             signalId: signals[index % signals.length].name,
             monitorId: 'row$index',
           ),
@@ -723,8 +722,8 @@ void main() {
       tester,
     ) async {
       final rows = [
-        SignalWaveform(signalId: signals[0].name),
-        SignalWaveform(signalId: signals[1].name),
+        MonitorRow(signalId: signals[0].name),
+        MonitorRow(signalId: signals[1].name),
       ];
       when(() => signalBloc.state).thenReturn(
         SignalLoaded(
@@ -920,8 +919,7 @@ void main() {
             (state) => state.monitorSignalsList.length == count,
           );
         }
-        final parents =
-            List<SignalWaveform>.from(bloc.state.monitorSignalsList);
+        final parents = List<MonitorRow>.from(bloc.state.monitorSignalsList);
         expect(parents[0].monitorId, isNot(parents[1].monitorId));
 
         await tester.pumpApp(
@@ -930,7 +928,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        Finder chevronFor(SignalWaveform parent, IconData icon) {
+        Finder chevronFor(MonitorRow parent, IconData icon) {
           final index = bloc.state.monitorSignalsList.indexWhere(
             (waveform) => waveform.monitorId == parent.monitorId,
           );
@@ -1025,7 +1023,7 @@ void main() {
 
   group('Selected Signals Panel struct and array expansion', () {
     /// Pumps the panel with a single monitored [occurrence] row.
-    Future<SignalWaveform> pumpExpandablePanel(
+    Future<MonitorRow> pumpExpandablePanel(
       WidgetTester tester,
       SignalOccurrence occurrence, {
       String? monitorId,
@@ -1037,7 +1035,7 @@ void main() {
       );
       SignalWaveform.signalLookup =
           (id) => id == occurrence.name ? occurrence : null;
-      final waveform = SignalWaveform(
+      final waveform = MonitorRow(
         signalId: occurrence.name,
         monitorId: monitorId,
       );

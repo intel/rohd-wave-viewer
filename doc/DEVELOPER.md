@@ -96,11 +96,14 @@ WAVE_SOURCE_VALUE=github.com/desmonddak/rohd-wave-viewer:modernize \
 flutter pub get
 ```
 
-The committed manifests use published `rohd`, `rohd_hierarchy`,
-`rohd_waveform`, and `rohd_devtools_widgets` packages.
-`lib/src/waveform_client_core/` contains backend-neutral Wave Viewer client
-state and depends on the published `rohd_waveform` service contracts. Its
-README defines the boundary for eventual migration into `rohd_waveform`.
+The manifests normally select published `rohd`, `rohd_hierarchy`,
+`rohd_waveform`, and `rohd_devtools_widgets` packages. The viewer now uses the
+shared repository and signal-data service from `rohd_waveform` 0.1.1. Until
+that release is published, use a compatible local ROHD checkout via
+`configure-group all local` for this development version. After publication,
+raise the viewer's minimum `rohd_waveform` constraint to 0.1.1 and validate
+hosted resolution before releasing the viewer. Monitor-row identity and
+presentation state remain in the viewer.
 Any selection that differs from the manifest baseline writes one ignored
 override at the workspace root, which applies to every member. Selecting
 hosted or Git Wave Viewer packages also disables the local Pub workspace so
@@ -133,6 +136,49 @@ Inspect the saved sources and generated files with:
 ```bash
 bash scripts/wave_dev_mode.sh show
 ```
+
+## dart_wellen Consumer Artifacts
+
+`dart_wellen` is a normal Dart/Flutter package that also owns generated Dart
+bindings and matching native/browser bridge artifacts. Consumers never run
+Cargo or generate bindings: they select one complete, verified package payload
+from the producer.
+
+| Consumer source | Package resolution | Artifact source |
+| --- | --- | --- |
+| Hosted | pub.dev | Included in the published `dart_wellen` archive and verified offline |
+| Local | Prepared Wave Viewer worktree | Files and `tool/bridge_artifacts.build.json` in that worktree |
+| CI | Git repository and branch | Public `artifacts` branch payload for the exact resolved commit |
+| Git release | Git repository and ref | Immutable, versioned GitHub Release bundle |
+
+For pub.dev, publish `dart_wellen` first with its generated bindings,
+`web/pkg` runtime, license notices, and `tool/bridge_artifacts.build.json`.
+Then publish `rohd_wave_viewer` against that hosted `dart_wellen` version.
+Consumers receive the complete bridge package from pub.dev and verify it
+without downloading a GitHub artifact.
+
+For development branches, General CI prepares and publishes the complete
+`dart-wellen` payload under `artifacts/dart-wellen/<source-commit>/` for every
+successful push. A consumer must use the same Git repository/ref for both
+`rohd_wave_viewer` and `dart_wellen`; it then selects only a payload whose
+source commit matches Pub's resolved Git checkout. This supports fork branches,
+Intel feature branches, and `main` without publishing a GitHub Release.
+
+For example, ROHD DevTools can consume a fork branch with:
+
+```bash
+cd /path/to/rohd
+WAVE_VIEWER_GIT_SOURCE=github.com/desmonddak/rohd-wave-viewer:my-branch \
+  bash tool/devtools/devtools_dev_mode.sh configure-group wave-viewer ci
+flutter pub get
+GITHUB_TOKEN=<actions-read-token> \
+  make -C rohd_devtools_extension viewer-artifacts
+```
+
+CI payloads are intentionally development inputs, but they are public and
+commit-addressed rather than Actions-artifact downloads. Use the versioned
+GitHub Release bundle or the pub.dev package when an immutable, long-lived
+consumer artifact is required.
 
 ## Run Targets
 

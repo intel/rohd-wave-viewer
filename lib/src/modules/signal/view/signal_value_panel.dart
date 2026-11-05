@@ -217,7 +217,7 @@ class SignalValuePanel extends StatelessWidget {
   Widget updateSignalValue(
     BuildContext context,
     WaveformModuleState state,
-    List<SignalWaveform> monitorSignalList,
+    List<MonitorRow> monitorSignalList,
   ) {
     final valueList = <String>[];
 
@@ -302,7 +302,7 @@ class SignalValuePanel extends StatelessWidget {
                           loaded.focusedSignalIds
                               .contains(currentSignal.monitorId)
                       ? loaded.focusedSignals
-                      : <SignalWaveform>[currentSignal];
+                      : <MonitorRow>[currentSignal];
                   if (loaded is! SignalLoaded ||
                       !loaded.focusedSignalIds
                           .contains(currentSignal.monitorId)) {

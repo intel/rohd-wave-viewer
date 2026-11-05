@@ -9,10 +9,8 @@
 
 /// Wave Viewer facade for waveform client state.
 ///
-/// Application code imports this library rather than the implementation under
-/// `waveform_client_core`. When the reusable core moves to
-/// `package:rohd_waveform`, this facade remains the single compatibility seam
-/// for viewer-specific adaptation.
+/// Application code imports the shared waveform services and viewer-owned
+/// monitor-row state through this library.
 library;
 
 export 'package:rohd_waveform/rohd_waveform.dart'
@@ -20,12 +18,18 @@ export 'package:rohd_waveform/rohd_waveform.dart'
         Data,
         MetaData,
         ModuleStructure,
+        RepositorySignalDataService,
+        ResolvedModuleStructure,
         SignalDataService,
+        SignalWaveform,
         SignalWaveformApi,
+        SignalWaveformRepository,
         WaveData,
         WaveFormat,
         WaveformData,
+        WaveformSearchCriterion,
         WaveformUpdateEvent,
-        WaveformUpdateReason;
+        WaveformUpdateReason,
+        resolveModuleStructure;
 
-export 'waveform_client_core/waveform_client_core.dart';
+export 'modules/signal/models/monitor_row.dart';

@@ -17,7 +17,7 @@ sealed class SignalState extends Equatable {
   final List<SignalOccurrence> signals;
 
   /// Waveforms for monitored signals (for waveform display and value lookup).
-  final List<SignalWaveform> monitorSignalsList;
+  final List<MonitorRow> monitorSignalsList;
 
   /// Set of focused signal IDs for multi-select navigation. When non-empty,
   /// arrow keys navigate to the nearest edge of any focused signal.
@@ -78,13 +78,13 @@ sealed class SignalState extends Equatable {
   bool get hasFocusedSignals => focusedSignalIds.isNotEmpty;
 
   /// Returns the focused waveforms from the monitor list.
-  List<SignalWaveform> get focusedSignals => monitorSignalsList
+  List<MonitorRow> get focusedSignals => monitorSignalsList
       .where((waveform) => focusedSignalIds.contains(waveform.monitorId))
       .toList();
 
   /// Legacy getter for single focused signal (returns first if multiple, null
   /// if none).
-  SignalWaveform? get focusedSignal =>
+  MonitorRow? get focusedSignal =>
       focusedSignals.isNotEmpty ? focusedSignals.first : null;
 
   /// Check if a specific signal is focused.
@@ -95,7 +95,7 @@ sealed class SignalState extends Equatable {
   ///
   /// If multiple signals with the same name are monitored, prepends parent
   /// module names to distinguish them. The display name uses '/' as separator.
-  String getDisplayNameForSignal(SignalWaveform signal) {
+  String getDisplayNameForSignal(MonitorRow signal) {
     if (signal is MonitoredSignal) {
       return signal.displayName;
     }

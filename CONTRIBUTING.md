@@ -62,7 +62,10 @@ make test
 
 `make test` prepares the native Wellen bridge and tests both the root Flutter
 package and workspace members; `flutter test` alone does not cover that full
-set. Use the repository scripts for the remaining release checks:
+set. Do not use `dart test` at the workspace root: the root tests require
+Flutter's `dart:ui` library and must run with `flutter test`. Bare `dart test`
+reports this immediately; passing explicit paths bypasses that diagnostic.
+Use the repository scripts for the remaining release checks:
 
 ```bash
 tool/gh_actions/verify_formatting.sh

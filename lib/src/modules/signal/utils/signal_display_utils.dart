@@ -24,14 +24,14 @@ import 'package:rohd_wave_viewer/src/viewer_waveform_client.dart';
 /// get progressive parent module prefixes until all names are unique.
 ///
 /// Example with selectedModulePath = "top.counter": Input: [
-///   SignalWaveform(fullPath: 'top.counter.clk'),       // in selected
-///   SignalWaveform(fullPath: 'top.counter.adder.a'),    // in child
-///   SignalWaveform(fullPath: 'top.timer.clk'),          // in sibling
+///   MonitorRow(fullPath: 'top.counter.clk'),       // in selected
+///   MonitorRow(fullPath: 'top.counter.adder.a'),    // in child
+///   MonitorRow(fullPath: 'top.timer.clk'),          // in sibling
 ///   ]
 ///   Output: { 'sig1': 'clk', 'sig2': 'adder/a', 'sig3': 'timer/clk',
 ///   }
 Map<String, String> generateSignalDisplayNames(
-  List<SignalWaveform> signals, {
+  List<MonitorRow> signals, {
   String? selectedModulePath,
 }) {
   final displayNames = <String, String>{};
@@ -92,7 +92,7 @@ Map<String, String> generateSignalDisplayNames(
 /// - If the signal is outside the selected module's subtree, returns the path
 ///   from the common ancestor's divergence point.
 String _computeScopeAwareDisplayName(
-  SignalWaveform signal,
+  MonitorRow signal,
   String selectedModulePath,
 ) {
   final fullPath = signal.fullPath ?? signal.id;
@@ -149,7 +149,7 @@ String _computeScopeAwareDisplayName(
 /// "adder/clk" from different subtrees), this progressively adds more
 /// path context to distinguish them.
 void _resolveDisplayNameDuplicates(
-  List<SignalWaveform> signals,
+  List<MonitorRow> signals,
   Map<String, String> displayNames,
 ) {
   // Group by display name to find duplicates (only among *distinct* ids)
@@ -178,13 +178,13 @@ void _resolveDisplayNameDuplicates(
 
 /// Original duplicate-name disambiguation (used when no selected module).
 void _generateDuplicateAwareNames(
-  List<SignalWaveform> signals,
+  List<MonitorRow> signals,
   Map<String, String> displayNames,
 ) {
   // Group signals by their base (leaf) name.
   // Use _signalBaseName() to robustly extract the leaf name even when
   // the signal lookup isn't available and signal.name returns the full path.
-  final nameToSignals = <String, List<SignalWaveform>>{};
+  final nameToSignals = <String, List<MonitorRow>>{};
 
   for (final signal in signals) {
     final baseName = _signalBaseName(signal);
@@ -205,7 +205,7 @@ void _generateDuplicateAwareNames(
       }
     } else {
       // Deduplicate before resolving: pass only one representative per id
-      final deduped = <SignalWaveform>[];
+      final deduped = <MonitorRow>[];
       final seenIds = <String>{};
       for (final s in signalsWithName) {
         if (seenIds.add(s.id)) {
@@ -222,11 +222,11 @@ void _generateDuplicateAwareNames(
 /// For each signal, extracts the module path from fullPath and progressively
 /// adds parent module names until all names are unique.
 void _resolveNameConflicts(
-  List<SignalWaveform> conflictingSignals,
+  List<MonitorRow> conflictingSignals,
   Map<String, String> displayNames,
 ) {
   // Extract path components for each signal
-  final signalPaths = <SignalWaveform, List<String>>{};
+  final signalPaths = <MonitorRow, List<String>>{};
 
   for (final signal in conflictingSignals) {
     final fullPath = signal.fullPath ?? signal.id;
@@ -344,7 +344,7 @@ int _commonPrefixLength(List<String> a, List<String> b) {
 /// falls back to the signalId which may be a full hierarchical path
 /// (e.g., "testbench.clk"). In that case, this function strips any path prefix
 /// to return just the leaf component.
-String _signalBaseName(SignalWaveform signal) {
+String _signalBaseName(MonitorRow signal) {
   final name = signal.name;
   // If the name contains path separators, it's likely the full path fallback
   // from signalId rather than a true leaf name. Extract just the leaf.

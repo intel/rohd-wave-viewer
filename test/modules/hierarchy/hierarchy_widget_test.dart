@@ -861,7 +861,7 @@ void main() {
     Future<void> pumpSignals(
       WidgetTester tester,
       List<SignalOccurrence> signals, {
-      List<SignalWaveform> monitorSignals = const [],
+      List<MonitorRow> monitorSignals = const [],
       bool isEmbedded = false,
       void Function(List<String> signalPaths)? onSendSignals,
       GoToSourceCallback? onGoToSource,
