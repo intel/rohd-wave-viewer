@@ -166,6 +166,11 @@ release. The publication job is the only job given `contents: write`. It
 never moves an existing tag or replaces an asset with different bytes.
 Neither General nor Release Checks publishes to pub.dev.
 
+The immutable release URL is verified against the repository only when
+`publish_bundle` is enabled. General CI and non-publishing Release Checks can
+therefore validate fork or feature branches whose checked-in release contract
+continues to reference the canonical Intel release location.
+
 Consumer installation, after Pub selects the package, is:
 
 ```bash
