@@ -664,10 +664,11 @@ packages:
   rohd:
     dependency: "direct main"
     description:
-      path: "/home/desmond/rohd"
-      relative: false
-    source: path
-    version: "0.7.0"
+      name: rohd
+      sha256: "95ec2d52c1b208a64199a40c3e9b588f3c12fa513bb830bd1cb32090a0a45506"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.6.11"
   rohd_devtools_widgets:
     dependency: "direct main"
     description:
