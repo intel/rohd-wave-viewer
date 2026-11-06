@@ -201,7 +201,6 @@ run_pub_dry_run() {
   local sdk
   local output="$temp_dir/${package}_publish.txt"
   local status
-  local issue_count
   directory="$(package_directory "$package")"
   sdk="$(package_sdk "$package")"
   if [[ "$package" == rohd_wave_viewer ]]; then
@@ -231,18 +230,26 @@ run_pub_dry_run() {
     return
   fi
 
-  issue_count="$(grep -c '^\* ' "$output" || true)"
   if [[ "$status" -eq 65 ]] &&
-    [[ "$issue_count" -eq 1 ]] &&
-    grep -Fq \
-      'Your dependency on "flutter_rust_bridge" should allow more than one version.' \
-      "$output" &&
-    grep -Fq 'Package has 1 warning.' "$output"; then
+    grep -Eq '^Package has 1 warning( and [1-9][0-9]* hints?)?\.$' "$output" &&
+    awk '
+      /^Package validation found the following.*potential issues?:$/ { warnings = 1; next }
+      /^Package validation found the following.*hint[s]?:$/ { warnings = 0; next }
+      /^Package has / { warnings = 0 }
+      warnings && /^\* / {
+        count++
+        if ($0 == "* Your dependency on \"flutter_rust_bridge\" should allow more than one version." ||
+            $0 == "* Your dependency on \"flutter_rust_bridge\" should allow more than one version. For example:") {
+          known++
+        }
+      }
+      END { exit !(count == 1 && known == 1) }
+    ' "$output"; then
     echo "KNOWN EXCEPTION: $package pins flutter_rust_bridge to its generated bridge version."
     return
   fi
 
-  echo "$package publication dry run failed with $issue_count issue(s)." >&2
+  echo "$package publication dry run failed (exit $status)." >&2
   return "$status"
 }
 
