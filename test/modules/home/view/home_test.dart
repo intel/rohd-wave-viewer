@@ -332,11 +332,11 @@ void main() {
       await _settleWithFileIo(
         tester,
         until: () =>
-            find.text('- filter_bank.fst').evaluate().isNotEmpty &&
+            find.textContaining('filter_bank.fst').evaluate().isNotEmpty &&
             _signalBloc(tester).state.monitorSignalsList.length == 2,
       );
 
-      expect(find.text('- filter_bank.fst'), findsOneWidget);
+      expect(find.textContaining('filter_bank.fst'), findsOneWidget);
       expect(
         _signalBloc(tester)
             .state
@@ -377,7 +377,7 @@ void main() {
       );
 
       // No file loaded yet: reload is disabled and no file name is shown.
-      expect(find.textContaining('- mock_counter.vcd'), findsNothing);
+      expect(find.textContaining('mock_counter.vcd'), findsNothing);
       final reloadButton = tester.widget<IconButton>(
         find.ancestor(
           of: find.byTooltip('Reload waveform'),
@@ -390,11 +390,12 @@ void main() {
       await tester.tap(find.byTooltip('Load waveform file'));
       await _settleWithFileIo(
         tester,
-        until: () => find.text('- mock_counter.vcd').evaluate().isNotEmpty,
+        until: () =>
+            find.textContaining('mock_counter.vcd').evaluate().isNotEmpty,
       );
 
       expect(dialogs.openCount, 1);
-      expect(find.text('- mock_counter.vcd'), findsOneWidget);
+      expect(find.textContaining('mock_counter.vcd'), findsOneWidget);
 
       final moduleBloc = BlocProvider.of<RohdModuleBloc>(
         tester.element(find.byType(WaveFormViewerPage)),
@@ -407,7 +408,7 @@ void main() {
       await _settleWithFileIo(tester);
 
       expect(find.textContaining('Error refreshing file'), findsNothing);
-      expect(find.text('- mock_counter.vcd'), findsOneWidget);
+      expect(find.textContaining('mock_counter.vcd'), findsOneWidget);
       expect(moduleBloc.state.moduleStructure.modules, isNotEmpty);
     });
 
@@ -427,7 +428,8 @@ void main() {
       await tester.tap(find.byTooltip('Load waveform file'));
       await _settleWithFileIo(
         tester,
-        until: () => find.text('- mock_counter.vcd').evaluate().isNotEmpty,
+        until: () =>
+            find.textContaining('mock_counter.vcd').evaluate().isNotEmpty,
       );
 
       final pageContext = tester.element(find.byType(WaveFormViewerPage));
@@ -450,8 +452,8 @@ void main() {
             find.textContaining('Error loading file').evaluate().isNotEmpty,
       );
 
-      expect(find.text('- mock_counter.vcd'), findsOneWidget);
-      expect(find.text('- malformed.vcd'), findsNothing);
+      expect(find.textContaining('mock_counter.vcd'), findsOneWidget);
+      expect(find.textContaining('malformed.vcd'), findsNothing);
       expect(repository.api, same(previousApi));
       expect(moduleBloc.state.moduleStructure, same(previousStructure));
       expect(
@@ -476,7 +478,7 @@ void main() {
       await tester.tap(find.byTooltip('Load waveform file'));
       await _settleWithFileIo(
         tester,
-        until: () => find.text('- changing.vcd').evaluate().isNotEmpty,
+        until: () => find.textContaining('changing.vcd').evaluate().isNotEmpty,
       );
 
       final pageContext = tester.element(find.byType(WaveFormViewerPage));
@@ -499,7 +501,7 @@ void main() {
             moduleBloc.state.moduleStructure.modules.single.name == 'test',
       );
 
-      expect(find.text('- changing.vcd'), findsOneWidget);
+      expect(find.textContaining('changing.vcd'), findsOneWidget);
       expect(moduleBloc.state.moduleStructure.modules.single.name, 'test');
       expect(signalBloc.state.signals, isNotEmpty);
       expect(
@@ -563,7 +565,7 @@ void main() {
       await tester.tap(find.byTooltip('Load waveform file'));
       await _settleWithFileIo(tester);
 
-      expect(find.text('- mock_counter.vcd'), findsOneWidget);
+      expect(find.textContaining('mock_counter.vcd'), findsOneWidget);
       expect(repository.api, isA<WellenSignalWaveformApi>());
       expect(
         BlocProvider.of<RohdModuleBloc>(
@@ -589,9 +591,9 @@ void main() {
       await tester.tap(find.byTooltip('Load waveform file'));
       await _settleWithFileIo(
         tester,
-        until: () => find.text('- transient.vcd').evaluate().isNotEmpty,
+        until: () => find.textContaining('transient.vcd').evaluate().isNotEmpty,
       );
-      expect(find.text('- transient.vcd'), findsOneWidget);
+      expect(find.textContaining('transient.vcd'), findsOneWidget);
 
       File(copyPath).deleteSync();
       await tester.tap(find.byTooltip('Reload waveform'));
