@@ -24,7 +24,7 @@ Add the package to a Dart or Flutter package:
 
 ```yaml
 dependencies:
-  dart_wellen: ^0.1.2
+  dart_wellen: ^0.1.3
 ```
 
 The package owns its bridge version and matching artifacts. Prepared local

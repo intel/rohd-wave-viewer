@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.1.2
+## 0.1.3
+
+- Update Flutter Rust Bridge and its generator to 2.13.0, requiring Dart 3.9.2 or newer.
+- Include the waveform-reading example in the published package.
+
+## 0.1.2 (retracted)
 
 - Update Flutter Rust Bridge and its generator to 2.13.0, requiring Dart 3.9.2 or newer.
 - Include the waveform-reading example in the published package.

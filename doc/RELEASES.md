@@ -112,7 +112,7 @@ After producing a validated bridge release set, prepare its consumer package:
 
 ```bash
 make consumer-artifacts \
-   BRIDGE_RELEASE_URL=https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-0.1.2/dart_wellen-0.1.2-web.tar.gz
+   BRIDGE_RELEASE_URL=https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-0.1.3/dart_wellen-0.1.3-web.tar.gz
 ```
 
 Use the selected package's version in the URL; it is not the bridge version.
@@ -211,7 +211,7 @@ matching versioned bridge release:
 
    ```bash
    python3 packages/dart_wellen/tool/bridge_artifacts.py prepare \
-       --release-url https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-0.1.2/dart_wellen-0.1.2-web.tar.gz
+       --release-url https://github.com/intel/rohd-wave-viewer/releases/download/dart-wellen-0.1.3/dart_wellen-0.1.3-web.tar.gz
    ```
 
 2. Review, sign, commit, and push the installer, manifest, packaging rules,
