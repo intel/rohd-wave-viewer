@@ -58,7 +58,7 @@ flutter analyze --fatal-infos --no-pub
 run_pana() {
   local package="$1"
   echo "=== Pana: $package ==="
-  pana --exit-code-threshold "${PANA_SCORE_THRESHOLD:-30}" \
+  pana --exit-code-threshold "${PANA_SCORE_THRESHOLD:-0}" \
     --flutter-sdk "$flutter_root" "$package"
 }
 
