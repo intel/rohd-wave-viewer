@@ -242,6 +242,9 @@ then analyzes the independently publishable `dart_wellen` package. It checks
 the root Flutter package too once `dart_wellen` is available on pub.dev; until
 then, it reports that the root check was skipped. The script probes pub.dev for
 the version declared by the root manifest before running the root analysis.
+Each package that is analyzed must achieve the full Pana score by default.
+For local diagnostics, set `PANA_SCORE_THRESHOLD` to the number of points of
+deduction to allow; CI and release checks use the default of zero.
 
 ## Publishing
 

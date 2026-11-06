@@ -1393,25 +1393,32 @@ class _WaveFormViewerPageState extends State<WaveFormViewerPage> {
                     },
                   ),
                 ),
-                title: Row(
-                  children: [
-                    platformIcon(
-                      Icons.waves,
-                      '🌊',
-                      size: 24,
-                      hasColorEmoji: _hasColorEmoji,
-                    ),
-                    const SizedBox(width: 12),
-                    const Text('ROHD Wave Viewer'),
-                    if (_fileName != null) ...[
-                      const SizedBox(width: 16),
-                      Text(
-                        '- $_fileName',
-                        style: const TextStyle(
-                            fontSize: 14, color: Colors.white70),
-                      ),
-                    ],
-                  ],
+                title: LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth < 80) {
+                      return const SizedBox.shrink();
+                    }
+                    return Row(
+                      children: [
+                        platformIcon(
+                          Icons.waves,
+                          '🌊',
+                          size: 24,
+                          hasColorEmoji: _hasColorEmoji,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _fileName == null
+                                ? 'ROHD Wave Viewer'
+                                : 'ROHD Wave Viewer - $_fileName',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 actions: [
                   // Only show file picker in standalone mode, not in extension
