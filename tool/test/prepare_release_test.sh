@@ -91,6 +91,36 @@ Package has 1 warning.
 OUTPUT
       exit 65
       ;;
+    known_hint)
+      cat <<'OUTPUT'
+Package validation found the following potential issue:
+* Your dependency on "flutter_rust_bridge" should allow more than one version. For example:
+
+  dependencies:
+    flutter_rust_bridge: ^2.13.0
+
+Package validation found the following hint:
+* The previous version is 0.1.1.
+
+  It seems you are not publishing an incremental update.
+
+The server may enforce additional checks.
+
+Package has 1 warning and 1 hint.
+OUTPUT
+      exit 65
+      ;;
+    extra_warning)
+      cat <<'OUTPUT'
+Package validation found the following 2 potential issues:
+* Your dependency on "flutter_rust_bridge" should allow more than one version.
+* README.md is missing required release information.
+Package validation found the following hint:
+* The previous version is 0.1.1.
+Package has 2 warnings and 1 hint.
+OUTPUT
+      exit 65
+      ;;
     other)
       cat <<'OUTPUT'
 Package validation found the following 1 potential issue:
@@ -262,6 +292,13 @@ assert_fails unsupported_package
 grep -Fq 'Unsupported package: unsupported_package' "$fixture/failure.txt"
 
 DRY_RUN_MODE=other assert_fails dart_wellen
+grep -Fq 'FAILED: dart_wellen publication dry run' "$fixture/failure.txt"
+
+DRY_RUN_MODE=known_hint run_helper dart_wellen >"$fixture/known-hint.txt"
+grep -Fq 'KNOWN EXCEPTION: dart_wellen' "$fixture/known-hint.txt"
+grep -Fq 'The previous version is 0.1.1.' "$fixture/known-hint.txt"
+
+DRY_RUN_MODE=extra_warning assert_fails dart_wellen
 grep -Fq 'FAILED: dart_wellen publication dry run' "$fixture/failure.txt"
 
 DRY_RUN_MODE=payload assert_fails rohd_wave_viewer

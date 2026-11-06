@@ -54,6 +54,11 @@ The helper:
 - runs publication dry runs only for selected packages; and
 - reports each stage independently.
 
+The dry run permits the intentional exact Flutter Rust Bridge dependency warning,
+including when Pub also reports informational hints. Other warnings still fail
+release preparation. A version-gap hint may suggest a retracted version; publish
+using the next available version instead.
+
 It never uploads packages or artifacts and never commits, tags, pushes, merges,
 rebases, or rewrites package versions. Full tests and Pana remain independent
 local opt-ins. The manually dispatched **Release Checks** workflow runs the
