@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3
+
+- Update the VS Code extension packaging toolchain to VSCE 4.1.0 and override `minimatch` to 11.0.5 to address a denial-of-service vulnerability.
+
 ## 0.1.2
 
 - Require `dart_wellen` 0.1.3 for canonical, offline-verifiable hosted bridge artifacts.
