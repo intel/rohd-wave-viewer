@@ -20,6 +20,12 @@ bash scripts/verify_flutter_version.sh
 When the CI pin changes, update the three GitHub Actions workflows and
 `tool/gh_codespaces/install_flutter.sh` together.
 
+## GitHub Actions Runtime
+
+The workflows use JavaScript actions that run on Node.js 24. Self-hosted
+GitHub Actions runners must be version 2.327.1 or newer. The separate Node.js
+version used by build commands is selected by the root `.nvmrc`.
+
 ## Pub Workspace
 
 The repository is one Pub workspace containing:

@@ -17,7 +17,7 @@ jobs:
     runs-on: ${{ github.repository_owner == 'intel' && 'intel-ubuntu-latest' || 'ubuntu-latest' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -26,7 +26,7 @@ jobs:
           cache: true
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
 
@@ -85,7 +85,7 @@ jobs:
 
       - name: Upload Marketplace VSIX
         id: artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: intel-corporation-rohd-wave-viewer-${{ steps.package.outputs.version }}-${{ github.sha }}
           path: |
